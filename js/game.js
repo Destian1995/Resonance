@@ -217,6 +217,7 @@ const Game = {
         }
 
         GameMap.updateDerricks(this.players, allUnits, sDt);
+        GameMap.updateZones(this.players, allUnits, sDt);
         AI.update(sDt, this.players, allUnits, allBuildings);
         Particles.update(sDt);
         this.checkGameEnd();

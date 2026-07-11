@@ -5,6 +5,7 @@
 const GameMap = {
     tiles: [],
     oilDerricks: [],
+    zones: [],       // territory zones
     width: 0,
     height: 0,
 
@@ -12,8 +13,105 @@ const GameMap = {
         this.width = CFG.MAP_W;
         this.height = CFG.MAP_H;
         this.oilDerricks = [];
+        this.zones = [];
         this.generateTiles(playerCount);
+        this.generateZones(playerCount);
         this.generateOilDerricks(playerCount);
+    },
+
+    // Territory zones — Voronoi-like regions
+    generateZones(playerCount) {
+        const zoneCount = Math.max(6, Math.min(19, 4 + playerCount * 3));
+        const margin = 60;
+        const points = [];
+
+        // Place zone centers avoiding edges
+        for (let i = 0; i < zoneCount; i++) {
+            let attempts = 0, px, py;
+            do {
+                px = Utils.rand(margin, this.width - margin);
+                py = Utils.rand(margin, this.height - margin);
+                attempts++;
+                // Not too close to other zones
+                let ok = true;
+                for (const p of points) {
+                    if (Utils.dist(px, py, p.x, p.y) < 100) { ok = false; break; }
+                }
+                if (ok) break;
+            } while (attempts < 50);
+
+            const hue = Math.floor(Utils.rand(0, 360));
+            points.push({
+                x: px, y: py,
+                owner: -1, // -1=neutral
+                color: `hsl(${hue},60%,30%)`,
+                borderColor: `hsl(${hue},80%,50%)`,
+                id: i,
+                captureProgress: {},
+            });
+        }
+        this.zones = points;
+    },
+
+    // Get zone at world position (nearest)
+    getZoneAt(wx, wy) {
+        let nearest = null, minD = Infinity;
+        for (const z of this.zones) {
+            const d = Utils.dist(wx, wy, z.x, z.y);
+            if (d < minD) { minD = d; nearest = z; }
+        }
+        return nearest;
+    },
+
+    // Update zone ownership based on unit presence
+    updateZones(players, units, dt) {
+        for (const z of this.zones) {
+            // Count units per player near zone center
+            const near = {};
+            for (const u of units) {
+                if (u.dead) continue;
+                if (Utils.dist(u.x, u.y, z.x, z.y) < 80) {
+                    near[u.playerId] = (near[u.playerId] || 0) + 1;
+                }
+            }
+            // Also count buildings
+            for (const p of players) {
+                if (!p.alive) continue;
+                for (const b of p.buildings) {
+                    if (b.dead) continue;
+                    if (Utils.dist(b.getCenterX(), b.getCenterY(), z.x, z.y) < 80) {
+                        near[p.id] = (near[p.id] || 0) + 3;
+                    }
+                }
+            }
+
+            // Dominant player
+            let best = -1, bestCount = 0, contested = false;
+            for (const [pid, cnt] of Object.entries(near)) {
+                const id = parseInt(pid);
+                if (cnt > bestCount) { bestCount = cnt; best = id; contested = false; }
+                else if (cnt === bestCount && cnt > 0) { contested = true; }
+            }
+
+            if (contested || bestCount === 0) continue;
+            if (best === z.owner) continue;
+
+            if (!z.captureProgress[best]) z.captureProgress[best] = 0;
+            z.captureProgress[best] += dt * 500;
+            // Reset other capture progress
+            for (const k of Object.keys(z.captureProgress)) {
+                if (parseInt(k) !== best) z.captureProgress[k] = Math.max(0, z.captureProgress[k] - dt * 200);
+            }
+
+            if (z.captureProgress[best] >= 2000) {
+                z.owner = best;
+                z.captureProgress = {};
+            }
+        }
+    },
+
+    getPlayerZoneCount(playerId) {
+        return this.zones.filter(z => z.owner === playerId).length;
     },
 
     generateTiles(playerCount) {
@@ -147,6 +245,9 @@ const GameMap = {
             ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(this.width, y); ctx.stroke();
         }
 
+        // Territory zones — colored regions
+        this.drawZones(ctx);
+
         // Тайлы
         for (let r = 0; r < CFG.MAP_ROWS; r++) {
             for (let c = 0; c < CFG.MAP_COLS; c++) {
@@ -238,6 +339,62 @@ const GameMap = {
         ctx.shadowBlur = 0;
         ctx.fillStyle = 'rgba(150,230,255,0.2)';
         ctx.fillRect(x+2, y+2, t/2, 2);
+    },
+
+    drawZones(ctx) {
+        for (const z of this.zones) {
+            const ownerColor = z.owner >= 0 ? CFG.PLAYER_COLORS[z.owner] : null;
+            const baseColor = ownerColor || z.borderColor;
+
+            // Territory fill — subtle gradient
+            ctx.globalAlpha = 0.06;
+            ctx.fillStyle = baseColor;
+            ctx.beginPath();
+            ctx.arc(z.x, z.y, 70, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            // Border ring
+            ctx.strokeStyle = baseColor;
+            ctx.lineWidth = z.owner >= 0 ? 1.5 : 0.5;
+            ctx.globalAlpha = z.owner >= 0 ? 0.4 : 0.15;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.arc(z.x, z.y, 65, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1;
+
+            // Zone flag/marker
+            if (z.owner >= 0) {
+                ctx.shadowColor = CFG.PLAYER_COLORS[z.owner];
+                ctx.shadowBlur = 6;
+                ctx.fillStyle = CFG.PLAYER_COLORS[z.owner];
+                ctx.beginPath();
+                ctx.arc(z.x, z.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            } else {
+                // Neutral diamond marker
+                ctx.fillStyle = '#555';
+                ctx.save();
+                ctx.translate(z.x, z.y);
+                ctx.rotate(Math.PI / 4);
+                ctx.fillRect(-3, -3, 6, 6);
+                ctx.restore();
+            }
+
+            // Capture progress bars
+            for (const [pid, prog] of Object.entries(z.captureProgress)) {
+                if (prog > 0) {
+                    const ratio = prog / 2000;
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(z.x - 15, z.y + 10, 30, 4);
+                    ctx.fillStyle = CFG.PLAYER_COLORS[parseInt(pid)] || '#fff';
+                    ctx.fillRect(z.x - 15, z.y + 10, Math.floor(30 * ratio), 4);
+                }
+            }
+        }
     },
 
     drawDerricks(ctx, players) {

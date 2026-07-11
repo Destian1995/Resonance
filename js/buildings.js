@@ -329,78 +329,166 @@ class Building {
     }
 
     drawBase(ctx, x, y, s, color) {
-        // Центральная иконка — крест
+        const mx = x + s/2;
+        // 3-floor building
+        const floorH = Math.floor((s - 6) / 3);
+        const bw = Math.floor(s * 0.7);
+
+        for (let f = 0; f < 3; f++) {
+            const fy = y + s - 3 - (f + 1) * floorH;
+            const fw = bw - f * Math.floor(s * 0.08); // slightly narrower each floor
+            const fx = mx - fw / 2;
+
+            // Floor body
+            ctx.fillStyle = f < this.level ? color : '#2a2a3a';
+            ctx.globalAlpha = f < this.level ? 0.4 : 0.2;
+            ctx.fillRect(fx, fy, fw, floorH - 1);
+            ctx.globalAlpha = 1;
+
+            // Floor border
+            ctx.strokeStyle = f < this.level ? color : '#333';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(fx, fy, fw, floorH - 1);
+
+            // Windows (lit if level reached)
+            const winColor = f < this.level ? '#ffee88' : '#1a1a2a';
+            ctx.shadowColor = f < this.level ? '#ff0' : 'transparent';
+            ctx.shadowBlur = f < this.level ? 4 : 0;
+            ctx.fillStyle = winColor;
+            const wc = 2 + f; // more windows on lower floors
+            const ww = Math.max(2, Math.floor(fw / (wc * 2 + 1)));
+            for (let wi = 0; wi < wc; wi++) {
+                const wx = fx + Math.floor(fw / (wc + 1)) * (wi + 1) - ww / 2;
+                ctx.fillRect(wx, fy + 3, ww, floorH - 6);
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        // Roof antenna
         ctx.fillStyle = color;
-        ctx.globalAlpha = 0.4;
-        ctx.fillRect(x+s/2-2, y+4, 4, s-8);
-        ctx.fillRect(x+4, y+s/2-2, s-8, 4);
-        ctx.globalAlpha = 1;
-        // Угловые точки
-        const cs = Math.floor(s * 0.15);
-        ctx.shadowColor = color; ctx.shadowBlur = 4;
-        ctx.fillStyle = color;
-        ctx.fillRect(x+2, y+2, cs, cs); ctx.fillRect(x+s-2-cs, y+2, cs, cs);
-        ctx.fillRect(x+2, y+s-2-cs, cs, cs); ctx.fillRect(x+s-2-cs, y+s-2-cs, cs, cs);
+        ctx.fillRect(mx - 1, y + 2, 2, Math.floor(s * 0.15));
+        ctx.shadowColor = color; ctx.shadowBlur = 6;
+        ctx.fillRect(mx - 3, y + 1, 6, 2);
         ctx.shadowBlur = 0;
-        // Центр
-        ctx.beginPath(); ctx.arc(x+s/2, y+s/2, s*0.15, 0, Math.PI*2);
-        ctx.fillStyle = color; ctx.fill();
-        // Уровень
-        ctx.fillStyle = '#ff0';
-        for (let i = 0; i < this.level; i++) ctx.fillRect(x+s/2-(this.level*3)+i*6, y+s-6, 4, 3);
+
+        // Level stars
+        ctx.fillStyle = '#ff0'; ctx.shadowColor = '#ff0'; ctx.shadowBlur = 3;
+        for (let i = 0; i < this.level; i++) {
+            ctx.beginPath(); ctx.arc(mx - (this.level - 1) * 4 + i * 8, y + s - 2, 2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.shadowBlur = 0;
     }
 
     drawBarracks(ctx, x, y, s, color) {
-        // Окна — светящиеся точки
-        ctx.shadowColor = '#88ccff'; ctx.shadowBlur = 5;
-        ctx.fillStyle = '#88ccff';
-        const winS = Math.max(3, Math.floor(s*0.1));
-        const gap = Math.floor(s*0.25);
-        for (let i = 0; i < this.level + 1; i++) {
-            for (let j = 0; j < 2; j++) {
-                ctx.fillRect(x+gap+j*(s-2*gap-winS), y+gap+i*gap, winS, winS);
-            }
+        const mx = x + s / 2;
+        // Triangle / tent shape
+        ctx.shadowColor = color; ctx.shadowBlur = 5;
+        ctx.fillStyle = color; ctx.globalAlpha = 0.3;
+        ctx.beginPath();
+        ctx.moveTo(mx, y + 4);
+        ctx.lineTo(x + s - 4, y + s - 4);
+        ctx.lineTo(x + 4, y + s - 4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(mx, y + 4);
+        ctx.lineTo(x + s - 4, y + s - 4);
+        ctx.lineTo(x + 4, y + s - 4);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Door
+        ctx.fillStyle = color; ctx.globalAlpha = 0.6;
+        ctx.fillRect(mx - 3, y + s - 10, 6, 7);
+        ctx.globalAlpha = 1;
+
+        // Level stripes on sides
+        for (let i = 0; i < this.level; i++) {
+            ctx.fillStyle = '#ffee88';
+            ctx.shadowColor = '#ff0'; ctx.shadowBlur = 3;
+            const ly = y + s - 8 - i * Math.floor(s * 0.2);
+            ctx.fillRect(x + 6 + i * 2, ly, s - 12 - i * 4, 2);
         }
         ctx.shadowBlur = 0;
-        // Крыша
-        ctx.fillStyle = color; ctx.fillRect(x+2, y+2, s-4, 3);
     }
 
     drawMarket(ctx, x, y, s, color) {
-        // Неоновый $ символ
-        ctx.shadowColor = '#ffaa00'; ctx.shadowBlur = 8;
-        ctx.fillStyle = '#ffaa00';
-        ctx.font = 'bold ' + Math.floor(s*0.4) + 'px Arial';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('$', x+s/2, y+s/2);
+        const mx = x + s / 2, my = y + s / 2;
+        // Scales / весы
+        // Base pillar
+        ctx.fillStyle = '#886622';
+        ctx.fillRect(mx - 1, my - 2, 2, s * 0.35);
+        // Base triangle
+        ctx.fillStyle = '#665511';
+        ctx.beginPath();
+        ctx.moveTo(mx - s * 0.2, y + s - 5);
+        ctx.lineTo(mx + s * 0.2, y + s - 5);
+        ctx.lineTo(mx, y + s - 5 - s * 0.12);
+        ctx.closePath(); ctx.fill();
+
+        // Cross beam
+        const beamAngle = Math.sin(Date.now() * 0.002) * 0.15; // gentle sway
+        ctx.save(); ctx.translate(mx, my - 2); ctx.rotate(beamAngle);
+        ctx.fillStyle = '#aa8833';
+        ctx.fillRect(-s * 0.35, -1, s * 0.7, 2);
+
+        // Left pan (oil)
+        ctx.shadowColor = '#f80'; ctx.shadowBlur = 4;
+        ctx.strokeStyle = '#f80'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(-s * 0.35, 0); ctx.lineTo(-s * 0.35, s * 0.2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(-s * 0.35, s * 0.22, s * 0.12, 0, Math.PI); ctx.stroke();
+        ctx.fillStyle = '#f80'; ctx.globalAlpha = 0.3;
+        ctx.beginPath(); ctx.arc(-s * 0.35, s * 0.22, s * 0.12, 0, Math.PI); ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // Right pan (metal)
+        ctx.shadowColor = '#aaa';
+        ctx.strokeStyle = '#aaa';
+        ctx.beginPath(); ctx.moveTo(s * 0.35, 0); ctx.lineTo(s * 0.35, s * 0.2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(s * 0.35, s * 0.22, s * 0.12, 0, Math.PI); ctx.stroke();
+        ctx.fillStyle = '#aaa'; ctx.globalAlpha = 0.3;
+        ctx.beginPath(); ctx.arc(s * 0.35, s * 0.22, s * 0.12, 0, Math.PI); ctx.fill();
+        ctx.globalAlpha = 1;
         ctx.shadowBlur = 0;
-        // Нефть и металл точки
-        ctx.fillStyle = '#f80'; ctx.beginPath(); ctx.arc(x+s*0.3, y+s*0.75, 3, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#aaa'; ctx.beginPath(); ctx.arc(x+s*0.7, y+s*0.75, 3, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
     }
 
     drawFactory(ctx, x, y, s, color) {
-        // Трубы — неоновые
-        ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 4;
-        ctx.fillStyle = '#444';
-        ctx.fillRect(x+4, y-2, 5, 8); ctx.fillRect(x+s-9, y-2, 5, 8);
-        // Дым
-        const t = (Date.now() * 0.004) % 6;
-        ctx.fillStyle = 'rgba(200,100,50,0.4)';
-        ctx.beginPath(); ctx.arc(x+6, y-4-t, 3, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(x+s-7, y-5-t*0.8, 2, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
-        // Шестерёнка
-        ctx.strokeStyle = '#888'; ctx.lineWidth = 1.5;
-        const gx = x+s/2, gy = y+s/2;
-        const gr = s * 0.2;
-        ctx.beginPath(); ctx.arc(gx, gy, gr, 0, Math.PI*2); ctx.stroke();
-        const teeth = 6;
+        const mx = x + s / 2, my = y + s / 2;
+        const gr = s * 0.28;
+        const t = Date.now() * 0.002;
+
+        // Rotating gear
+        ctx.save(); ctx.translate(mx, my); ctx.rotate(t);
+        ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 6;
+        // Gear teeth
+        const teeth = 8;
+        ctx.fillStyle = '#666';
         for (let i = 0; i < teeth; i++) {
-            const a = (Math.PI*2/teeth)*i + Date.now()*0.002;
-            ctx.fillStyle = '#666';
-            ctx.fillRect(gx+Math.cos(a)*gr-1, gy+Math.sin(a)*gr-1, 3, 3);
+            const a = (Math.PI * 2 / teeth) * i;
+            ctx.fillRect(Math.cos(a) * gr - 2, Math.sin(a) * gr - 2, 5, 5);
         }
+        // Gear ring
+        ctx.strokeStyle = '#888'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(0, 0, gr, 0, Math.PI * 2); ctx.stroke();
+        // Inner ring
+        ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(0, 0, gr * 0.5, 0, Math.PI * 2); ctx.stroke();
+        // Center axle
+        ctx.fillStyle = '#aaa';
+        ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+
+        // Smoke from top
+        const st = (Date.now() * 0.004) % 8;
+        ctx.fillStyle = 'rgba(200,100,50,0.3)';
+        ctx.beginPath(); ctx.arc(mx - 5, y - 2 - st, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(mx + 5, y - 4 - st * 0.8, 2.5, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = color;
         ctx.lineWidth = 1;
         ctx.strokeRect(x, y, s, s);

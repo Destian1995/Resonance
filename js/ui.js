@@ -273,7 +273,9 @@ const UI = {
 
             x = 6;
             ctx.fillStyle = '#4FC3F7';
-            ctx.fillText('👥' + player.getCurrentPop() + '/' + player.getPopLimit(), x, y2); x += 58;
+            ctx.fillText('👥' + player.getCurrentPop() + '/' + player.getPopLimit(), x, y2); x += 55;
+            ctx.fillStyle = '#CE93D8';
+            ctx.fillText('◆' + GameMap.getPlayerZoneCount(player.id), x, y2); x += 28;
             ctx.fillStyle = '#EF5350';
             ctx.fillText(Game.players.filter(p => p.alive).length + '/' + Game.players.length, x, y2);
 
@@ -412,10 +414,22 @@ const UI = {
     panelDerrick(ctx, w, py, player, d) {
         const m = this.mob;
         const st = CFG.DERRICK_STATS[d.level - 1];
-        ctx.fillStyle = '#FFB74D';
-        ctx.font = 'bold ' + (m ? '12' : '15') + 'px Arial';
+        const fs = m ? 12 : 15;
         ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-        ctx.fillText('⛽ ' + st.name + '  +' + st.income + '₽  +' + st.oil + 'Н  +' + st.metal + 'М /5с', 8, py + 5);
+
+        // Title
+        ctx.fillStyle = '#FFB74D'; ctx.font = 'bold ' + fs + 'px Arial';
+        ctx.fillText('⛽ ' + st.name, 8, py + 4);
+
+        // Current stats — colored
+        const sy = py + (m ? 20 : 24);
+        ctx.font = 'bold ' + (m ? 11 : 13) + 'px Arial';
+        let sx = 8;
+        ctx.fillStyle = '#FFD740'; ctx.fillText('+' + st.income + '₽', sx, sy); sx += m ? 35 : 45;
+        ctx.fillStyle = '#FFB74D'; ctx.fillText('+' + st.oil + ' Н', sx, sy); sx += m ? 30 : 40;
+        ctx.fillStyle = '#B0BEC5'; ctx.fillText('+' + st.metal + ' М', sx, sy);
+        ctx.fillStyle = '#666'; ctx.font = (m ? 9 : 11) + 'px Arial';
+        ctx.fillText('/5с', sx + (m ? 25 : 32), sy + 1);
 
         if (GameMap.canUpgradeDerrick(d)) {
             const cost = GameMap.getDerrickUpgradeCost(d);
@@ -424,37 +438,63 @@ const UI = {
             if (cost.metal > 0) sub += ' ' + cost.metal + 'м';
             if (cost.oil > 0) sub += ' ' + cost.oil + 'н';
 
-            ctx.fillStyle = '#69F0AE'; ctx.font = (m ? '10' : '12') + 'px Arial';
-            ctx.fillText('→ ' + next.name + ': +' + next.income + '₽ +' + next.oil + 'Н +' + next.metal + 'М', 8, py + (m ? 22 : 26));
+            // Arrow + next stats
+            const ny = py + (m ? 36 : 42);
+            ctx.fillStyle = '#69F0AE'; ctx.font = 'bold ' + (m ? 11 : 13) + 'px Arial';
+            sx = 8;
+            ctx.fillText('→', sx, ny); sx += 14;
+            ctx.fillStyle = '#FFD740'; ctx.fillText('+' + next.income + '₽', sx, ny); sx += m ? 35 : 45;
+            ctx.fillStyle = '#FFB74D'; ctx.fillText('+' + next.oil + ' Н', sx, ny); sx += m ? 30 : 40;
+            ctx.fillStyle = '#B0BEC5'; ctx.fillText('+' + next.metal + ' М', sx, ny);
 
-            this.drawPanelBtn(ctx, w - (m ? 130 : 190), py + 6, m ? 120 : 180, m ? 38 : 50,
+            this.drawPanelBtn(ctx, w - (m ? 115 : 170), py + 5, m ? 108 : 160, m ? 42 : 54,
                 '⬆ ' + next.name, sub, '#FFD740', player.canAfford(cost), () => { player.upgradeDerrick(d); });
         } else {
-            ctx.fillStyle = '#69F0AE'; ctx.font = 'bold 12px Arial';
-            ctx.fillText('★ Максимум!', 8, py + 24);
+            ctx.fillStyle = '#69F0AE'; ctx.font = 'bold ' + (m ? 11 : 14) + 'px Arial';
+            ctx.fillText('★ MAX', 8, py + (m ? 38 : 44));
         }
     },
 
     panelUpgradable(ctx, w, py, player, b, icon, color, stats) {
         const m = this.mob;
-        ctx.fillStyle = color;
-        ctx.font = 'bold ' + (m ? '12' : '15') + 'px Arial';
+        const fs = m ? 12 : 15;
         ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-        ctx.fillText(icon + ' ' + b.getLevelName() + '  HP:' + Math.floor(b.hp) + '/' + b.maxHp, 8, py + 5);
 
-        ctx.fillStyle = '#aaa'; ctx.font = (m ? '9' : '11') + 'px Arial';
-        ctx.fillText('Урон:' + stats.damage + ' Дальн:' + stats.range + (stats.aoe ? ' AOE:' + stats.aoe : ''), 8, py + (m ? 20 : 24));
+        // Title
+        ctx.fillStyle = color; ctx.font = 'bold ' + fs + 'px Arial';
+        ctx.fillText(icon + ' ' + b.getLevelName(), 8, py + 4);
+
+        // Stats line — colored values
+        const sy = py + (m ? 19 : 23);
+        ctx.font = 'bold ' + (m ? 10 : 12) + 'px Arial';
+        let sx = 8;
+        ctx.fillStyle = '#EF5350'; ctx.fillText('⚔' + stats.damage, sx, sy); sx += m ? 32 : 42;
+        ctx.fillStyle = '#4FC3F7'; ctx.fillText('◎' + stats.range, sx, sy); sx += m ? 32 : 42;
+        if (stats.aoe) { ctx.fillStyle = '#FF9800'; ctx.fillText('💥' + stats.aoe, sx, sy); sx += m ? 32 : 42; }
+        ctx.fillStyle = '#888'; ctx.font = (m ? 9 : 11) + 'px Arial';
+        ctx.fillText('HP:' + Math.floor(b.hp) + '/' + b.maxHp, sx, sy + 1);
 
         if (b.canUpgrade()) {
             const cost = b.getUpgradeCost();
+            const next = CFG.TOWER_STATS[b.level];
             let sub = cost.money + '₽';
             if (cost.metal > 0) sub += ' ' + cost.metal + 'м';
             if (cost.oil > 0) sub += ' ' + cost.oil + 'н';
-            this.drawPanelBtn(ctx, w - (m ? 130 : 190), py + 6, m ? 120 : 180, m ? 38 : 50,
-                '⬆ Улучшить', sub, '#FFD740', player.canAfford(cost), () => { player.upgradeBuilding(b); });
+
+            // Next level preview
+            const ny = py + (m ? 34 : 40);
+            ctx.fillStyle = '#69F0AE'; ctx.font = 'bold ' + (m ? 10 : 12) + 'px Arial';
+            sx = 8;
+            ctx.fillText('→', sx, ny); sx += 14;
+            ctx.fillStyle = '#EF5350'; ctx.fillText('⚔' + next.damage, sx, ny); sx += m ? 32 : 42;
+            ctx.fillStyle = '#4FC3F7'; ctx.fillText('◎' + next.range, sx, ny); sx += m ? 32 : 42;
+            if (next.aoe) { ctx.fillStyle = '#FF9800'; ctx.fillText('💥' + next.aoe, sx, ny); }
+
+            this.drawPanelBtn(ctx, w - (m ? 115 : 170), py + 5, m ? 108 : 160, m ? 42 : 54,
+                '⬆ ' + next.name, sub, '#FFD740', player.canAfford(cost), () => { player.upgradeBuilding(b); });
         } else {
-            ctx.fillStyle = '#69F0AE'; ctx.font = 'bold 12px Arial';
-            ctx.fillText('★ Максимум!', 8, py + (m ? 34 : 42));
+            ctx.fillStyle = '#69F0AE'; ctx.font = 'bold ' + (m ? 11 : 14) + 'px Arial';
+            ctx.fillText('★ MAX', 8, py + (m ? 36 : 44));
         }
     },
 
