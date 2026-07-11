@@ -241,6 +241,9 @@ class Building {
     }
 
     takeDamage(dmg) {
+        // Territory defense bonus
+        const defBonus = GameMap.getDefenseBonus(this.getCenterX(), this.getCenterY(), this.playerId);
+        dmg = Math.max(1, Math.floor(dmg * defBonus));
         this.hp -= dmg;
         if (this.hp <= 0) { this.hp = 0; this.dead = true; }
     }

@@ -19,42 +19,65 @@ const GameMap = {
         this.generateOilDerricks(playerCount);
     },
 
-    // Territory zones — Voronoi-like regions
+    // Territory zones — full Voronoi coverage
+    zoneGrid: null, // pre-computed: which zone owns each tile
+
     generateZones(playerCount) {
         const zoneCount = Math.max(6, Math.min(19, 4 + playerCount * 3));
-        const margin = 60;
+        const margin = 40;
         const points = [];
 
-        // Place zone centers avoiding edges
+        // Place zone centers with good spacing
         for (let i = 0; i < zoneCount; i++) {
             let attempts = 0, px, py;
             do {
                 px = Utils.rand(margin, this.width - margin);
                 py = Utils.rand(margin, this.height - margin);
                 attempts++;
-                // Not too close to other zones
                 let ok = true;
                 for (const p of points) {
-                    if (Utils.dist(px, py, p.x, p.y) < 100) { ok = false; break; }
+                    if (Utils.dist(px, py, p.x, p.y) < 80) { ok = false; break; }
                 }
                 if (ok) break;
-            } while (attempts < 50);
+            } while (attempts < 80);
 
-            const hue = Math.floor(Utils.rand(0, 360));
             points.push({
                 x: px, y: py,
-                owner: -1, // -1=neutral
-                color: `hsl(${hue},60%,30%)`,
-                borderColor: `hsl(${hue},80%,50%)`,
+                owner: -1,
                 id: i,
                 captureProgress: {},
             });
         }
         this.zones = points;
+
+        // Pre-compute Voronoi grid (which zone each tile belongs to)
+        const step = CFG.TILE; // resolution = tile size
+        const cols = Math.ceil(this.width / step);
+        const rows = Math.ceil(this.height / step);
+        this.zoneGrid = [];
+        for (let r = 0; r < rows; r++) {
+            this.zoneGrid[r] = [];
+            for (let c = 0; c < cols; c++) {
+                const wx = c * step + step / 2;
+                const wy = r * step + step / 2;
+                let minD = Infinity, best = 0;
+                for (let z = 0; z < this.zones.length; z++) {
+                    const d = Utils.dist(wx, wy, this.zones[z].x, this.zones[z].y);
+                    if (d < minD) { minD = d; best = z; }
+                }
+                this.zoneGrid[r][c] = best;
+            }
+        }
     },
 
-    // Get zone at world position (nearest)
     getZoneAt(wx, wy) {
+        const step = CFG.TILE;
+        const c = Math.floor(wx / step);
+        const r = Math.floor(wy / step);
+        if (this.zoneGrid && this.zoneGrid[r] && this.zoneGrid[r][c] !== undefined) {
+            return this.zones[this.zoneGrid[r][c]];
+        }
+        // Fallback
         let nearest = null, minD = Infinity;
         for (const z of this.zones) {
             const d = Utils.dist(wx, wy, z.x, z.y);
@@ -63,29 +86,41 @@ const GameMap = {
         return nearest;
     },
 
-    // Update zone ownership based on unit presence
+    // Check if unit is on friendly territory (for defense bonus)
+    isOnFriendlyTerritory(unit) {
+        const z = this.getZoneAt(unit.x, unit.y);
+        return z && z.owner === unit.playerId;
+    },
+
+    // Defense bonus multiplier: 0.75 = take 25% less damage on own territory
+    getDefenseBonus(x, y, playerId) {
+        const z = this.getZoneAt(x, y);
+        if (z && z.owner === playerId) return 0.75;
+        return 1.0;
+    },
+
     updateZones(players, units, dt) {
         for (const z of this.zones) {
-            // Count units per player near zone center
             const near = {};
+            // Count units in THIS zone (not just near center — check zoneGrid)
             for (const u of units) {
                 if (u.dead) continue;
-                if (Utils.dist(u.x, u.y, z.x, z.y) < 80) {
+                const uz = this.getZoneAt(u.x, u.y);
+                if (uz && uz.id === z.id) {
                     near[u.playerId] = (near[u.playerId] || 0) + 1;
                 }
             }
-            // Also count buildings
             for (const p of players) {
                 if (!p.alive) continue;
                 for (const b of p.buildings) {
                     if (b.dead) continue;
-                    if (Utils.dist(b.getCenterX(), b.getCenterY(), z.x, z.y) < 80) {
+                    const bz = this.getZoneAt(b.getCenterX(), b.getCenterY());
+                    if (bz && bz.id === z.id) {
                         near[p.id] = (near[p.id] || 0) + 3;
                     }
                 }
             }
 
-            // Dominant player
             let best = -1, bestCount = 0, contested = false;
             for (const [pid, cnt] of Object.entries(near)) {
                 const id = parseInt(pid);
@@ -98,11 +133,9 @@ const GameMap = {
 
             if (!z.captureProgress[best]) z.captureProgress[best] = 0;
             z.captureProgress[best] += dt * 500;
-            // Reset other capture progress
             for (const k of Object.keys(z.captureProgress)) {
                 if (parseInt(k) !== best) z.captureProgress[k] = Math.max(0, z.captureProgress[k] - dt * 200);
             }
-
             if (z.captureProgress[best] >= 2000) {
                 z.owner = best;
                 z.captureProgress = {};
@@ -342,56 +375,75 @@ const GameMap = {
     },
 
     drawZones(ctx) {
+        if (!this.zoneGrid) return;
+        const step = CFG.TILE;
+        const cols = this.zoneGrid[0] ? this.zoneGrid[0].length : 0;
+        const rows = this.zoneGrid.length;
+
+        // Fill each tile with its zone's owner color
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const zi = this.zoneGrid[r][c];
+                const z = this.zones[zi];
+                if (!z) continue;
+                const x = c * step, y = r * step;
+
+                if (z.owner >= 0) {
+                    ctx.fillStyle = CFG.PLAYER_COLORS[z.owner];
+                    ctx.globalAlpha = 0.07;
+                    ctx.fillRect(x, y, step, step);
+                }
+
+                // Draw border between different zones
+                if (c > 0 && this.zoneGrid[r][c - 1] !== zi) {
+                    const nz = this.zones[this.zoneGrid[r][c - 1]];
+                    ctx.globalAlpha = 0.2;
+                    ctx.fillStyle = (z.owner >= 0) ? CFG.PLAYER_COLORS[z.owner] : '#333';
+                    ctx.fillRect(x, y, 1, step);
+                }
+                if (r > 0 && this.zoneGrid[r - 1][c] !== zi) {
+                    ctx.globalAlpha = 0.2;
+                    ctx.fillStyle = (z.owner >= 0) ? CFG.PLAYER_COLORS[z.owner] : '#333';
+                    ctx.fillRect(x, y, step, 1);
+                }
+            }
+        }
+        ctx.globalAlpha = 1;
+
+        // Zone center markers + capture bars
         for (const z of this.zones) {
-            const ownerColor = z.owner >= 0 ? CFG.PLAYER_COLORS[z.owner] : null;
-            const baseColor = ownerColor || z.borderColor;
-
-            // Territory fill — subtle gradient
-            ctx.globalAlpha = 0.06;
-            ctx.fillStyle = baseColor;
-            ctx.beginPath();
-            ctx.arc(z.x, z.y, 70, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalAlpha = 1;
-
-            // Border ring
-            ctx.strokeStyle = baseColor;
-            ctx.lineWidth = z.owner >= 0 ? 1.5 : 0.5;
-            ctx.globalAlpha = z.owner >= 0 ? 0.4 : 0.15;
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.arc(z.x, z.y, 65, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.globalAlpha = 1;
-
-            // Zone flag/marker
             if (z.owner >= 0) {
+                // Owned flag
                 ctx.shadowColor = CFG.PLAYER_COLORS[z.owner];
-                ctx.shadowBlur = 6;
+                ctx.shadowBlur = 8;
                 ctx.fillStyle = CFG.PLAYER_COLORS[z.owner];
-                ctx.beginPath();
-                ctx.arc(z.x, z.y, 4, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(z.x, z.y, 5, 0, Math.PI * 2); ctx.fill();
+                // Shield icon (defense bonus indicator)
+                ctx.globalAlpha = 0.5;
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('🛡', z.x, z.y - 10);
+                ctx.globalAlpha = 1;
                 ctx.shadowBlur = 0;
             } else {
-                // Neutral diamond marker
-                ctx.fillStyle = '#555';
-                ctx.save();
-                ctx.translate(z.x, z.y);
-                ctx.rotate(Math.PI / 4);
+                // Neutral
+                ctx.fillStyle = '#444';
+                ctx.save(); ctx.translate(z.x, z.y); ctx.rotate(Math.PI / 4);
                 ctx.fillRect(-3, -3, 6, 6);
                 ctx.restore();
             }
 
-            // Capture progress bars
+            // Capture progress
             for (const [pid, prog] of Object.entries(z.captureProgress)) {
                 if (prog > 0) {
                     const ratio = prog / 2000;
-                    ctx.fillStyle = '#000';
-                    ctx.fillRect(z.x - 15, z.y + 10, 30, 4);
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                    ctx.fillRect(z.x - 16, z.y + 10, 32, 5);
+                    ctx.shadowColor = CFG.PLAYER_COLORS[parseInt(pid)] || '#fff';
+                    ctx.shadowBlur = 4;
                     ctx.fillStyle = CFG.PLAYER_COLORS[parseInt(pid)] || '#fff';
-                    ctx.fillRect(z.x - 15, z.y + 10, Math.floor(30 * ratio), 4);
+                    ctx.fillRect(z.x - 16, z.y + 10, Math.floor(32 * ratio), 5);
+                    ctx.shadowBlur = 0;
                 }
             }
         }

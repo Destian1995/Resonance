@@ -365,10 +365,16 @@ class Unit {
     }
 
     takeDamage(dmg, attackerId) {
+        // Territory defense bonus: 25% less damage on own territory
+        const defBonus = GameMap.getDefenseBonus(this.x, this.y, this.playerId);
+        dmg = Math.floor(dmg * defBonus);
+        if (dmg < 1) dmg = 1;
+
         this.hp -= dmg;
         this.hitFlash = 0.12;
-        // Floating damage number
-        if (dmg > 0) Game.addDamageNumber(this.x + Utils.rand(-5, 5), this.y - this.size, Math.floor(dmg), '#f44');
+        // Floating damage number (green tint if defended)
+        const numColor = defBonus < 1 ? '#4FC3F7' : '#f44';
+        if (dmg > 0) Game.addDamageNumber(this.x + Utils.rand(-5, 5), this.y - this.size, Math.floor(dmg), numColor);
         // Track stats
         if (attackerId !== undefined && Game.players[attackerId]) {
             Game.players[attackerId].stats.damageDealt += dmg;
