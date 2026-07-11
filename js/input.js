@@ -461,27 +461,45 @@ const Input = {
     touchStartTime: 0,
     touchStartPos: null,
     lastTouchDist: 0,
+    touchMoved: false,
+    longPressTimer: null,
 
     onTouchStart(e) {
         e.preventDefault();
+        Sound.resume();
+
         if (e.touches.length === 1) {
             const t = e.touches[0];
-            const pos = { x: t.clientX, y: t.clientY };
+            const rect = this.canvas.getBoundingClientRect();
+            const pos = { x: t.clientX - rect.left, y: t.clientY - rect.top };
             this.touchStartPos = pos;
             this.touchStartTime = Date.now();
+            this.touchMoved = false;
             this.mouse.x = pos.x;
             this.mouse.y = pos.y;
             const world = Camera.screenToWorld(pos.x, pos.y);
             this.mouse.worldX = world.x;
             this.mouse.worldY = world.y;
 
+            // Menu — just handle click immediately
             if (Game.state !== 'playing') {
                 UI.handleClick(pos.x, pos.y);
-            } else {
-                this.dragStart = { x: pos.x, y: pos.y };
-                UI.handleClick(pos.x, pos.y);
+                return;
             }
+
+            this.dragStart = { x: pos.x, y: pos.y };
+
+            // Long press = right click (move/attack command) — 500ms
+            clearTimeout(this.longPressTimer);
+            this.longPressTimer = setTimeout(() => {
+                if (!this.touchMoved) {
+                    this.handleRightClick();
+                    this.touchStartPos = null; // prevent tap on touchEnd
+                }
+            }, 500);
+
         } else if (e.touches.length === 2) {
+            clearTimeout(this.longPressTimer);
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             this.lastTouchDist = Math.sqrt(dx * dx + dy * dy);
@@ -492,20 +510,27 @@ const Input = {
         e.preventDefault();
         if (e.touches.length === 1) {
             const t = e.touches[0];
-            const pos = { x: t.clientX, y: t.clientY };
+            const rect = this.canvas.getBoundingClientRect();
+            const pos = { x: t.clientX - rect.left, y: t.clientY - rect.top };
             this.mouse.x = pos.x;
             this.mouse.y = pos.y;
+            const world = Camera.screenToWorld(pos.x, pos.y);
+            this.mouse.worldX = world.x;
+            this.mouse.worldY = world.y;
 
             if (this.dragStart) {
                 const dx = pos.x - this.dragStart.x;
                 const dy = pos.y - this.dragStart.y;
-                if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                    this.touchMoved = true;
+                    clearTimeout(this.longPressTimer);
                     // Pan camera
                     Camera.moveBy(-dx * 0.5, -dy * 0.5);
                     this.dragStart = { x: pos.x, y: pos.y };
                 }
             }
         } else if (e.touches.length === 2) {
+            clearTimeout(this.longPressTimer);
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -519,15 +544,46 @@ const Input = {
 
     onTouchEnd(e) {
         e.preventDefault();
-        if (e.changedTouches.length === 1) {
+        clearTimeout(this.longPressTimer);
+
+        if (this.touchStartPos && !this.touchMoved) {
             const elapsed = Date.now() - this.touchStartTime;
-            if (elapsed < 300 && !this.isDragging) {
-                // Tap — select
-                this.handleClick();
+
+            // Quick tap (< 400ms, no drag)
+            if (elapsed < 400) {
+                const pos = this.touchStartPos;
+
+                if (Game.state !== 'playing') {
+                    UI.handleClick(pos.x, pos.y);
+                } else {
+                    // Check minimap
+                    if (Minimap.handleClick(pos.x, pos.y)) {
+                        // done
+                    }
+                    // Check UI buttons (bottom panel, etc.)
+                    else if (UI.handleClick(pos.x, pos.y)) {
+                        Sound.play('click');
+                    }
+                    // Build mode — place building
+                    else {
+                        const player = Game.getHumanPlayer();
+                        const world = Camera.screenToWorld(pos.x, pos.y);
+
+                        if (player && player.buildMode) {
+                            this.handleBuild(player, world);
+                        } else {
+                            // Select unit/building/derrick
+                            this.dragStart = { x: pos.x, y: pos.y };
+                            this.handleClick();
+                        }
+                    }
+                }
             }
         }
+
         this.dragStart = null;
-        this.isDragging = false;
+        this.touchMoved = false;
+        this.touchStartPos = null;
         this.mouse.down = false;
     },
 };
