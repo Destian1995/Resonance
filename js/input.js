@@ -572,9 +572,38 @@ const Input = {
                         if (player && player.buildMode) {
                             this.handleBuild(player, world);
                         } else {
-                            // Select unit/building/derrick
-                            this.dragStart = { x: pos.x, y: pos.y };
-                            this.handleClick();
+                            const world = Camera.screenToWorld(pos.x, pos.y);
+                            const selectedUnits = player ? player.units.filter(u => u.selected && !u.dead) : [];
+
+                            // Check if tapping on own unit/building/derrick → select it
+                            let tappedOwn = false;
+                            if (player) {
+                                for (const u of player.units) {
+                                    if (!u.dead && Utils.dist(world.x, world.y, u.x, u.y) < u.size + 6) { tappedOwn = true; break; }
+                                }
+                                if (!tappedOwn) {
+                                    for (const b of player.buildings) {
+                                        if (!b.dead && b.containsPoint(world.x, world.y)) { tappedOwn = true; break; }
+                                    }
+                                }
+                                if (!tappedOwn) {
+                                    const d = GameMap.getDerrickAt(world.x, world.y);
+                                    if (d && d.owner === player.id) tappedOwn = true;
+                                }
+                            }
+
+                            if (tappedOwn || selectedUnits.length === 0) {
+                                // Tap on own entity or nothing selected → select
+                                this.dragStart = { x: pos.x, y: pos.y };
+                                this.handleClick();
+                            } else {
+                                // Has selected units, tapped empty/enemy → move/attack command
+                                this.mouse.x = pos.x;
+                                this.mouse.y = pos.y;
+                                this.mouse.worldX = world.x;
+                                this.mouse.worldY = world.y;
+                                this.handleRightClick();
+                            }
                         }
                     }
                 }
