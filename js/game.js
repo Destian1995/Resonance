@@ -271,7 +271,7 @@ const Game = {
         }
 
         // Playing — clip game world to area between top bar and bottom panel
-        const topH = 42;
+        const topH = UI.topBarHeight;
         const botH = UI.panelHeight;
         const gameH = h - topH - botH;
 

@@ -9,7 +9,12 @@ const UI = {
     menuState: 'main', // main, setup, leaderboard
     setupPlayers: 2,
     setupSpec: 'armor',
-    panelHeight: 160,
+
+    // Responsive sizing
+    get isMobile() { return window.innerWidth < 800 || ('ontouchstart' in window); },
+    get panelHeight() { return this.isMobile ? 110 : 160; },
+    get topBarHeight() { return this.isMobile ? 52 : 42; },
+    get fontSize() { return this.isMobile ? 11 : 14; },
 
     showMessage(text, duration = 2) {
         this.message = text;
@@ -235,58 +240,88 @@ const UI = {
 
         if (player.buildMode) {
             const names = { barracks: 'Казармы', market: 'Рынок', tower: 'Башня' };
+            const bmy = this.topBarHeight + 4;
+            const bmw = Math.min(300, w - 20);
             ctx.fillStyle = 'rgba(0,80,0,0.85)';
-            Utils.drawRoundRect(ctx, w/2 - 160, 42, 320, 28, 6);
+            Utils.drawRoundRect(ctx, w/2 - bmw/2, bmy, bmw, 26, 6);
             ctx.fill();
             ctx.fillStyle = '#0f0';
-            ctx.font = 'bold 14px Arial';
+            ctx.font = 'bold 13px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('Строим: ' + (names[player.buildMode] || '') + '   (ESC — отмена)', w / 2, 56);
+            ctx.fillText('Строим: ' + (names[player.buildMode] || '') + (this.isMobile ? '' : '   (ESC — отмена)'), w / 2, bmy + 13);
         }
 
         Input.drawDragRect(ctx);
     },
 
     drawTopBar(ctx, w, player) {
-        ctx.fillStyle = 'rgba(0,0,0,0.85)';
-        Utils.drawRoundRect(ctx, 0, 0, w, 40, 0);
-        ctx.fill();
-        ctx.fillStyle = '#0f0';
-        ctx.fillRect(0, 39, w, 1);
+        const h = this.topBarHeight;
+        ctx.fillStyle = 'rgba(0,0,0,0.9)';
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = 'rgba(0,200,100,0.4)';
+        ctx.fillRect(0, h - 1, w, 1);
 
-        ctx.font = 'bold 14px Arial';
+        const mob = this.isMobile;
+        const fs = mob ? 11 : 14;
+        ctx.font = 'bold ' + fs + 'px Arial';
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'left';
 
-        let px = 15;
-        // Деньги
-        ctx.fillStyle = '#FFD740';
-        ctx.fillText('💰 ' + Math.floor(player.money) + '₽', px, 20);
-        px += 100;
-        // Доход
-        ctx.fillStyle = '#69F0AE';
-        ctx.fillText('+' + player.getIncome() + '₽/5с', px, 20);
-        px += 90;
-        // Нефть
-        ctx.fillStyle = '#FFB74D';
-        const oP = player.getOilProduction();
-        ctx.fillText('Нефть: ' + Math.floor(player.oil) + (oP > 0 ? ' (+' + oP + ')' : ''), px, 20);
-        px += 120;
-        // Металл
-        ctx.fillStyle = '#B0BEC5';
-        const mP = player.getMetalProduction();
-        ctx.fillText('Металл: ' + Math.floor(player.metal) + (mP > 0 ? ' (+' + mP + ')' : ''), px, 20);
-        px += 130;
-        // Население
-        ctx.fillStyle = '#4FC3F7';
-        ctx.fillText('👥 ' + player.getCurrentPop() + '/' + player.getPopLimit(), px, 20);
+        if (mob) {
+            // Mobile: 2 rows
+            const y1 = 13, y2 = 36;
+            let px = 8;
+            ctx.fillStyle = '#FFD740';
+            ctx.fillText(Math.floor(player.money) + '₽', px, y1);
+            px += 55;
+            ctx.fillStyle = '#69F0AE';
+            ctx.fillText('+' + player.getIncome(), px, y1);
+            px += 40;
+            ctx.fillStyle = '#FFB74D';
+            ctx.fillText('Н:' + Math.floor(player.oil), px, y1);
+            px += 40;
+            ctx.fillStyle = '#B0BEC5';
+            ctx.fillText('М:' + Math.floor(player.metal), px, y1);
 
-        // Живые
-        const alive = Game.players.filter(p => p.alive).length;
-        ctx.fillStyle = '#EF5350';
-        ctx.textAlign = 'right';
-        ctx.fillText('Игроков: ' + alive + '/' + Game.players.length, w - 15, 20);
+            px = 8;
+            ctx.fillStyle = '#4FC3F7';
+            ctx.fillText(player.getCurrentPop() + '/' + player.getPopLimit(), px, y2);
+            px += 50;
+            const alive = Game.players.filter(p => p.alive).length;
+            ctx.fillStyle = '#EF5350';
+            ctx.fillText(alive + '/' + Game.players.length + ' жив', px, y2);
+
+            // Spec icon
+            const specCfg = CFG.SPECS[player.spec];
+            if (specCfg) {
+                ctx.textAlign = 'right';
+                ctx.fillStyle = specCfg.color;
+                ctx.fillText(specCfg.icon + ' ' + specCfg.name, w - 8, y1);
+            }
+        } else {
+            // Desktop: 1 row
+            let px = 15;
+            ctx.fillStyle = '#FFD740';
+            ctx.fillText(Math.floor(player.money) + '₽', px, h/2);
+            px += 80;
+            ctx.fillStyle = '#69F0AE';
+            ctx.fillText('+' + player.getIncome() + '/5с', px, h/2);
+            px += 80;
+            ctx.fillStyle = '#FFB74D';
+            ctx.fillText('Н:' + Math.floor(player.oil) + (player.getOilProduction() > 0 ? '(+' + player.getOilProduction() + ')' : ''), px, h/2);
+            px += 90;
+            ctx.fillStyle = '#B0BEC5';
+            ctx.fillText('М:' + Math.floor(player.metal) + (player.getMetalProduction() > 0 ? '(+' + player.getMetalProduction() + ')' : ''), px, h/2);
+            px += 100;
+            ctx.fillStyle = '#4FC3F7';
+            ctx.fillText(player.getCurrentPop() + '/' + player.getPopLimit(), px, h/2);
+
+            const alive = Game.players.filter(p => p.alive).length;
+            ctx.fillStyle = '#EF5350';
+            ctx.textAlign = 'right';
+            ctx.fillText(alive + '/' + Game.players.length, w - 15, h/2);
+        }
     },
 
     drawBottomPanel(ctx, w, h, player) {
@@ -548,52 +583,62 @@ const UI = {
 
     // --- МЕНЮ СТРОИТЕЛЬСТВА ---
     drawBuildPanel(ctx, w, panelY, player) {
-        const px = 20, py = panelY + 8;
-
-        ctx.fillStyle = '#888';
-        ctx.font = 'bold 14px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText('Строительство:', px, py);
-
-        let btnX = px;
-        const btnY = py + 22;
+        const mob = this.isMobile;
+        const px = mob ? 6 : 20;
+        const py = panelY + (mob ? 4 : 8);
+        const bw = mob ? Math.floor((w - 20) / 4) : 110;
+        const bh = mob ? 42 : 50;
+        const gap = mob ? 4 : 6;
         const bc = CFG.BUILDING_COSTS;
 
-        this.drawPanelBtn(ctx, btnX, btnY, 110, 50,
-            '🏘 Казармы [B]', bc.barracks.money + '₽',
+        let btnX = px;
+        const btnY = py + (mob ? 2 : 20);
+
+        if (!mob) {
+            ctx.fillStyle = '#888';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText('Строительство:', px, py);
+        }
+
+        this.drawPanelBtn(ctx, btnX, btnY, bw, bh,
+            mob ? 'Казармы' : '🏘 Казармы [B]', bc.barracks.money + '₽',
             '#42A5F5', player.canAfford(bc.barracks), () => { player.buildMode = 'barracks'; });
-        btnX += 116;
+        btnX += bw + gap;
 
-        this.drawPanelBtn(ctx, btnX, btnY, 110, 50,
-            '🏪 Рынок [M]', bc.market.money + '₽',
+        this.drawPanelBtn(ctx, btnX, btnY, bw, bh,
+            mob ? 'Рынок' : '🏪 Рынок [M]', bc.market.money + '₽',
             '#FFB74D', player.canAfford(bc.market), () => { player.buildMode = 'market'; });
-        btnX += 116;
+        btnX += bw + gap;
 
-        let twrCost = bc.tower.money + '₽';
-        if (bc.tower.metal > 0) twrCost += ' ' + bc.tower.metal + 'мет';
-        this.drawPanelBtn(ctx, btnX, btnY, 110, 50,
-            '🗼 Башня [T]', twrCost,
+        this.drawPanelBtn(ctx, btnX, btnY, bw, bh,
+            mob ? 'Башня' : '🗼 Башня [T]', bc.tower.money + '₽',
             '#EF5350', player.canAfford(bc.tower), () => { player.buildMode = 'tower'; });
-        btnX += 116;
+        btnX += bw + gap;
 
         if (player.base && !player.base.dead && player.base.canUpgrade()) {
             const cost = player.base.getUpgradeCost();
             const costNum = typeof cost === 'number' ? cost : cost.money;
-            const hint = player.base.level === 2 ? '⬆ База (+Завод!)' : '⬆ Улучшить базу';
-            this.drawPanelBtn(ctx, btnX, btnY, 140, 50,
+            const hint = mob ? 'Улучш.базу' : (player.base.level === 2 ? '⬆ База (+Завод!)' : '⬆ Улучшить');
+            this.drawPanelBtn(ctx, btnX, btnY, bw, bh,
                 hint, costNum + '₽',
                 '#FFD740', player.canAfford(cost), () => { player.upgradeBuilding(player.base); });
         }
 
-        // Подсказки
+        // Info line
+        const infoY = btnY + bh + 4;
         ctx.fillStyle = player.hasBuilding('factory') ? '#69F0AE' : '#666';
-        ctx.font = '11px Arial';
-        ctx.fillText(player.hasBuilding('factory') ? '✔ Завод построен (база 3 ур.)' : '🔒 Завод появится при базе 3 ур.', px, panelY + 82);
+        ctx.font = (mob ? '9' : '11') + 'px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(player.hasBuilding('factory') ? '✔ Завод построен' : '🔒 Завод: база 3 ур.', px, infoY);
 
-        ctx.fillStyle = '#555';
-        ctx.font = '11px Arial';
-        ctx.fillText('A — все юниты    ESC — отмена    Shift+ЛКМ — добавить    ПКМ — приказ', px, panelY + 100);
+        if (!mob) {
+            ctx.fillStyle = '#555';
+            ctx.font = '11px Arial';
+            ctx.fillText('A — все юниты    ESC — отмена    Shift+ЛКМ — добавить    ПКМ — приказ', px, panelY + 100);
+        }
     },
 
     // Универсальная кнопка для панелей
@@ -614,15 +659,16 @@ const UI = {
         ctx.stroke();
 
         // Текст
+        const mob = this.isMobile;
         ctx.fillStyle = enabled ? '#fff' : '#666';
-        ctx.font = 'bold 12px Arial';
+        ctx.font = 'bold ' + (mob ? '10' : '12') + 'px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(line1, x + w / 2, y + h / 2 - 8);
+        ctx.fillText(line1, x + w / 2, y + h / 2 - (mob ? 6 : 8));
 
-        ctx.font = '11px Arial';
+        ctx.font = (mob ? '9' : '11') + 'px Arial';
         ctx.fillStyle = enabled ? color : '#555';
-        ctx.fillText(line2, x + w / 2, y + h / 2 + 9);
+        ctx.fillText(line2, x + w / 2, y + h / 2 + (mob ? 6 : 9));
 
         ctx.globalAlpha = 1;
     },

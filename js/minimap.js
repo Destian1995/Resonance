@@ -5,9 +5,10 @@
 const Minimap = {
     x: 0,
     y: 0,
-    w: 140,
-    h: 140,
-    padding: 8,
+    padding: 6,
+
+    get w() { return UI.isMobile ? 90 : 140; },
+    get h() { return UI.isMobile ? 90 : 140; },
 
     getPosition(canvasW, canvasH) {
         this.x = canvasW - this.w - this.padding;
