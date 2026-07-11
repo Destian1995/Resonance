@@ -347,9 +347,6 @@ const Game = {
         // Trees layer on top (hides units like in Battle City)
         GameMap.drawTreesLayer(ctx);
 
-        // Fog of war
-        this.drawFog(ctx);
-
         // Damage numbers
         this.drawDamageNumbers(ctx);
     },
