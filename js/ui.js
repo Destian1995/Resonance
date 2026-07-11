@@ -1,798 +1,576 @@
 // ============================================
-// UI — HUD, Panels, Menus — ЧИТАЕМЫЙ русский интерфейс
+// UI — Mobile-first adaptive HUD
 // ============================================
 
 const UI = {
     buttons: [],
     message: null,
     messageTimer: 0,
-    menuState: 'main', // main, setup, leaderboard
+    menuState: 'main',
     setupPlayers: 2,
     setupSpec: 'armor',
 
-    // Responsive sizing
-    get isMobile() { return window.innerWidth < 800 || ('ontouchstart' in window); },
-    get panelHeight() { return this.isMobile ? 110 : 160; },
-    get topBarHeight() { return this.isMobile ? 52 : 42; },
-    get fontSize() { return this.isMobile ? 11 : 14; },
+    get mob() { return window.innerWidth < 800 || ('ontouchstart' in window); },
+    get panelHeight() { return this.mob ? 100 : 150; },
+    get topBarHeight() { return this.mob ? 48 : 40; },
 
-    showMessage(text, duration = 2) {
-        this.message = text;
-        this.messageTimer = duration;
-    },
+    showMessage(text, dur = 2) { this.message = text; this.messageTimer = dur; },
 
     handleClick(sx, sy) {
         for (const btn of this.buttons) {
             if (Utils.pointInRect(sx, sy, btn.x, btn.y, btn.w, btn.h)) {
-                if (btn.action) btn.action();
+                if (btn.action) { btn.action(); Sound.play('click'); }
                 return true;
             }
         }
-        const canvas = document.getElementById('game');
-        if (sy > canvas.height - this.panelHeight && Game.state === 'playing') return true;
+        const c = document.getElementById('game');
+        if (sy > c.height - this.panelHeight && Game.state === 'playing') return true;
         return false;
     },
 
-    update(dt) {
-        if (this.messageTimer > 0) {
-            this.messageTimer -= dt;
-            if (this.messageTimer <= 0) this.message = null;
-        }
-    },
+    update(dt) { if (this.messageTimer > 0) { this.messageTimer -= dt; if (this.messageTimer <= 0) this.message = null; } },
 
-    // ==================
-    // MAIN MENU
-    // ==================
+    // === MENU ===
     drawMenu(ctx, w, h) {
         this.buttons = [];
-        ctx.fillStyle = '#000';
+        const m = this.mob;
+        ctx.fillStyle = '#060610';
         ctx.fillRect(0, 0, w, h);
-        ctx.fillStyle = 'rgba(255,255,255,0.02)';
-        for (let y = 0; y < h; y += 3) ctx.fillRect(0, y, w, 1);
+
+        // Subtle grid
+        ctx.strokeStyle = 'rgba(0,255,100,0.03)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+        for (let y = 0; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
 
         // Title
+        ctx.shadowColor = '#0f0'; ctx.shadowBlur = 20;
         ctx.fillStyle = '#0f0';
-        ctx.font = 'bold 44px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('RESONANCE', w / 2, 50);
+        ctx.font = 'bold ' + (m ? '32' : '48') + 'px Arial';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('RESONANCE', w / 2, m ? 40 : 55);
+        ctx.shadowBlur = 0;
         ctx.fillStyle = '#0a0';
-        ctx.font = '16px Arial';
-        ctx.fillText('Стратегия в реальном времени', w / 2, 82);
+        ctx.font = (m ? '12' : '16') + 'px Arial';
+        ctx.fillText('Стратегия в реальном времени', w / 2, m ? 65 : 90);
 
         if (this.menuState === 'main') {
-            this.drawBtn(ctx, w/2 - 130, 130, 260, 55, 'ИГРАТЬ', '#0f0', '#000', () => { this.menuState = 'setup'; });
-            this.drawBtn(ctx, w/2 - 130, 200, 260, 45, 'Рейтинг', '#FFD740', '#000', () => { this.menuState = 'leaderboard'; });
+            const bw = Math.min(280, w - 40);
+            this.drawMenuBtn(ctx, w/2 - bw/2, m ? 95 : 140, bw, m ? 48 : 55, 'ИГРАТЬ', '#0f0');
+            this.drawMenuBtn(ctx, w/2 - bw/2, m ? 152 : 210, bw, m ? 42 : 45, 'Рейтинг', '#FFD740');
 
-            // Controls
-            ctx.fillStyle = '#555';
-            ctx.font = '12px Arial';
-            ctx.fillText('ЛКМ — выбор   ПКМ — приказ   Колесо — зум   WASD — камера', w/2, h - 40);
-            ctx.fillText('B — казармы   M — рынок   T — башня   A — все   Пробел — пауза', w/2, h - 20);
-
+            if (!m) {
+                ctx.fillStyle = '#444';
+                ctx.font = '12px Arial';
+                ctx.fillText('ЛКМ — выбор   ПКМ — приказ   WASD — камера   Пробел — пауза', w/2, h - 25);
+            }
         } else if (this.menuState === 'leaderboard') {
             this.drawLeaderboard(ctx, w, h);
-
         } else if (this.menuState === 'setup') {
-            // Player count
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 18px Arial';
-            ctx.fillText('Количество игроков:', w / 2, 120);
-
-            const btnW = 50, gap = 10;
-            const startX = w / 2 - ((5 * btnW + 4 * gap) / 2);
-            for (let i = 2; i <= 6; i++) {
-                const bx = startX + (i - 2) * (btnW + gap);
-                const sel = this.setupPlayers === i;
-                this.drawBtn(ctx, bx, 135, btnW, 36, '' + i, sel ? '#0f0' : '#555', sel ? '#000' : '#fff', () => { this.setupPlayers = i; });
-            }
-
-            // Specialization selection
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 18px Arial';
-            ctx.fillText('Специализация:', w / 2, 195);
-
-            const specs = Object.entries(CFG.SPECS);
-            const specW = Math.min(200, (w - 60) / specs.length - 10);
-            const specStartX = w / 2 - (specs.length * (specW + 10) - 10) / 2;
-
-            for (let i = 0; i < specs.length; i++) {
-                const [key, spec] = specs[i];
-                const sx = specStartX + i * (specW + 10);
-                const sy = 215;
-                const selected = this.setupSpec === key;
-
-                // Spec card
-                this.buttons.push({ x: sx, y: sy, w: specW, h: 100, action: () => { this.setupSpec = key; } });
-                const hov = Utils.pointInRect(Input.mouse.x, Input.mouse.y, sx, sy, specW, 100);
-
-                ctx.fillStyle = selected ? 'rgba(0,255,0,0.1)' : 'rgba(255,255,255,0.03)';
-                Utils.drawRoundRect(ctx, sx, sy, specW, 100, 8);
-                ctx.fill();
-                ctx.strokeStyle = selected ? spec.color : (hov ? '#666' : '#333');
-                ctx.lineWidth = selected ? 2 : 1;
-                ctx.stroke();
-
-                // Icon
-                ctx.font = '24px Arial';
-                ctx.fillStyle = spec.color;
-                ctx.fillText(spec.icon, sx + specW / 2, sy + 22);
-
-                // Name
-                ctx.font = 'bold 14px Arial';
-                ctx.fillStyle = selected ? '#fff' : '#aaa';
-                ctx.fillText(spec.name, sx + specW / 2, sy + 48);
-
-                // Description
-                ctx.font = '11px Arial';
-                ctx.fillStyle = '#888';
-                ctx.fillText(spec.desc, sx + specW / 2, sy + 66);
-
-                // Unit list
-                ctx.font = '10px Arial';
-                ctx.fillStyle = '#666';
-                const allUnits = [...spec.baseUnits, ...spec.specUnits, ...spec.factoryUnits];
-                const names = allUnits.map(u => CFG.UNITS[u] ? CFG.UNITS[u].name : u).join(', ');
-                ctx.fillText(names, sx + specW / 2, sy + 84);
-            }
-
-            ctx.fillStyle = '#888';
-            ctx.font = '13px Arial';
-            ctx.fillText('Вы — Игрок 1, остальные — ИИ (случайная специализация)', w / 2, 335);
-
-            // Start
-            this.drawBtn(ctx, w/2 - 130, 355, 260, 50, 'НАЧАТЬ ИГРУ', '#0f0', '#000', () => {
-                Game.startGame(this.setupPlayers, this.setupSpec);
-            });
-
-            // Back
-            this.drawBtn(ctx, w/2 - 80, 420, 160, 38, 'Назад', '#555', '#fff', () => { this.menuState = 'main'; });
+            this.drawSetup(ctx, w, h);
         }
     },
 
-    drawLeaderboard(ctx, w, h) {
-        ctx.fillStyle = '#FFD740';
-        ctx.font = 'bold 24px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('Таблица рейтинга', w / 2, 120);
-
-        const scores = Game.loadScores();
-
-        if (scores.length === 0) {
-            ctx.fillStyle = '#666';
-            ctx.font = '16px Arial';
-            ctx.fillText('Пока нет результатов. Сыграйте партию!', w / 2, 180);
-        } else {
-            // Header
-            const tx = w / 2 - 250;
-            let ty = 150;
-            ctx.fillStyle = '#888';
-            ctx.font = 'bold 12px Arial';
-            ctx.textAlign = 'left';
-            ctx.fillText('#', tx, ty);
-            ctx.fillText('Игрок', tx + 30, ty);
-            ctx.fillText('Специализация', tx + 150, ty);
-            ctx.fillText('Убийства', tx + 310, ty);
-            ctx.fillText('Время', tx + 400, ty);
-            ty += 20;
-
-            for (let i = 0; i < scores.length; i++) {
-                const s = scores[i];
-                const specCfg = CFG.SPECS[s.spec];
-                ctx.fillStyle = i === 0 ? '#FFD740' : i === 1 ? '#B0BEC5' : i === 2 ? '#A1887F' : '#888';
-                ctx.font = '13px Arial';
-                ctx.fillText((i + 1) + '.', tx, ty);
-                ctx.fillText(s.name, tx + 30, ty);
-                ctx.fillStyle = specCfg ? specCfg.color : '#888';
-                ctx.fillText(specCfg ? specCfg.name : s.spec, tx + 150, ty);
-                ctx.fillStyle = '#fff';
-                ctx.fillText(s.kills, tx + 310, ty);
-                const m = Math.floor(s.time / 60), sec = s.time % 60;
-                ctx.fillText(m + ':' + (sec < 10 ? '0' : '') + sec, tx + 400, ty);
-                ty += 22;
-            }
-        }
-
-        ctx.textAlign = 'center';
-        this.drawBtn(ctx, w/2 - 80, h - 80, 160, 40, 'Назад', '#555', '#fff', () => { this.menuState = 'main'; });
-    },
-
-    drawBtn(ctx, x, y, w, h, text, bg, fg, action) {
+    drawMenuBtn(ctx, x, y, w, h, text, color) {
+        const action = text === 'ИГРАТЬ' ? () => { this.menuState = 'setup'; }
+            : text === 'Рейтинг' ? () => { this.menuState = 'leaderboard'; }
+            : text === 'Назад' ? () => { this.menuState = 'main'; }
+            : text === 'НАЧАТЬ' ? () => { Game.startGame(this.setupPlayers, this.setupSpec); }
+            : null;
         this.buttons.push({ x, y, w, h, action });
         const hov = Utils.pointInRect(Input.mouse.x, Input.mouse.y, x, y, w, h);
 
-        ctx.fillStyle = hov ? bg : bg;
-        ctx.globalAlpha = hov ? 1 : 0.8;
-        Utils.drawRoundRect(ctx, x, y, w, h, 6);
-        ctx.fill();
-        if (hov) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
-        ctx.globalAlpha = 1;
+        ctx.shadowColor = color; ctx.shadowBlur = hov ? 12 : 6;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        Utils.drawRoundRect(ctx, x, y, w, h, 10);
+        ctx.stroke();
+        if (hov) { ctx.fillStyle = color; ctx.globalAlpha = 0.1; ctx.fill(); ctx.globalAlpha = 1; }
+        ctx.shadowBlur = 0;
 
-        ctx.fillStyle = fg;
-        ctx.font = 'bold 18px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(text, x + w / 2, y + h / 2);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold ' + (this.mob ? '16' : '20') + 'px Arial';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(text, x + w/2, y + h/2);
     },
 
-    // ==================
-    // GAME HUD
-    // ==================
+    drawSetup(ctx, w, h) {
+        const m = this.mob;
+        const cy = m ? 95 : 115;
+
+        // Player count
+        ctx.fillStyle = '#ccc';
+        ctx.font = 'bold ' + (m ? '14' : '18') + 'px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Игроки:', w/2, cy);
+
+        const btnW = m ? 40 : 50, gap = m ? 6 : 10;
+        const startX = w/2 - ((5 * btnW + 4 * gap) / 2);
+        for (let i = 2; i <= 6; i++) {
+            const bx = startX + (i-2) * (btnW + gap);
+            const sel = this.setupPlayers === i;
+            this.buttons.push({ x: bx, y: cy + 8, w: btnW, h: 32, action: () => { this.setupPlayers = i; } });
+            ctx.strokeStyle = sel ? '#0f0' : '#444';
+            ctx.lineWidth = sel ? 2 : 1;
+            Utils.drawRoundRect(ctx, bx, cy + 8, btnW, 32, 6);
+            ctx.stroke();
+            if (sel) { ctx.fillStyle = 'rgba(0,255,0,0.15)'; ctx.fill(); }
+            ctx.fillStyle = sel ? '#fff' : '#888';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('' + i, bx + btnW/2, cy + 24);
+        }
+
+        // Specialization
+        ctx.fillStyle = '#ccc';
+        ctx.font = 'bold ' + (m ? '14' : '18') + 'px Arial';
+        ctx.fillText('Специализация:', w/2, cy + 55);
+
+        const specs = Object.entries(CFG.SPECS);
+        const specW = Math.min(m ? 110 : 180, (w - 30) / specs.length - 8);
+        const specH = m ? 80 : 110;
+        const specStartX = w/2 - (specs.length * (specW + 8) - 8) / 2;
+
+        for (let i = 0; i < specs.length; i++) {
+            const [key, spec] = specs[i];
+            const sx = specStartX + i * (specW + 8);
+            const sy = cy + 68;
+            const sel = this.setupSpec === key;
+
+            this.buttons.push({ x: sx, y: sy, w: specW, h: specH, action: () => { this.setupSpec = key; } });
+
+            // Card
+            ctx.fillStyle = sel ? 'rgba(0,255,0,0.08)' : 'rgba(255,255,255,0.02)';
+            Utils.drawRoundRect(ctx, sx, sy, specW, specH, 8);
+            ctx.fill();
+            ctx.shadowColor = sel ? spec.color : 'transparent';
+            ctx.shadowBlur = sel ? 8 : 0;
+            ctx.strokeStyle = sel ? spec.color : '#333';
+            ctx.lineWidth = sel ? 2 : 1;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            ctx.font = (m ? '20' : '26') + 'px Arial';
+            ctx.fillStyle = spec.color;
+            ctx.fillText(spec.icon, sx + specW/2, sy + (m ? 18 : 24));
+
+            ctx.font = 'bold ' + (m ? '11' : '14') + 'px Arial';
+            ctx.fillStyle = sel ? '#fff' : '#aaa';
+            ctx.fillText(spec.name, sx + specW/2, sy + (m ? 38 : 50));
+
+            ctx.font = (m ? '9' : '11') + 'px Arial';
+            ctx.fillStyle = '#888';
+            ctx.fillText(spec.desc, sx + specW/2, sy + (m ? 52 : 66));
+
+            if (!m) {
+                ctx.font = '10px Arial';
+                ctx.fillStyle = '#666';
+                const names = [...spec.baseUnits, ...spec.specUnits, ...spec.factoryUnits]
+                    .map(u => CFG.UNITS[u] ? CFG.UNITS[u].name : u).join(', ');
+                ctx.fillText(names, sx + specW/2, sy + 86);
+            }
+        }
+
+        // Start / Back
+        const startY = cy + specH + 80;
+        const bw = Math.min(260, w - 40);
+        this.drawMenuBtn(ctx, w/2 - bw/2, startY, bw, m ? 44 : 50, 'НАЧАТЬ');
+        this.drawMenuBtn(ctx, w/2 - 70, startY + (m ? 52 : 60), 140, 36, 'Назад');
+    },
+
+    drawLeaderboard(ctx, w, h) {
+        const m = this.mob;
+        ctx.fillStyle = '#FFD740';
+        ctx.font = 'bold ' + (m ? '18' : '24') + 'px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Рейтинг', w/2, m ? 100 : 120);
+
+        const scores = Game.loadScores();
+        if (scores.length === 0) {
+            ctx.fillStyle = '#666';
+            ctx.font = '14px Arial';
+            ctx.fillText('Пока нет результатов', w/2, 170);
+        } else {
+            let ty = m ? 120 : 150;
+            for (let i = 0; i < scores.length; i++) {
+                const s = scores[i];
+                const specCfg = CFG.SPECS[s.spec];
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1) + '.';
+                const tm = Math.floor(s.time/60) + ':' + ((s.time%60) < 10 ? '0' : '') + (s.time%60);
+
+                ctx.fillStyle = i < 3 ? '#FFD740' : '#888';
+                ctx.font = (m ? '12' : '14') + 'px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(medal + '  ' + (specCfg ? specCfg.icon : '') + ' ' + s.kills + ' убийств  ' + tm, w/2, ty);
+                ty += m ? 20 : 24;
+            }
+        }
+
+        this.drawMenuBtn(ctx, w/2 - 70, h - 70, 140, 40, 'Назад');
+    },
+
+    // === GAME HUD ===
     drawHUD(ctx, w, h, player) {
         this.buttons = [];
         this.drawTopBar(ctx, w, player);
         this.drawBottomPanel(ctx, w, h, player);
 
+        // Message
         if (this.message) {
-            const mw = Math.min(400, w - 40);
+            const mw = Math.min(300, w - 20);
             ctx.fillStyle = 'rgba(0,0,0,0.85)';
-            Utils.drawRoundRect(ctx, w/2 - mw/2, h/2 - 22, mw, 44, 8);
+            Utils.drawRoundRect(ctx, w/2 - mw/2, h/2 - 18, mw, 36, 8);
             ctx.fill();
-            ctx.strokeStyle = '#ff0';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            ctx.strokeStyle = '#ff0'; ctx.lineWidth = 1; ctx.stroke();
             ctx.fillStyle = '#ff0';
-            ctx.font = 'bold 16px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(this.message, w / 2, h / 2);
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(this.message, w/2, h/2);
         }
 
+        // Build mode banner
         if (player.buildMode) {
             const names = { barracks: 'Казармы', market: 'Рынок', tower: 'Башня' };
-            const bmy = this.topBarHeight + 4;
-            const bmw = Math.min(300, w - 20);
-            ctx.fillStyle = 'rgba(0,80,0,0.85)';
-            Utils.drawRoundRect(ctx, w/2 - bmw/2, bmy, bmw, 26, 6);
+            const by = this.topBarHeight + 2;
+            ctx.fillStyle = 'rgba(0,60,0,0.9)';
+            Utils.drawRoundRect(ctx, w/2 - 100, by, 200, 24, 6);
             ctx.fill();
             ctx.fillStyle = '#0f0';
-            ctx.font = 'bold 13px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('Строим: ' + (names[player.buildMode] || '') + (this.isMobile ? '' : '   (ESC — отмена)'), w / 2, bmy + 13);
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('Строим: ' + (names[player.buildMode] || ''), w/2, by + 12);
         }
 
         Input.drawDragRect(ctx);
     },
 
     drawTopBar(ctx, w, player) {
-        const h = this.topBarHeight;
-        ctx.fillStyle = 'rgba(0,0,0,0.9)';
-        ctx.fillRect(0, 0, w, h);
-        ctx.fillStyle = 'rgba(0,200,100,0.4)';
-        ctx.fillRect(0, h - 1, w, 1);
+        const th = this.topBarHeight;
+        const m = this.mob;
+        ctx.fillStyle = 'rgba(5,5,15,0.92)';
+        ctx.fillRect(0, 0, w, th);
+        ctx.fillStyle = 'rgba(0,200,100,0.3)';
+        ctx.fillRect(0, th - 1, w, 1);
 
-        const mob = this.isMobile;
-        const fs = mob ? 11 : 14;
-        ctx.font = 'bold ' + fs + 'px Arial';
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'left';
 
-        if (mob) {
-            // Mobile: 2 rows
-            const y1 = 13, y2 = 36;
-            let px = 8;
+        if (m) {
+            // 2 rows, compact
+            const f = 'bold 11px Arial';
+            ctx.font = f;
+            const y1 = 14, y2 = 34;
+            let x = 6;
+            const s = 52; // spacing
+
             ctx.fillStyle = '#FFD740';
-            ctx.fillText(Math.floor(player.money) + '₽', px, y1);
-            px += 55;
+            ctx.fillText(Math.floor(player.money) + '₽', x, y1); x += s;
             ctx.fillStyle = '#69F0AE';
-            ctx.fillText('+' + player.getIncome(), px, y1);
-            px += 40;
+            ctx.fillText('+' + player.getIncome(), x, y1); x += 36;
             ctx.fillStyle = '#FFB74D';
-            ctx.fillText('Н:' + Math.floor(player.oil), px, y1);
-            px += 40;
+            ctx.fillText('Н' + Math.floor(player.oil), x, y1); x += 32;
             ctx.fillStyle = '#B0BEC5';
-            ctx.fillText('М:' + Math.floor(player.metal), px, y1);
+            ctx.fillText('М' + Math.floor(player.metal), x, y1);
 
-            px = 8;
+            x = 6;
             ctx.fillStyle = '#4FC3F7';
-            ctx.fillText(player.getCurrentPop() + '/' + player.getPopLimit(), px, y2);
-            px += 50;
-            const alive = Game.players.filter(p => p.alive).length;
+            ctx.fillText('👥' + player.getCurrentPop() + '/' + player.getPopLimit(), x, y2); x += 58;
             ctx.fillStyle = '#EF5350';
-            ctx.fillText(alive + '/' + Game.players.length + ' жив', px, y2);
+            ctx.fillText(Game.players.filter(p => p.alive).length + '/' + Game.players.length, x, y2);
 
-            // Spec icon
-            const specCfg = CFG.SPECS[player.spec];
-            if (specCfg) {
-                ctx.textAlign = 'right';
-                ctx.fillStyle = specCfg.color;
-                ctx.fillText(specCfg.icon + ' ' + specCfg.name, w - 8, y1);
-            }
-        } else {
-            // Desktop: 1 row
-            let px = 15;
-            ctx.fillStyle = '#FFD740';
-            ctx.fillText(Math.floor(player.money) + '₽', px, h/2);
-            px += 80;
-            ctx.fillStyle = '#69F0AE';
-            ctx.fillText('+' + player.getIncome() + '/5с', px, h/2);
-            px += 80;
-            ctx.fillStyle = '#FFB74D';
-            ctx.fillText('Н:' + Math.floor(player.oil) + (player.getOilProduction() > 0 ? '(+' + player.getOilProduction() + ')' : ''), px, h/2);
-            px += 90;
-            ctx.fillStyle = '#B0BEC5';
-            ctx.fillText('М:' + Math.floor(player.metal) + (player.getMetalProduction() > 0 ? '(+' + player.getMetalProduction() + ')' : ''), px, h/2);
-            px += 100;
-            ctx.fillStyle = '#4FC3F7';
-            ctx.fillText(player.getCurrentPop() + '/' + player.getPopLimit(), px, h/2);
-
-            const alive = Game.players.filter(p => p.alive).length;
-            ctx.fillStyle = '#EF5350';
             ctx.textAlign = 'right';
-            ctx.fillText(alive + '/' + Game.players.length, w - 15, h/2);
+            const sp = CFG.SPECS[player.spec];
+            if (sp) { ctx.fillStyle = sp.color; ctx.fillText(sp.icon + sp.name, w - 6, y1); }
+        } else {
+            ctx.font = 'bold 13px Arial';
+            let x = 12;
+            const y = th / 2;
+            ctx.fillStyle = '#FFD740'; ctx.fillText(Math.floor(player.money) + '₽', x, y); x += 70;
+            ctx.fillStyle = '#69F0AE'; ctx.fillText('+' + player.getIncome() + '/5с', x, y); x += 75;
+            ctx.fillStyle = '#FFB74D'; ctx.fillText('Н:' + Math.floor(player.oil), x, y); x += 55;
+            ctx.fillStyle = '#B0BEC5'; ctx.fillText('М:' + Math.floor(player.metal), x, y); x += 60;
+            ctx.fillStyle = '#4FC3F7'; ctx.fillText(player.getCurrentPop() + '/' + player.getPopLimit(), x, y);
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#EF5350';
+            ctx.fillText(Game.players.filter(p=>p.alive).length + '/' + Game.players.length, w - 12, y);
         }
     },
 
     drawBottomPanel(ctx, w, h, player) {
-        const panelY = h - this.panelHeight;
-        ctx.fillStyle = 'rgba(0,0,0,0.88)';
-        ctx.fillRect(0, panelY, w, this.panelHeight);
-        ctx.fillStyle = 'rgba(0,200,100,0.4)';
-        ctx.fillRect(0, panelY, w, 2);
+        const py = h - this.panelHeight;
+        ctx.fillStyle = 'rgba(5,5,15,0.92)';
+        ctx.fillRect(0, py, w, this.panelHeight);
+        ctx.fillStyle = 'rgba(0,200,100,0.3)';
+        ctx.fillRect(0, py, w, 1);
 
-        const selectedUnits = player.units.filter(u => u.selected && !u.dead);
-        const selectedBuilding = player.buildings.find(b => b.selected && !b.dead);
-        const selectedDerrick = GameMap.oilDerricks.find(d => d.selected && d.owner === player.id);
+        const su = player.units.filter(u => u.selected && !u.dead);
+        const sb = player.buildings.find(b => b.selected && !b.dead);
+        const sd = GameMap.oilDerricks.find(d => d.selected && d.owner === player.id);
 
-        if (selectedDerrick) {
-            this.drawDerrickPanel(ctx, w, panelY, player, selectedDerrick);
-        } else if (selectedBuilding) {
-            if (selectedBuilding.type === 'market') this.drawMarketPanel(ctx, w, panelY, player, selectedBuilding);
-            else if (selectedBuilding.type === 'tower') this.drawTowerPanel(ctx, w, panelY, player, selectedBuilding);
-            else this.drawBuildingPanel(ctx, w, panelY, player, selectedBuilding);
-        } else if (selectedUnits.length > 0) {
-            this.drawUnitsPanel(ctx, w, panelY, player, selectedUnits);
-        } else {
-            this.drawBuildPanel(ctx, w, panelY, player);
+        if (sd) this.panelDerrick(ctx, w, py, player, sd);
+        else if (sb && sb.type === 'market') this.panelMarket(ctx, w, py, player, sb);
+        else if (sb && sb.type === 'tower') this.panelUpgradable(ctx, w, py, player, sb, '🗼', '#EF5350', sb.getTowerStats());
+        else if (sb) this.panelBuilding(ctx, w, py, player, sb);
+        else if (su.length > 0) this.panelUnits(ctx, w, py, player, su);
+        else this.panelBuild(ctx, w, py, player);
+    },
+
+    // -- Quick row of buttons helper --
+    btnRow(ctx, items, y, w, h) {
+        const m = this.mob;
+        const gap = m ? 3 : 5;
+        const bw = Math.floor((w - 12 - (items.length - 1) * gap) / items.length);
+        let x = 6;
+        for (const item of items) {
+            this.drawPanelBtn(ctx, x, y, bw, h, item.label, item.sub, item.color, item.enabled, item.action);
+            x += bw + gap;
         }
     },
 
-    // --- РЫНОК ---
-    drawMarketPanel(ctx, w, panelY, player, building) {
-        const px = 20, py = panelY + 12;
-
-        ctx.fillStyle = '#FFB74D';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText('🏪 Рынок', px, py);
-
-        ctx.fillStyle = '#aaa';
-        ctx.font = '13px Arial';
-        ctx.fillText('Нефть: ' + Math.floor(player.oil) + '     Металл: ' + Math.floor(player.metal), px, py + 22);
-
-        let btnX = 220;
-        const oP = CFG.MARKET_PRICES.oil;
-        const mP = CFG.MARKET_PRICES.metal;
-
-        this.drawPanelBtn(ctx, btnX, panelY + 10, 110, 52,
-            '🛢 Купить нефть', 'x' + oP.amount + ' за ' + oP.buyPrice + '₽',
-            '#FFB74D', player.money >= oP.buyPrice, () => { player.marketBuy('oil'); });
-        btnX += 116;
-
-        this.drawPanelBtn(ctx, btnX, panelY + 10, 110, 52,
-            '🛢 Продать нефть', 'x' + oP.amount + ' → ' + oP.sellPrice + '₽',
-            '#FF8A65', player.oil >= oP.amount, () => { player.marketSell('oil'); });
-        btnX += 116;
-
-        this.drawPanelBtn(ctx, btnX, panelY + 10, 120, 52,
-            '⚙ Купить металл', 'x' + mP.amount + ' за ' + mP.buyPrice + '₽',
-            '#B0BEC5', player.money >= mP.buyPrice, () => { player.marketBuy('metal'); });
-        btnX += 126;
-
-        this.drawPanelBtn(ctx, btnX, panelY + 10, 120, 52,
-            '⚙ Продать металл', 'x' + mP.amount + ' → ' + mP.sellPrice + '₽',
-            '#90A4AE', player.metal >= mP.amount, () => { player.marketSell('metal'); });
-
-        ctx.fillStyle = '#666';
-        ctx.font = '11px Arial';
-        ctx.fillText('Вышек: ' + GameMap.getPlayerDerrickCount(player.id) + '   Доход: +' + GameMap.getPlayerDerrickIncome(player.id) + '₽/5с', px, panelY + 75);
-    },
-
-    // --- ВЫШКА ---
-    drawDerrickPanel(ctx, w, panelY, player, derrick) {
-        const px = 20, py = panelY + 12;
-        const stats = CFG.DERRICK_STATS[derrick.level - 1];
-
-        ctx.fillStyle = '#FFB74D';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText('⛽ ' + stats.name, px, py);
-
-        // Текущий доход — крупно
-        ctx.fillStyle = '#fff';
-        ctx.font = '14px Arial';
-        ctx.fillText('Доход:', px, py + 24);
-
-        ctx.font = 'bold 14px Arial';
-        ctx.fillStyle = '#FFD740';
-        ctx.fillText('+' + stats.income + '₽', px + 60, py + 24);
-        ctx.fillStyle = '#FFB74D';
-        ctx.fillText('+' + stats.oil + ' нефти', px + 110, py + 24);
-        ctx.fillStyle = '#B0BEC5';
-        ctx.fillText('+' + stats.metal + ' металла', px + 200, py + 24);
-        ctx.fillStyle = '#888';
-        ctx.font = '12px Arial';
-        ctx.fillText('каждые 5 сек', px + 310, py + 26);
-
-        let btnX = 220;
-
-        if (GameMap.canUpgradeDerrick(derrick)) {
-            const cost = GameMap.getDerrickUpgradeCost(derrick);
-            const next = CFG.DERRICK_STATS[derrick.level];
-
-            // Показать что даст улучшение
-            ctx.fillStyle = '#69F0AE';
-            ctx.font = '13px Arial';
-            ctx.fillText('После улучшения: +' + next.income + '₽  +' + next.oil + ' нефти  +' + next.metal + ' мет', px, py + 50);
-
-            let costText = cost.money + '₽';
-            if (cost.metal > 0) costText += '  ' + cost.metal + ' мет';
-            if (cost.oil > 0) costText += '  ' + cost.oil + ' нефти';
-
-            this.drawPanelBtn(ctx, w - 200, panelY + 10, 180, 58,
-                '⬆ Улучшить до ' + next.name, costText,
-                '#FFD740', player.canAfford(cost), () => { player.upgradeDerrick(derrick); });
-        } else {
-            ctx.fillStyle = '#69F0AE';
-            ctx.font = 'bold 14px Arial';
-            ctx.fillText('★ Максимальный уровень!', px, py + 50);
-        }
-    },
-
-    // --- БАШНЯ ---
-    drawTowerPanel(ctx, w, panelY, player, building) {
-        const px = 20, py = panelY + 12;
-        const stats = building.getTowerStats();
-
-        ctx.fillStyle = '#EF5350';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText('🗼 ' + building.getLevelName(), px, py);
-
-        ctx.fillStyle = '#aaa';
-        ctx.font = '13px Arial';
-        ctx.fillText('HP: ' + Math.floor(building.hp) + '/' + building.maxHp + '     Урон: ' + stats.damage + '     Дальность: ' + stats.range + (stats.aoe ? '     Взрыв: ' + stats.aoe : ''), px, py + 22);
-
-        if (building.canUpgrade()) {
-            const cost = building.getUpgradeCost();
-            const next = CFG.TOWER_STATS[building.level];
-            let costText = cost.money + '₽';
-            if (cost.metal > 0) costText += '  ' + cost.metal + ' мет';
-            if (cost.oil > 0) costText += '  ' + cost.oil + ' нефти';
-
-            ctx.fillStyle = '#69F0AE';
-            ctx.font = '12px Arial';
-            ctx.fillText('→ ' + next.name + ': урон ' + next.damage + ', дальн. ' + next.range + (next.aoe ? ', взрыв ' + next.aoe : ''), px, py + 44);
-
-            this.drawPanelBtn(ctx, w - 200, panelY + 10, 180, 58,
-                '⬆ Улучшить', costText,
-                '#FFD740', player.canAfford(cost), () => { player.upgradeBuilding(building); });
-        } else {
-            ctx.fillStyle = '#69F0AE';
-            ctx.font = 'bold 14px Arial';
-            ctx.fillText('★ Максимальный уровень!', px, py + 44);
-        }
-    },
-
-    // --- ЗДАНИЕ (база, казармы, завод) ---
-    drawBuildingPanel(ctx, w, panelY, player, building) {
-        const px = 20, py = panelY + 10;
-
-        ctx.fillStyle = '#69F0AE';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText(building.getLevelName(), px, py);
-
-        ctx.fillStyle = '#aaa';
-        ctx.font = '12px Arial';
-        ctx.fillText('HP: ' + Math.floor(building.hp) + '/' + building.maxHp, px, py + 20);
-
-        let btnX = 180;
-
-        // Юниты
-        const availableUnits = building.getAvailableUnits(player.spec);
-        for (const unitType of availableUnits) {
-            const def = CFG.UNITS[unitType];
-            const cost = { money: def.cost, oil: def.oil || 0, metal: def.metal || 0 };
-            const canAfford = player.canAfford(cost);
-            const hasRoom = player.getCurrentPop() + def.pop <= player.getPopLimit();
-
-            let costText = def.cost + '₽';
-            if (def.metal > 0) costText += ' ' + def.metal + 'м';
-            if (def.oil > 0) costText += ' ' + def.oil + 'н';
-
-            this.drawPanelBtn(ctx, btnX, panelY + 8, 110, 55,
-                def.name, costText + '  👥' + def.pop,
-                def.color, canAfford && hasRoom, () => { player.trainUnit(unitType, building); });
-            btnX += 116;
-        }
-
-        // Улучшение
-        if (building.canUpgrade()) {
-            const cost = building.getUpgradeCost();
-            const costNum = typeof cost === 'number' ? cost : cost.money;
-            const label = building.type === 'base' && building.level === 2 ? '⬆ Улучшить (+Завод!)' : '⬆ Улучшить';
-            this.drawPanelBtn(ctx, btnX, panelY + 8, 130, 55,
-                label, costNum + '₽',
-                '#FFD740', player.canAfford(cost), () => { player.upgradeBuilding(building); });
-        }
-
-        // Очередь
-        if (building.trainQueue.length > 0) {
-            ctx.fillStyle = '#888';
-            ctx.font = '11px Arial';
-            ctx.fillText('Очередь: ' + building.trainQueue.map(t => CFG.UNITS[t].name).join(', '), px, panelY + 42);
-            const def = CFG.UNITS[building.trainQueue[0]];
-            const progress = building.trainProgress / def.trainTime;
-            ctx.fillStyle = '#222';
-            Utils.drawRoundRect(ctx, px, panelY + 56, 150, 8, 3);
-            ctx.fill();
-            ctx.fillStyle = '#69F0AE';
-            Utils.drawRoundRect(ctx, px, panelY + 56, Math.floor(150 * progress), 8, 3);
-            ctx.fill();
-        }
-
-        if (building.type === 'barracks') {
-            ctx.fillStyle = '#4FC3F7';
-            ctx.font = '11px Arial';
-            ctx.fillText('Лимит населения: +' + building.getPopLimit(), px, panelY + 72);
-        }
-    },
-
-    // --- ЮНИТЫ ---
-    drawUnitsPanel(ctx, w, panelY, player, units) {
-        const px = 20, py = panelY + 12;
-
-        ctx.fillStyle = '#69F0AE';
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText('Выбрано: ' + units.length + ' юнит(ов)', px, py);
-
-        const counts = {};
-        let totalHp = 0, totalMaxHp = 0;
-        for (const u of units) { counts[u.type] = (counts[u.type] || 0) + 1; totalHp += u.hp; totalMaxHp += u.maxHp; }
-
-        let infoY = py + 22;
-        ctx.font = '13px Arial';
-        for (const [type, count] of Object.entries(counts)) {
-            const def = CFG.UNITS[type];
-            ctx.fillStyle = def.color;
-            ctx.fillText(def.name + ': ' + count, px, infoY);
-            infoY += 16;
-        }
-        ctx.fillStyle = '#888';
-        ctx.fillText('Здоровье: ' + Math.floor(totalHp) + '/' + totalMaxHp, px, infoY);
-
-        // Иконки юнитов
-        let iconX = 250;
-        for (const u of units.slice(0, 25)) {
-            ctx.fillStyle = CFG.UNITS[u.type].color;
-            ctx.beginPath();
-            ctx.arc(iconX, panelY + 30, 5, 0, Math.PI * 2);
-            ctx.fill();
-            iconX += 12;
-            if (iconX > w - 160) break;
-        }
-    },
-
-    // --- МЕНЮ СТРОИТЕЛЬСТВА ---
-    drawBuildPanel(ctx, w, panelY, player) {
-        const mob = this.isMobile;
-        const px = mob ? 6 : 20;
-        const py = panelY + (mob ? 4 : 8);
-        const bw = mob ? Math.floor((w - 20) / 4) : 110;
-        const bh = mob ? 42 : 50;
-        const gap = mob ? 4 : 6;
+    // -- PANELS --
+    panelBuild(ctx, w, py, player) {
+        const m = this.mob;
         const bc = CFG.BUILDING_COSTS;
-
-        let btnX = px;
-        const btnY = py + (mob ? 2 : 20);
-
-        if (!mob) {
-            ctx.fillStyle = '#888';
-            ctx.font = 'bold 14px Arial';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-            ctx.fillText('Строительство:', px, py);
-        }
-
-        this.drawPanelBtn(ctx, btnX, btnY, bw, bh,
-            mob ? 'Казармы' : '🏘 Казармы [B]', bc.barracks.money + '₽',
-            '#42A5F5', player.canAfford(bc.barracks), () => { player.buildMode = 'barracks'; });
-        btnX += bw + gap;
-
-        this.drawPanelBtn(ctx, btnX, btnY, bw, bh,
-            mob ? 'Рынок' : '🏪 Рынок [M]', bc.market.money + '₽',
-            '#FFB74D', player.canAfford(bc.market), () => { player.buildMode = 'market'; });
-        btnX += bw + gap;
-
-        this.drawPanelBtn(ctx, btnX, btnY, bw, bh,
-            mob ? 'Башня' : '🗼 Башня [T]', bc.tower.money + '₽',
-            '#EF5350', player.canAfford(bc.tower), () => { player.buildMode = 'tower'; });
-        btnX += bw + gap;
-
+        const items = [
+            { label: m ? 'Казармы' : 'Казармы [B]', sub: bc.barracks.money + '₽', color: '#42A5F5', enabled: player.canAfford(bc.barracks), action: () => { player.buildMode = 'barracks'; } },
+            { label: m ? 'Рынок' : 'Рынок [M]', sub: bc.market.money + '₽', color: '#FFB74D', enabled: player.canAfford(bc.market), action: () => { player.buildMode = 'market'; } },
+            { label: m ? 'Башня' : 'Башня [T]', sub: bc.tower.money + '₽', color: '#EF5350', enabled: player.canAfford(bc.tower), action: () => { player.buildMode = 'tower'; } },
+        ];
         if (player.base && !player.base.dead && player.base.canUpgrade()) {
             const cost = player.base.getUpgradeCost();
-            const costNum = typeof cost === 'number' ? cost : cost.money;
-            const hint = mob ? 'Улучш.базу' : (player.base.level === 2 ? '⬆ База (+Завод!)' : '⬆ Улучшить');
-            this.drawPanelBtn(ctx, btnX, btnY, bw, bh,
-                hint, costNum + '₽',
-                '#FFD740', player.canAfford(cost), () => { player.upgradeBuilding(player.base); });
+            const cn = typeof cost === 'number' ? cost : cost.money;
+            items.push({ label: m ? 'Баз⬆' : 'Улучш. базу', sub: cn + '₽', color: '#FFD740', enabled: player.canAfford(cost), action: () => { player.upgradeBuilding(player.base); } });
+        }
+        this.btnRow(ctx, items, py + 6, w, m ? 40 : 48);
+
+        // Info
+        ctx.fillStyle = player.hasBuilding('factory') ? '#69F0AE' : '#555';
+        ctx.font = (m ? '9' : '11') + 'px Arial';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText(player.hasBuilding('factory') ? '✔ Завод' : '🔒 Завод: база 3ур.', 8, py + (m ? 50 : 60));
+    },
+
+    panelBuilding(ctx, w, py, player, b) {
+        const m = this.mob;
+        // Title + HP
+        ctx.fillStyle = '#69F0AE';
+        ctx.font = 'bold ' + (m ? '12' : '15') + 'px Arial';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText(b.getLevelName(), 8, py + 5);
+        ctx.fillStyle = '#888'; ctx.font = (m ? '9' : '11') + 'px Arial';
+        ctx.fillText('HP:' + Math.floor(b.hp) + '/' + b.maxHp, 8, py + (m ? 18 : 22));
+
+        // Unit buttons
+        const units = b.getAvailableUnits(player.spec);
+        const items = [];
+        for (const ut of units) {
+            const d = CFG.UNITS[ut];
+            const cost = { money: d.cost, oil: d.oil || 0, metal: d.metal || 0 };
+            let sub = d.cost + '₽';
+            if (d.metal > 0) sub += ' ' + d.metal + 'м';
+            items.push({ label: d.name, sub: sub, color: d.color, enabled: player.canAfford(cost) && player.getCurrentPop() + d.pop <= player.getPopLimit(), action: () => { player.trainUnit(ut, b); } });
+        }
+        if (b.canUpgrade()) {
+            const cost = b.getUpgradeCost();
+            const cn = typeof cost === 'number' ? cost : cost.money;
+            items.push({ label: '⬆', sub: cn + '₽', color: '#FFD740', enabled: player.canAfford(cost), action: () => { player.upgradeBuilding(b); } });
         }
 
-        // Info line
-        const infoY = btnY + bh + 4;
-        ctx.fillStyle = player.hasBuilding('factory') ? '#69F0AE' : '#666';
-        ctx.font = (mob ? '9' : '11') + 'px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText(player.hasBuilding('factory') ? '✔ Завод построен' : '🔒 Завод: база 3 ур.', px, infoY);
+        const btnY = py + (m ? 30 : 38);
+        this.btnRow(ctx, items, btnY, w, m ? 36 : 44);
 
-        if (!mob) {
-            ctx.fillStyle = '#555';
-            ctx.font = '11px Arial';
-            ctx.fillText('A — все юниты    ESC — отмена    Shift+ЛКМ — добавить    ПКМ — приказ', px, panelY + 100);
+        // Queue
+        if (b.trainQueue.length > 0) {
+            const def = CFG.UNITS[b.trainQueue[0]];
+            const progress = b.trainProgress / def.trainTime;
+            const qy = btnY + (m ? 40 : 50);
+            ctx.fillStyle = '#222';
+            ctx.fillRect(8, qy, Math.min(w - 16, 140), 5);
+            ctx.fillStyle = '#69F0AE';
+            ctx.fillRect(8, qy, Math.floor(Math.min(w - 16, 140) * progress), 5);
+            ctx.fillStyle = '#888'; ctx.font = '9px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+            ctx.fillText(b.trainQueue.map(t => CFG.UNITS[t].name).join(', '), 8, qy + 7);
         }
     },
 
-    // Универсальная кнопка для панелей
+    panelMarket(ctx, w, py, player, b) {
+        const m = this.mob;
+        ctx.fillStyle = '#FFB74D';
+        ctx.font = 'bold ' + (m ? '12' : '15') + 'px Arial';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText('Рынок  Н:' + Math.floor(player.oil) + '  М:' + Math.floor(player.metal), 8, py + 5);
+
+        const oP = CFG.MARKET_PRICES.oil, mP = CFG.MARKET_PRICES.metal;
+        const items = [
+            { label: '+ Нефть', sub: oP.buyPrice + '₽→x' + oP.amount, color: '#FFB74D', enabled: player.money >= oP.buyPrice, action: () => { player.marketBuy('oil'); } },
+            { label: '- Нефть', sub: 'x' + oP.amount + '→' + oP.sellPrice + '₽', color: '#FF8A65', enabled: player.oil >= oP.amount, action: () => { player.marketSell('oil'); } },
+            { label: '+ Металл', sub: mP.buyPrice + '₽→x' + mP.amount, color: '#B0BEC5', enabled: player.money >= mP.buyPrice, action: () => { player.marketBuy('metal'); } },
+            { label: '- Металл', sub: 'x' + mP.amount + '→' + mP.sellPrice + '₽', color: '#90A4AE', enabled: player.metal >= mP.amount, action: () => { player.marketSell('metal'); } },
+        ];
+        this.btnRow(ctx, items, py + (m ? 22 : 28), w, m ? 36 : 44);
+    },
+
+    panelDerrick(ctx, w, py, player, d) {
+        const m = this.mob;
+        const st = CFG.DERRICK_STATS[d.level - 1];
+        ctx.fillStyle = '#FFB74D';
+        ctx.font = 'bold ' + (m ? '12' : '15') + 'px Arial';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText('⛽ ' + st.name + '  +' + st.income + '₽  +' + st.oil + 'Н  +' + st.metal + 'М /5с', 8, py + 5);
+
+        if (GameMap.canUpgradeDerrick(d)) {
+            const cost = GameMap.getDerrickUpgradeCost(d);
+            const next = CFG.DERRICK_STATS[d.level];
+            let sub = cost.money + '₽';
+            if (cost.metal > 0) sub += ' ' + cost.metal + 'м';
+            if (cost.oil > 0) sub += ' ' + cost.oil + 'н';
+
+            ctx.fillStyle = '#69F0AE'; ctx.font = (m ? '10' : '12') + 'px Arial';
+            ctx.fillText('→ ' + next.name + ': +' + next.income + '₽ +' + next.oil + 'Н +' + next.metal + 'М', 8, py + (m ? 22 : 26));
+
+            this.drawPanelBtn(ctx, w - (m ? 130 : 190), py + 6, m ? 120 : 180, m ? 38 : 50,
+                '⬆ ' + next.name, sub, '#FFD740', player.canAfford(cost), () => { player.upgradeDerrick(d); });
+        } else {
+            ctx.fillStyle = '#69F0AE'; ctx.font = 'bold 12px Arial';
+            ctx.fillText('★ Максимум!', 8, py + 24);
+        }
+    },
+
+    panelUpgradable(ctx, w, py, player, b, icon, color, stats) {
+        const m = this.mob;
+        ctx.fillStyle = color;
+        ctx.font = 'bold ' + (m ? '12' : '15') + 'px Arial';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+        ctx.fillText(icon + ' ' + b.getLevelName() + '  HP:' + Math.floor(b.hp) + '/' + b.maxHp, 8, py + 5);
+
+        ctx.fillStyle = '#aaa'; ctx.font = (m ? '9' : '11') + 'px Arial';
+        ctx.fillText('Урон:' + stats.damage + ' Дальн:' + stats.range + (stats.aoe ? ' AOE:' + stats.aoe : ''), 8, py + (m ? 20 : 24));
+
+        if (b.canUpgrade()) {
+            const cost = b.getUpgradeCost();
+            let sub = cost.money + '₽';
+            if (cost.metal > 0) sub += ' ' + cost.metal + 'м';
+            if (cost.oil > 0) sub += ' ' + cost.oil + 'н';
+            this.drawPanelBtn(ctx, w - (m ? 130 : 190), py + 6, m ? 120 : 180, m ? 38 : 50,
+                '⬆ Улучшить', sub, '#FFD740', player.canAfford(cost), () => { player.upgradeBuilding(b); });
+        } else {
+            ctx.fillStyle = '#69F0AE'; ctx.font = 'bold 12px Arial';
+            ctx.fillText('★ Максимум!', 8, py + (m ? 34 : 42));
+        }
+    },
+
+    panelUnits(ctx, w, py, player, units) {
+        const m = this.mob;
+        const counts = {};
+        let hp = 0, mhp = 0;
+        for (const u of units) { counts[u.type] = (counts[u.type] || 0) + 1; hp += u.hp; mhp += u.maxHp; }
+
+        ctx.fillStyle = '#69F0AE';
+        ctx.font = 'bold ' + (m ? '12' : '15') + 'px Arial';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+
+        let info = units.length + ' юн: ';
+        for (const [t, c] of Object.entries(counts)) info += CFG.UNITS[t].name + '×' + c + ' ';
+        ctx.fillText(info, 8, py + 5);
+
+        ctx.fillStyle = '#888'; ctx.font = (m ? '10' : '12') + 'px Arial';
+        ctx.fillText('HP: ' + Math.floor(hp) + '/' + mhp, 8, py + (m ? 20 : 24));
+
+        // Unit dots
+        let dx = m ? 8 : 200;
+        const dy = py + (m ? 36 : 44);
+        for (const u of units.slice(0, m ? 20 : 30)) {
+            ctx.fillStyle = CFG.UNITS[u.type].color;
+            ctx.fillRect(dx, dy, 6, 6);
+            dx += 8;
+        }
+    },
+
+    // Universal panel button
     drawPanelBtn(ctx, x, y, w, h, line1, line2, color, enabled, action) {
         this.buttons.push({ x, y, w, h, action: enabled ? action : null });
         const hov = Utils.pointInRect(Input.mouse.x, Input.mouse.y, x, y, w, h);
+        const m = this.mob;
 
-        ctx.globalAlpha = enabled ? 1 : 0.35;
-
-        // Фон кнопки
-        ctx.fillStyle = hov && enabled ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)';
-        Utils.drawRoundRect(ctx, x, y, w, h, 5);
+        ctx.globalAlpha = enabled ? 1 : 0.3;
+        ctx.fillStyle = hov && enabled ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)';
+        Utils.drawRoundRect(ctx, x, y, w, h, 6);
         ctx.fill();
-
-        // Рамка
         ctx.strokeStyle = color;
         ctx.lineWidth = hov && enabled ? 2 : 1;
         ctx.stroke();
 
-        // Текст
-        const mob = this.isMobile;
-        ctx.fillStyle = enabled ? '#fff' : '#666';
-        ctx.font = 'bold ' + (mob ? '10' : '12') + 'px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(line1, x + w / 2, y + h / 2 - (mob ? 6 : 8));
+        ctx.fillStyle = enabled ? '#fff' : '#555';
+        ctx.font = 'bold ' + (m ? '10' : '12') + 'px Arial';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(line1, x + w/2, y + h/2 - (m ? 5 : 7));
 
-        ctx.font = (mob ? '9' : '11') + 'px Arial';
-        ctx.fillStyle = enabled ? color : '#555';
-        ctx.fillText(line2, x + w / 2, y + h / 2 + (mob ? 6 : 9));
-
+        ctx.font = (m ? '8' : '10') + 'px Arial';
+        ctx.fillStyle = enabled ? color : '#444';
+        ctx.fillText(line2, x + w/2, y + h/2 + (m ? 6 : 8));
         ctx.globalAlpha = 1;
     },
 
-    // ==================
-    // GAME OVER
-    // ==================
+    // === GAME OVER ===
     drawGameOver(ctx, w, h, winner) {
         this.buttons = [];
+        const m = this.mob;
         ctx.fillStyle = 'rgba(0,0,0,0.92)';
         ctx.fillRect(0, 0, w, h);
 
         const isWin = winner && winner.isHuman;
-
-        // Title
         ctx.fillStyle = isWin ? '#69F0AE' : '#EF5350';
-        ctx.font = 'bold 42px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(isWin ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ', w / 2, 50);
+        ctx.font = 'bold ' + (m ? '28' : '42') + 'px Arial';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(isWin ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ', w/2, m ? 35 : 45);
 
         if (winner) {
-            ctx.fillStyle = '#fff';
-            ctx.font = '18px Arial';
-            ctx.fillText('Победитель: ' + winner.name + '   |   Время: ' + this.formatTime(Game.gameTime), w / 2, 82);
+            ctx.fillStyle = '#fff'; ctx.font = (m ? '13' : '18') + 'px Arial';
+            ctx.fillText(winner.name + '  |  ' + this.formatTime(Game.gameTime), w/2, m ? 60 : 78);
         }
 
-        // Stats table
+        // Stats
         const players = Game.players;
         const cols = players.length;
-        const tableX = 40;
-        const tableW = w - 80;
-        const colW = tableW / (cols + 1);
-        let ty = 115;
-        const rowH = 22;
+        const tx = m ? 5 : 30;
+        const tw = w - tx * 2;
+        const colW = tw / (cols + 1);
+        let ty = m ? 80 : 105;
+        const rh = m ? 18 : 22;
+        const fs = m ? '10' : '12';
 
-        // Header row
-        ctx.fillStyle = '#555';
-        ctx.fillRect(tableX, ty - 4, tableW, rowH + 4);
-        ctx.fillStyle = '#aaa';
-        ctx.font = 'bold 13px Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText('Статистика', tableX + 8, ty + 10);
+        // Header
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.fillRect(tx, ty, tw, rh + 2);
+        ctx.fillStyle = '#888'; ctx.font = 'bold ' + fs + 'px Arial';
+        ctx.textAlign = 'left'; ctx.fillText('Стат', tx + 4, ty + rh/2 + 1);
         ctx.textAlign = 'center';
-        for (let i = 0; i < cols; i++) {
-            const p = players[i];
-            ctx.fillStyle = p.color;
-            ctx.fillText(p.name + (p.alive ? '' : ' ✝'), tableX + colW * (i + 1) + colW / 2, ty + 10);
-        }
-        ty += rowH + 6;
+        for (let i = 0; i < cols; i++) { ctx.fillStyle = players[i].color; ctx.fillText(m ? ('P' + (i+1)) : players[i].name, tx + colW*(i+1) + colW/2, ty + rh/2 + 1); }
+        ty += rh + 3;
 
-        // Stat rows
         const rows = [
-            { label: 'Юнитов произведено', key: 'unitsProduced' },
-            { label: 'Юнитов потеряно', key: 'unitsLost' },
-            { label: 'Убито пехоты', key: 'killsInfantry' },
-            { label: 'Убито техники', key: 'killsVehicle' },
-            { label: 'Зданий уничтожено', key: 'killsBuilding' },
-            { label: 'Урон нанесён', key: 'damageDealt' },
-            { label: 'Урон получен', key: 'damageReceived' },
-            { label: 'Денег заработано', key: 'moneyEarned' },
-            { label: 'Денег потрачено', key: 'moneySpent' },
-            { label: 'Зданий построено', key: 'buildingsBuilt' },
-            { label: 'Вышек захвачено', key: 'derricksOwned' },
-            { label: 'Улучшений', key: 'upgradesDone' },
+            ['Произв.', 'unitsProduced'], ['Потери', 'unitsLost'],
+            ['Убийства', 'killsInfantry'], ['Техника', 'killsVehicle'],
+            ['Здания', 'killsBuilding'], ['Урон↑', 'damageDealt'],
+            ['Урон↓', 'damageReceived'], ['Доход', 'moneyEarned'],
         ];
 
         for (let r = 0; r < rows.length; r++) {
-            const row = rows[r];
-            const even = r % 2 === 0;
-            ctx.fillStyle = even ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0)';
-            ctx.fillRect(tableX, ty - 2, tableW, rowH);
-
-            ctx.fillStyle = '#888';
-            ctx.font = '12px Arial';
-            ctx.textAlign = 'left';
-            ctx.fillText(row.label, tableX + 8, ty + 11);
-
-            // Find max for highlighting
-            let maxVal = 0;
-            for (const p of players) maxVal = Math.max(maxVal, p.stats[row.key]);
-
-            ctx.textAlign = 'center';
-            ctx.font = '13px Arial';
+            if (r % 2 === 0) { ctx.fillStyle = 'rgba(255,255,255,0.02)'; ctx.fillRect(tx, ty, tw, rh); }
+            ctx.fillStyle = '#777'; ctx.font = fs + 'px Arial'; ctx.textAlign = 'left';
+            ctx.fillText(rows[r][0], tx + 4, ty + rh/2 + 1);
+            let maxV = 0;
+            for (const p of players) maxV = Math.max(maxV, p.stats[rows[r][1]]);
+            ctx.textAlign = 'center'; ctx.font = fs + 'px Arial';
             for (let i = 0; i < cols; i++) {
-                const val = players[i].stats[row.key];
-                const isBest = val === maxVal && maxVal > 0;
-                ctx.fillStyle = isBest ? '#FFD740' : '#ccc';
-                if (isBest) ctx.font = 'bold 13px Arial';
-                else ctx.font = '13px Arial';
-                ctx.fillText(Math.floor(val), tableX + colW * (i + 1) + colW / 2, ty + 11);
+                const v = players[i].stats[rows[r][1]];
+                ctx.fillStyle = (v === maxV && maxV > 0) ? '#FFD740' : '#ccc';
+                ctx.fillText(Math.floor(v), tx + colW*(i+1) + colW/2, ty + rh/2 + 1);
             }
-            ty += rowH;
+            ty += rh;
         }
 
-        // Separator
-        ty += 8;
-        ctx.fillStyle = '#333';
-        ctx.fillRect(tableX, ty, tableW, 1);
-        ty += 15;
-
-        // Total kills row
-        ctx.fillStyle = '#aaa';
-        ctx.font = 'bold 13px Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText('ВСЕГО УБИЙСТВ', tableX + 8, ty + 4);
-        ctx.textAlign = 'center';
-        for (let i = 0; i < cols; i++) {
-            const p = players[i];
-            const total = p.stats.killsInfantry + p.stats.killsVehicle + p.stats.killsBuilding;
-            ctx.fillStyle = p.color;
-            ctx.fillText(total, tableX + colW * (i + 1) + colW / 2, ty + 4);
-        }
-
-        // Button
-        this.drawBtn(ctx, w / 2 - 120, h - 70, 240, 50, 'В меню', '#0f0', '#000', () => {
-            Game.state = 'menu';
-            UI.menuState = 'main';
-        });
+        this.drawMenuBtn(ctx, w/2 - 100, h - (m ? 50 : 65), 200, m ? 40 : 50, 'Назад');
     },
 
-    formatTime(seconds) {
-        const m = Math.floor(seconds / 60);
-        const s = Math.floor(seconds % 60);
-        return m + ':' + (s < 10 ? '0' : '') + s;
-    },
+    formatTime(s) { const m = Math.floor(s/60); return m + ':' + ((Math.floor(s%60)) < 10 ? '0' : '') + Math.floor(s%60); },
 };
