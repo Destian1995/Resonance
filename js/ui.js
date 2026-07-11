@@ -6,8 +6,9 @@ const UI = {
     buttons: [],
     message: null,
     messageTimer: 0,
-    menuState: 'main',
+    menuState: 'main', // main, setup, leaderboard
     setupPlayers: 2,
+    setupSpec: 'armor',
     panelHeight: 160,
 
     showMessage(text, duration = 2) {
@@ -44,44 +45,151 @@ const UI = {
         ctx.fillStyle = 'rgba(255,255,255,0.02)';
         for (let y = 0; y < h; y += 3) ctx.fillRect(0, y, w, 1);
 
+        // Title
         ctx.fillStyle = '#0f0';
-        ctx.font = 'bold 48px Arial';
+        ctx.font = 'bold 44px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('RESONANCE', w / 2, h * 0.18);
+        ctx.fillText('RESONANCE', w / 2, 50);
         ctx.fillStyle = '#0a0';
-        ctx.font = '18px Arial';
-        ctx.fillText('Стратегия в реальном времени', w / 2, h * 0.18 + 45);
+        ctx.font = '16px Arial';
+        ctx.fillText('Стратегия в реальном времени', w / 2, 82);
 
         if (this.menuState === 'main') {
-            this.drawBtn(ctx, w / 2 - 130, h * 0.45, 260, 55, 'ИГРАТЬ', '#0f0', '#000', () => { this.menuState = 'setup'; });
-        } else {
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 20px Arial';
-            ctx.fillText('Количество игроков:', w / 2, h * 0.36);
+            this.drawBtn(ctx, w/2 - 130, 130, 260, 55, 'ИГРАТЬ', '#0f0', '#000', () => { this.menuState = 'setup'; });
+            this.drawBtn(ctx, w/2 - 130, 200, 260, 45, 'Рейтинг', '#FFD740', '#000', () => { this.menuState = 'leaderboard'; });
 
-            const btnW = 55, gap = 12;
+            // Controls
+            ctx.fillStyle = '#555';
+            ctx.font = '12px Arial';
+            ctx.fillText('ЛКМ — выбор   ПКМ — приказ   Колесо — зум   WASD — камера', w/2, h - 40);
+            ctx.fillText('B — казармы   M — рынок   T — башня   A — все   Пробел — пауза', w/2, h - 20);
+
+        } else if (this.menuState === 'leaderboard') {
+            this.drawLeaderboard(ctx, w, h);
+
+        } else if (this.menuState === 'setup') {
+            // Player count
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 18px Arial';
+            ctx.fillText('Количество игроков:', w / 2, 120);
+
+            const btnW = 50, gap = 10;
             const startX = w / 2 - ((5 * btnW + 4 * gap) / 2);
             for (let i = 2; i <= 6; i++) {
                 const bx = startX + (i - 2) * (btnW + gap);
                 const sel = this.setupPlayers === i;
-                this.drawBtn(ctx, bx, h * 0.42, btnW, 40, '' + i, sel ? '#0f0' : '#555', sel ? '#000' : '#fff', () => { this.setupPlayers = i; });
+                this.drawBtn(ctx, bx, 135, btnW, 36, '' + i, sel ? '#0f0' : '#555', sel ? '#000' : '#fff', () => { this.setupPlayers = i; });
+            }
+
+            // Specialization selection
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 18px Arial';
+            ctx.fillText('Специализация:', w / 2, 195);
+
+            const specs = Object.entries(CFG.SPECS);
+            const specW = Math.min(200, (w - 60) / specs.length - 10);
+            const specStartX = w / 2 - (specs.length * (specW + 10) - 10) / 2;
+
+            for (let i = 0; i < specs.length; i++) {
+                const [key, spec] = specs[i];
+                const sx = specStartX + i * (specW + 10);
+                const sy = 215;
+                const selected = this.setupSpec === key;
+
+                // Spec card
+                this.buttons.push({ x: sx, y: sy, w: specW, h: 100, action: () => { this.setupSpec = key; } });
+                const hov = Utils.pointInRect(Input.mouse.x, Input.mouse.y, sx, sy, specW, 100);
+
+                ctx.fillStyle = selected ? 'rgba(0,255,0,0.1)' : 'rgba(255,255,255,0.03)';
+                Utils.drawRoundRect(ctx, sx, sy, specW, 100, 8);
+                ctx.fill();
+                ctx.strokeStyle = selected ? spec.color : (hov ? '#666' : '#333');
+                ctx.lineWidth = selected ? 2 : 1;
+                ctx.stroke();
+
+                // Icon
+                ctx.font = '24px Arial';
+                ctx.fillStyle = spec.color;
+                ctx.fillText(spec.icon, sx + specW / 2, sy + 22);
+
+                // Name
+                ctx.font = 'bold 14px Arial';
+                ctx.fillStyle = selected ? '#fff' : '#aaa';
+                ctx.fillText(spec.name, sx + specW / 2, sy + 48);
+
+                // Description
+                ctx.font = '11px Arial';
+                ctx.fillStyle = '#888';
+                ctx.fillText(spec.desc, sx + specW / 2, sy + 66);
+
+                // Unit list
+                ctx.font = '10px Arial';
+                ctx.fillStyle = '#666';
+                const allUnits = [...spec.baseUnits, ...spec.specUnits, ...spec.factoryUnits];
+                const names = allUnits.map(u => CFG.UNITS[u] ? CFG.UNITS[u].name : u).join(', ');
+                ctx.fillText(names, sx + specW / 2, sy + 84);
             }
 
             ctx.fillStyle = '#888';
-            ctx.font = '14px Arial';
-            ctx.fillText('Вы — Игрок 1, остальные — ИИ', w / 2, h * 0.52);
-
-            this.drawBtn(ctx, w / 2 - 130, h * 0.58, 260, 55, 'НАЧАТЬ ИГРУ', '#0f0', '#000', () => { Game.startGame(this.setupPlayers); });
-            this.drawBtn(ctx, w / 2 - 80, h * 0.70, 160, 40, 'Назад', '#555', '#fff', () => { this.menuState = 'main'; });
-
-            ctx.fillStyle = '#555';
             ctx.font = '13px Arial';
-            const cy = h * 0.82;
-            ctx.fillText('ЛКМ — выбор    ПКМ — приказ    Колесо — зум', w / 2, cy);
-            ctx.fillText('B — казармы    M — рынок    T — башня    A — все юниты', w / 2, cy + 20);
-            ctx.fillText('WASD — камера    ESC — отмена', w / 2, cy + 40);
+            ctx.fillText('Вы — Игрок 1, остальные — ИИ (случайная специализация)', w / 2, 335);
+
+            // Start
+            this.drawBtn(ctx, w/2 - 130, 355, 260, 50, 'НАЧАТЬ ИГРУ', '#0f0', '#000', () => {
+                Game.startGame(this.setupPlayers, this.setupSpec);
+            });
+
+            // Back
+            this.drawBtn(ctx, w/2 - 80, 420, 160, 38, 'Назад', '#555', '#fff', () => { this.menuState = 'main'; });
         }
+    },
+
+    drawLeaderboard(ctx, w, h) {
+        ctx.fillStyle = '#FFD740';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Таблица рейтинга', w / 2, 120);
+
+        const scores = Game.loadScores();
+
+        if (scores.length === 0) {
+            ctx.fillStyle = '#666';
+            ctx.font = '16px Arial';
+            ctx.fillText('Пока нет результатов. Сыграйте партию!', w / 2, 180);
+        } else {
+            // Header
+            const tx = w / 2 - 250;
+            let ty = 150;
+            ctx.fillStyle = '#888';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('#', tx, ty);
+            ctx.fillText('Игрок', tx + 30, ty);
+            ctx.fillText('Специализация', tx + 150, ty);
+            ctx.fillText('Убийства', tx + 310, ty);
+            ctx.fillText('Время', tx + 400, ty);
+            ty += 20;
+
+            for (let i = 0; i < scores.length; i++) {
+                const s = scores[i];
+                const specCfg = CFG.SPECS[s.spec];
+                ctx.fillStyle = i === 0 ? '#FFD740' : i === 1 ? '#B0BEC5' : i === 2 ? '#A1887F' : '#888';
+                ctx.font = '13px Arial';
+                ctx.fillText((i + 1) + '.', tx, ty);
+                ctx.fillText(s.name, tx + 30, ty);
+                ctx.fillStyle = specCfg ? specCfg.color : '#888';
+                ctx.fillText(specCfg ? specCfg.name : s.spec, tx + 150, ty);
+                ctx.fillStyle = '#fff';
+                ctx.fillText(s.kills, tx + 310, ty);
+                const m = Math.floor(s.time / 60), sec = s.time % 60;
+                ctx.fillText(m + ':' + (sec < 10 ? '0' : '') + sec, tx + 400, ty);
+                ty += 22;
+            }
+        }
+
+        ctx.textAlign = 'center';
+        this.drawBtn(ctx, w/2 - 80, h - 80, 160, 40, 'Назад', '#555', '#fff', () => { this.menuState = 'main'; });
     },
 
     drawBtn(ctx, x, y, w, h, text, bg, fg, action) {
@@ -352,7 +460,7 @@ const UI = {
         let btnX = 180;
 
         // Юниты
-        const availableUnits = building.getAvailableUnits();
+        const availableUnits = building.getAvailableUnits(player.spec);
         for (const unitType of availableUnits) {
             const def = CFG.UNITS[unitType];
             const cost = { money: def.cost, oil: def.oil || 0, metal: def.metal || 0 };

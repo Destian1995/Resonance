@@ -204,6 +204,7 @@ class Unit {
         const pid = this.playerId;
         Particles.muzzleFlash(this.x, this.y, this.angle, color);
 
+        const def = CFG.UNITS[this.type] || {};
         const isMLRS = this.type === 'mlrs';
         const isBigGun = this.isVehicle && this.aoe > 0;
 
@@ -211,6 +212,35 @@ class Unit {
         if (isMLRS) Sound.play('salvo');
         else if (isBigGun) Sound.play('bigExplosion');
         else Sound.play('shoot');
+
+        // Saboteur: double shot + chance to throw grenade
+        if (def.doubleShot) {
+            // Second bullet offset
+            Particles.addProjectile(this.x, this.y, tx + Utils.rand(-8, 8), ty + Utils.rand(-8, 8), color, 260, (hx, hy) => {
+                if (targetObj && !targetObj.dead) {
+                    targetObj.takeDamage(this.damage, pid);
+                    Particles.hit(hx, hy, '#ff0');
+                }
+            });
+        }
+        if (def.grenadeChance && Math.random() < def.grenadeChance) {
+            // Grenade!
+            const gx = tx + Utils.rand(-20, 20), gy = ty + Utils.rand(-20, 20);
+            Sound.play('explosion');
+            Particles.addProjectile(this.x, this.y, gx, gy, '#0f0', 150, (hx, hy) => {
+                Particles.shockwave(hx, hy, def.grenadeAoe || 30, '#0f0', 0.3);
+                Particles.explosion(hx, hy, '#0f0', 12);
+                Camera.shake(2);
+                const units = Game.getAllUnits();
+                for (const u of units) {
+                    if (u.dead || u.playerId === pid) continue;
+                    const d = Utils.dist(hx, hy, u.x, u.y);
+                    if (d < (def.grenadeAoe || 30)) {
+                        u.takeDamage(Math.floor((def.grenadeDmg || 35) * (1 - d / (def.grenadeAoe || 30))), pid);
+                    }
+                }
+            }, true);
+        }
 
         // РСЗО — залп из нескольких ракет
         if (isMLRS) {
@@ -450,10 +480,11 @@ class Unit {
         }
 
         switch (this.type) {
-            case 'tank':      this.drawTank(ctx, s, playerColor, flash); break;
-            case 'mlrs':      this.drawMLRS(ctx, s, playerColor, flash); break;
-            case 'artillery': this.drawCannon(ctx, s, playerColor, flash); break;
-            default:          this.drawHuman(ctx, s, playerColor, flash); break;
+            case 'tank':           this.drawTank(ctx, s, playerColor, flash); break;
+            case 'apc':            this.drawAPC(ctx, s, playerColor, flash); break;
+            case 'mlrs':           this.drawMLRS(ctx, s, playerColor, flash); break;
+            case 'artillery_unit': this.drawCannon(ctx, s, playerColor, flash); break;
+            default:               this.drawHuman(ctx, s, playerColor, flash); break;
         }
 
         ctx.restore();
@@ -538,6 +569,43 @@ class Unit {
     }
 
     // =====================
+    // APC — fast armored box with turret
+    drawAPC(ctx, s, color, flash) {
+        const c = flash ? '#fff' : this.color;
+        const dk = flash ? '#ddd' : this.darken(this.color, 30);
+        const p = s / 10;
+
+        // Wheels
+        ctx.fillStyle = '#222';
+        ctx.fillRect(s - Math.round(3*p), -s, Math.round(3*p), Math.round(3*p));
+        ctx.fillRect(s - Math.round(3*p), s - Math.round(3*p), Math.round(3*p), Math.round(3*p));
+        ctx.fillRect(-s, -s, Math.round(3*p), Math.round(3*p));
+        ctx.fillRect(-s, s - Math.round(3*p), Math.round(3*p), Math.round(3*p));
+
+        // Body — rounded box
+        ctx.fillStyle = c;
+        ctx.fillRect(-s + Math.round(2*p), -s + Math.round(2*p), s*2 - Math.round(4*p), s*2 - Math.round(4*p));
+        ctx.fillStyle = dk;
+        ctx.fillRect(-s + Math.round(3*p), -s + Math.round(3*p), s*2 - Math.round(6*p), s*2 - Math.round(6*p));
+
+        // Windshield
+        ctx.fillStyle = '#6af';
+        ctx.fillRect(s - Math.round(4*p), -Math.round(2*p), Math.round(2*p), Math.round(4*p));
+
+        // Small turret
+        ctx.fillStyle = '#555';
+        ctx.fillRect(-Math.round(2*p), -Math.round(2*p), Math.round(4*p), Math.round(4*p));
+
+        // Gun barrel
+        ctx.fillStyle = '#444';
+        ctx.fillRect(Math.round(2*p), -Math.round(p), s - Math.round(p), Math.round(2*p));
+
+        // Player color stripe
+        ctx.fillStyle = color;
+        ctx.fillRect(-s + Math.round(2*p), -s + Math.round(2*p), s*2 - Math.round(4*p), Math.round(2*p));
+        ctx.fillRect(-s + Math.round(2*p), s - Math.round(4*p), s*2 - Math.round(4*p), Math.round(2*p));
+    }
+
     // MLRS — truck with rocket launcher
     // =====================
     drawMLRS(ctx, s, color, flash) {

@@ -79,7 +79,38 @@ const CFG = {
     get BASE_SIZE() { return this.BASE_TILES * this.TILE; },
     get TOWER_SIZE() { return this.TOWER_TILES * this.TILE; },
 
-    // Unit definitions — крупные спрайты, дистанции для маленькой карты
+    // Specializations
+    SPECS: {
+        spetsnaz: {
+            name: 'Спецназ',
+            desc: 'Снайпер + Диверсант',
+            color: '#64B5F6',
+            icon: '🎯',
+            baseUnits: ['mercenary'],
+            specUnits: ['sniper', 'saboteur'],
+            factoryUnits: [],
+        },
+        armor: {
+            name: 'Бронетехника',
+            desc: 'Танк + БТР',
+            color: '#78909C',
+            icon: '🛡',
+            baseUnits: ['mercenary'],
+            specUnits: ['rocketeer'],
+            factoryUnits: ['tank', 'apc'],
+        },
+        artillery: {
+            name: 'Артиллерия',
+            desc: 'РСЗО + Артиллерия',
+            color: '#8D6E63',
+            icon: '💥',
+            baseUnits: ['mercenary'],
+            specUnits: ['rocketeer'],
+            factoryUnits: ['mlrs', 'artillery_unit'],
+        },
+    },
+
+    // Unit definitions
     UNITS: {
         mercenary: {
             name: 'Наёмник',
@@ -96,13 +127,27 @@ const CFG = {
             pop: 5, trainTime: 5000,
             source: 'base', minLevel: 2,
             color: '#64B5F6', size: 10,
+            spec: 'spetsnaz',
+        },
+        saboteur: {
+            name: 'Диверсант',
+            hp: 65, damage: 18, range: 84, speed: 1.6,
+            attackSpeed: 800, cost: 50, oil: 1, metal: 0,
+            pop: 5, trainTime: 5000,
+            source: 'base', minLevel: 3,
+            color: '#E040FB', size: 10,
+            spec: 'spetsnaz',
+            doubleShot: true,
+            grenadeChance: 0.2,
+            grenadeDmg: 35,
+            grenadeAoe: 30,
         },
         rocketeer: {
             name: 'Ракетомётчик',
             hp: 70, damage: 40, range: 108, speed: 1.0,
             attackSpeed: 2500, cost: 55, oil: 2, metal: 0,
             pop: 5, trainTime: 6000,
-            source: 'base', minLevel: 3,
+            source: 'base', minLevel: 2,
             color: '#FF7043', size: 10,
         },
         tank: {
@@ -112,6 +157,16 @@ const CFG = {
             pop: 12, trainTime: 8000,
             source: 'factory', minLevel: 1,
             color: '#78909C', size: 11, isVehicle: true,
+            spec: 'armor',
+        },
+        apc: {
+            name: 'БТР',
+            hp: 180, damage: 15, range: 130, speed: 1.8,
+            attackSpeed: 600, cost: 70, oil: 0, metal: 4,
+            pop: 10, trainTime: 6000,
+            source: 'factory', minLevel: 1,
+            color: '#4DB6AC', size: 10, isVehicle: true,
+            spec: 'armor',
         },
         mlrs: {
             name: 'РСЗО',
@@ -120,8 +175,9 @@ const CFG = {
             pop: 13, trainTime: 10000,
             source: 'factory', minLevel: 1,
             color: '#AB47BC', size: 11, isVehicle: true, aoe: 60,
+            spec: 'artillery',
         },
-        artillery: {
+        artillery_unit: {
             name: 'Артиллерия',
             hp: 100, damage: 80, range: 400, speed: 0.5,
             attackSpeed: 5000, cost: 180, oil: 5, metal: 10,
@@ -129,6 +185,7 @@ const CFG = {
             source: 'factory', minLevel: 1,
             color: '#8D6E63', size: 12, isVehicle: true, aoe: 48,
             buildingDmgMult: 9, vehicleDmgMult: 9,
+            spec: 'artillery',
         },
     },
 

@@ -43,7 +43,10 @@ const Game = {
         this.ctx.imageSmoothingEnabled = false;
     },
 
-    startGame(playerCount) {
+    tutorialTimer: 0,
+    showTutorial: true,
+
+    startGame(playerCount, humanSpec) {
         this.state = 'playing';
         this.players = [];
         this.winner = null;
@@ -51,15 +54,20 @@ const Game = {
         this.alerts = [];
         this.gameSpeed = 1;
         this.paused = false;
+        this.tutorialTimer = 15; // show tutorial for 15 seconds
+        this.showTutorial = true;
+        this.damageNumbers = [];
         Particles.clear();
         Sound.resume();
         Sound.startAmbient();
 
+        const specKeys = Object.keys(CFG.SPECS);
         for (let i = 0; i < playerCount; i++) {
             const pos = CFG.START_POSITIONS[i];
             const isHuman = (i === 0);
             const name = isHuman ? 'Игрок' : CFG.PLAYER_NAMES[i];
-            const player = new Player(i, name, isHuman, pos.x, pos.y);
+            const spec = isHuman ? humanSpec : specKeys[Utils.randInt(0, specKeys.length - 1)];
+            const player = new Player(i, name, isHuman, pos.x, pos.y, spec);
             this.players.push(player);
         }
 
@@ -128,6 +136,12 @@ const Game = {
     update(dt) {
         UI.update(dt);
         if (this.state !== 'playing') return;
+
+        // Tutorial timer
+        if (this.tutorialTimer > 0) {
+            this.tutorialTimer -= dt;
+            if (this.tutorialTimer <= 0) this.showTutorial = false;
+        }
 
         // Alerts decay
         for (let i = this.alerts.length - 1; i >= 0; i--) {
@@ -210,9 +224,16 @@ const Game = {
 
     checkGameEnd() {
         const alivePlayers = this.players.filter(p => p.alive);
-        if (alivePlayers.length <= 1) {
+        if (alivePlayers.length <= 1 && !this.winner) {
             this.state = 'gameover';
             this.winner = alivePlayers[0] || null;
+            Sound.stopAmbient();
+            // Save score
+            const human = this.getHumanPlayer();
+            if (human) {
+                const kills = human.stats.killsInfantry + human.stats.killsVehicle + human.stats.killsBuilding;
+                this.saveScore(human.name, human.spec, kills, Math.floor(this.gameTime));
+            }
         }
 
         const human = this.getHumanPlayer();
@@ -277,6 +298,9 @@ const Game = {
 
         // Alerts
         this.drawAlerts(ctx, w);
+
+        // Tutorial
+        if (this.showTutorial) this.drawTutorial(ctx, w, h, topH);
 
         // Pause overlay
         if (this.paused) {
@@ -414,6 +438,105 @@ const Game = {
             ctx.fill();
         }
         ctx.globalCompositeOperation = 'source-over';
+    },
+
+    drawTutorial(ctx, w, h, topH) {
+        const alpha = Math.min(1, this.tutorialTimer / 2);
+        ctx.globalAlpha = alpha;
+
+        const human = this.getHumanPlayer();
+        if (!human) { ctx.globalAlpha = 1; return; }
+
+        // Arrow pointing to base
+        const baseScreen = Camera.worldToScreen(human.base.getCenterX(), human.base.getCenterY());
+        this.drawArrow(ctx, baseScreen.x, baseScreen.y - 50, baseScreen.x, baseScreen.y - 20, '#0f0');
+        this.drawLabel(ctx, baseScreen.x, baseScreen.y - 60, 'Ваша база', '#0f0');
+
+        // Arrow to bottom panel
+        const panelY = h - UI.panelHeight;
+        this.drawArrow(ctx, w / 2, panelY - 10, w / 2, panelY + 15, '#ff0');
+        this.drawLabel(ctx, w / 2, panelY - 22, 'Строительство и найм ↓', '#ff0');
+
+        // Hints
+        const hints = [
+            '1. Постройте КАЗАРМЫ [B] для лимита населения',
+            '2. Наймите наёмников в БАЗЕ (кликните на базу)',
+            '3. Захватите нефтяные вышки (отправьте юнитов)',
+            '4. Стройте БАШНИ [T] для защиты',
+            '5. Улучшайте базу до 3 ур. для ЗАВОДА',
+        ];
+        const hx = 15, hy = topH + 15;
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        Utils.drawRoundRect(ctx, hx, hy, 330, hints.length * 20 + 15, 8);
+        ctx.fill();
+        ctx.fillStyle = '#69F0AE';
+        ctx.font = 'bold 13px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('Подсказки:', hx + 10, hy + 5);
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#ccc';
+        for (let i = 0; i < hints.length; i++) {
+            ctx.fillText(hints[i], hx + 10, hy + 22 + i * 20);
+        }
+
+        // Tap to dismiss
+        ctx.fillStyle = '#666';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Подсказки исчезнут через ' + Math.ceil(this.tutorialTimer) + 'с', hx + 165, hy + hints.length * 20 + 8);
+
+        ctx.globalAlpha = 1;
+    },
+
+    drawArrow(ctx, x1, y1, x2, y2, color) {
+        const t = Date.now() * 0.005;
+        const bounce = Math.sin(t) * 4;
+        ctx.strokeStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 6;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1 + bounce);
+        ctx.lineTo(x2, y2 + bounce);
+        ctx.stroke();
+        // arrowhead
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        ctx.beginPath();
+        ctx.moveTo(x2 + bounce * 0.3, y2 + bounce);
+        ctx.lineTo(x2 - 6 * Math.cos(angle - 0.4) + bounce * 0.3, y2 - 6 * Math.sin(angle - 0.4) + bounce);
+        ctx.lineTo(x2 - 6 * Math.cos(angle + 0.4) + bounce * 0.3, y2 - 6 * Math.sin(angle + 0.4) + bounce);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    },
+
+    drawLabel(ctx, x, y, text, color) {
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 6;
+        ctx.font = 'bold 13px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(text, x, y);
+        ctx.shadowBlur = 0;
+    },
+
+    // Leaderboard (localStorage)
+    saveScore(playerName, spec, kills, time) {
+        const scores = this.loadScores();
+        scores.push({ name: playerName, spec, kills, time, date: Date.now() });
+        scores.sort((a, b) => b.kills - a.kills);
+        if (scores.length > 10) scores.length = 10;
+        try { localStorage.setItem('resonance_scores', JSON.stringify(scores)); } catch(e) {}
+    },
+
+    loadScores() {
+        try {
+            const data = localStorage.getItem('resonance_scores');
+            return data ? JSON.parse(data) : [];
+        } catch(e) { return []; }
     },
 };
 

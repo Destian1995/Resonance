@@ -171,7 +171,7 @@ const AI = {
         const popLeft = player.getPopLimit() - player.getCurrentPop();
         if (popLeft < 5) return;
 
-        const availableUnits = base.getAvailableUnits();
+        const availableUnits = base.getAvailableUnits(player.spec);
         if (availableUnits.length > 0 && base.trainQueue.length < 3) {
             const unitType = availableUnits[availableUnits.length - 1];
             const def = CFG.UNITS[unitType];
@@ -183,7 +183,7 @@ const AI = {
 
         const factory = player.getBuildingOfType('factory');
         if (factory && factory.trainQueue.length < 2 && popLeft >= 12) {
-            const factoryUnits = factory.getAvailableUnits();
+            const factoryUnits = factory.getAvailableUnits(player.spec);
             if (factoryUnits.length > 0) {
                 const unitType = factoryUnits[Utils.randInt(0, factoryUnits.length - 1)];
                 const def = CFG.UNITS[unitType];

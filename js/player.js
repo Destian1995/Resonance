@@ -3,10 +3,11 @@
 // ============================================
 
 class Player {
-    constructor(id, name, isHuman, startX, startY) {
+    constructor(id, name, isHuman, startX, startY, spec = 'armor') {
         this.id = id;
         this.name = name;
         this.isHuman = isHuman;
+        this.spec = spec; // 'spetsnaz', 'armor', 'artillery'
         this.color = CFG.PLAYER_COLORS[id];
         this.money = CFG.START_MONEY;
         this.oil = CFG.START_OIL;

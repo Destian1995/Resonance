@@ -84,15 +84,28 @@ class Building {
         return CFG.TOWER_STATS[this.level - 1];
     }
 
-    getAvailableUnits() {
+    getAvailableUnits(playerSpec) {
+        const spec = playerSpec || 'armor';
+        const specCfg = CFG.SPECS[spec];
         const units = [];
+
         if (this.type === 'base') {
             for (const [key, def] of Object.entries(CFG.UNITS)) {
-                if (def.source === 'base' && this.level >= def.minLevel) units.push(key);
+                if (def.source !== 'base' || this.level < def.minLevel) continue;
+                // No spec restriction = available to all (mercenary)
+                if (!def.spec) { units.push(key); continue; }
+                // Check if this spec allows this unit
+                if (specCfg && (specCfg.specUnits.includes(key) || specCfg.baseUnits.includes(key))) {
+                    units.push(key);
+                }
             }
         } else if (this.type === 'factory') {
             for (const [key, def] of Object.entries(CFG.UNITS)) {
-                if (def.source === 'factory') units.push(key);
+                if (def.source !== 'factory') continue;
+                if (!def.spec) { units.push(key); continue; }
+                if (specCfg && specCfg.factoryUnits.includes(key)) {
+                    units.push(key);
+                }
             }
         }
         return units;
