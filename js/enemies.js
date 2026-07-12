@@ -70,12 +70,16 @@ const Enemies = {
             }
             if (e.slowTimer>0) { e.slowTimer-=dt*1000; if(e.slowTimer<=0)e.slow=1; }
             const a=U.angle(e,player);
-            const spd=e.speed*e.slow*dt;
+            const nightSpd = World.isNight() ? CFG.NIGHT_SPEED_MULT : 1;
+            const spd=e.speed*e.slow*nightSpd*dt;
             e.x+=Math.cos(a)*spd; e.y+=Math.sin(a)*spd;
             e.flipX=Math.cos(a)>0?1:-1;
+            // Wall collision
+            World.resolveCollision(e);
             e.dmgTimer-=dt*1000;
             if (U.dist(e,player)<e.r+player.r && e.dmgTimer<=0) {
-                player.hp-=e.dmg;
+                const nightDmg = World.isNight() ? CFG.NIGHT_DMG_MULT : 1;
+                player.hp-=Math.floor(e.dmg*nightDmg);
                 e.dmgTimer=500;
                 FX.spawn(player.x,player.y,'#f00',5);
                 FX.dmgNum(player.x,player.y,e.dmg,'#f44');

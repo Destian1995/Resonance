@@ -24,11 +24,19 @@ const Game = {
         Cam.init(this.canvas.width, this.canvas.height);
     },
 
+    currentBiome: 0,
+    biomeTransition: 0,   // fade timer
+    biomeMsg: '',
+    biomeMsgTimer: 0,
+
     start(ci) {
         Player.init(ci);
         Enemies.clear(); Gems.clear(); Projs.clear(); Zones.clear(); FX.clear();
-        World.generated = false;
         this.elapsed=0; this.spawnTimer=0; this.bossTimer=0;
+        this.currentBiome=Math.floor(Math.random()*BIOMES.length);
+        World.generate(this.currentBiome);
+        Player.x=CFG.WORLD_W/2; Player.y=CFG.WORLD_H/2;
+        this.biomeTransition=0; this.biomeMsgTimer=0;
         this.state = ST.PLAY;
     },
 
@@ -165,8 +173,31 @@ const Game = {
     _updatePlay(dt) {
         this.elapsed += dt;
         const mins = this.elapsed/60;
-        // Spawn
-        const interval = CFG.SPAWN_INTERVAL * Math.max(.15, 1-mins*.05);
+
+        // Day/Night
+        World.updateDayNight(this.elapsed);
+
+        // Biome change every BIOME_INTERVAL seconds
+        const newBiome = Math.floor(this.elapsed / CFG.BIOME_INTERVAL) % BIOMES.length;
+        if (newBiome !== this.currentBiome) {
+            this.currentBiome = (this.currentBiome + 1) % BIOMES.length;
+            // Fade transition
+            this.biomeTransition = 1.2;
+            this.biomeMsg = BIOMES[this.currentBiome].name;
+            this.biomeMsgTimer = 3;
+            // Regenerate world, keep player centered, clear enemies far away
+            Enemies.clear(); Projs.clear(); Zones.clear();
+            World.generate(this.currentBiome);
+            Player.x = CFG.WORLD_W/2; Player.y = CFG.WORLD_H/2;
+            FX.flash('#fff', .5);
+            Cam.addShake(8);
+        }
+        if (this.biomeTransition > 0) this.biomeTransition -= dt;
+        if (this.biomeMsgTimer > 0) this.biomeMsgTimer -= dt;
+
+        // Spawn enemies — faster at night
+        const nightMul = World.isNight() ? CFG.NIGHT_SPAWN_MULT : 1;
+        const interval = CFG.SPAWN_INTERVAL * Math.max(.12, 1-mins*.05) / nightMul;
         this.spawnTimer += dt*1000;
         while (this.spawnTimer >= interval) {
             this.spawnTimer -= interval;
@@ -211,9 +242,34 @@ const Game = {
         FX.drawWorld(ctx);
         Cam.end(ctx);
 
+        // Night overlay
+        World.drawNightOverlay(ctx,cw,ch);
+
         this._drawHUD(ctx,cw,ch);
         Input.drawJoy(ctx);
         FX.drawScreen(ctx,cw,ch);
+
+        // Biome transition fade
+        if (this.biomeTransition > 0) {
+            ctx.globalAlpha = U.clamp(this.biomeTransition, 0, 1);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0,0,cw,ch);
+            ctx.globalAlpha = 1;
+        }
+
+        // Biome name announcement
+        if (this.biomeMsgTimer > 0) {
+            const a = Math.min(1, this.biomeMsgTimer / .5) * Math.min(1, (3 - (3-this.biomeMsgTimer)) / .5);
+            ctx.globalAlpha = U.clamp(a, 0, 1);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, ch*.38, cw, 50);
+            this._textShadow(this.biomeMsg, cw/2, ch*.38+25, '#fff', 22, 'center');
+            ctx.globalAlpha = 1;
+        }
+
+        // Day/night indicator
+        const dayIcon = World.isNight() ? '🌙' : '☀';
+        this._text(dayIcon, cw-40, 40, '#fff', 16, 'center');
     },
 
     _drawHUD(ctx,cw,ch) {
@@ -384,6 +440,7 @@ const Game = {
         this._statLine(ctx,cw/2,ly+sp*3,'Убито',Player.kills,'#f80');
         this._statLine(ctx,cw/2,ly+sp*4,'Оружий',Player.weapons.length,'#ff0');
         this._statLine(ctx,cw/2,ly+sp*5,'Опыт',Player.totalXp,'#4f4');
+        this._statLine(ctx,cw/2,ly+sp*6,'Биом',World.biome?World.biome.name:'','#aaa');
 
         // Weapon icons
         const ws=Player.weapons.length, ww=36;
@@ -392,7 +449,7 @@ const Game = {
             const def=WEAPON_DEFS[Player.weapons[i].key];
             ctx.fillStyle=def.color;
             ctx.font='16px monospace'; ctx.textAlign='center';
-            ctx.fillText(def.icon, wx+i*ww+ww/2, ly+sp*6+5);
+            ctx.fillText(def.icon, wx+i*ww+ww/2, ly+sp*7+5);
         }
 
         this._text('Нажмите для рестарта',cw/2,ch*.88,'#666',12,'center');

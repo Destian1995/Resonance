@@ -41,7 +41,15 @@ const Player = {
         const spd=this.speed*(1+this.speedBonus/100)*dt;
         this.x=U.clamp(this.x+Input.dx*spd, this.r, CFG.WORLD_W-this.r);
         this.y=U.clamp(this.y+Input.dy*spd, this.r, CFG.WORLD_H-this.r);
-        if (Input.dx||Input.dy) this.facing=Math.atan2(Input.dy,Input.dx);
+        // Wall collision
+        World.resolveCollision(this);
+        // Face nearest enemy (auto-aim), fallback to move direction
+        if (Enemies.list.length) {
+            let best=null,bd=Infinity;
+            for(const e of Enemies.list){if(!e.alive)continue;const d=U.dist(this,e);if(d<bd){bd=d;best=e;}}
+            if(best&&bd<400) this.facing=U.angle(this,best);
+            else if(Input.dx||Input.dy) this.facing=Math.atan2(Input.dy,Input.dx);
+        } else if (Input.dx||Input.dy) this.facing=Math.atan2(Input.dy,Input.dx);
         // Walk animation
         if (Input.dx||Input.dy) { this.animTimer+=dt; if(this.animTimer>.15){this.animTimer=0;this.animFrame=(this.animFrame+1)%4;} }
         else this.animFrame=0;
