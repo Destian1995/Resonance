@@ -1,546 +1,426 @@
-// ============================================
-// Game — Main Loop & State Machine
-// ============================================
-
+// ============ GAME — polished mobile-first ============
 const Game = {
-    canvas: null,
-    ctx: null,
-    state: 'menu', // menu, playing, gameover
-    players: [],
-    winner: null,
-    gameTime: 0,
+    state: ST.MENU,
+    canvas: null, ctx: null,
+    lastTime: 0, elapsed: 0,
+    spawnTimer: 0, bossTimer: 0,
+    upgradeChoices: [], menuAnim: 0,
 
     init() {
         this.canvas = document.getElementById('game');
         this.ctx = this.canvas.getContext('2d');
-
-        // Disable image smoothing for pixel art
-        this.ctx.imageSmoothingEnabled = false;
-
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-
+        this._resize();
+        window.addEventListener('resize', () => this._resize());
         Input.init(this.canvas);
-        Camera.init(this.canvas.width, this.canvas.height);
-        Sound.init();
-
-        let last = performance.now();
-        const loop = (now) => {
-            const dt = Math.min((now - last) / 1000, 0.05);
-            last = now;
-            this.update(dt);
-            this.draw();
-            requestAnimationFrame(loop);
-        };
-        requestAnimationFrame(loop);
+        Snd.init();
+        this.lastTime = performance.now();
+        requestAnimationFrame(t => this.loop(t));
     },
 
-    resize() {
+    _resize() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
-        Camera.resize(this.canvas.width, this.canvas.height);
-        // Keep pixel art sharp
         this.ctx.imageSmoothingEnabled = false;
+        Cam.init(this.canvas.width, this.canvas.height);
     },
 
-    tutorialTimer: 0,
-    showTutorial: true,
-
-    startGame(playerCount, humanSpec) {
-        this.state = 'playing';
-        this.players = [];
-        this.winner = null;
-        this.gameTime = 0;
-        this.alerts = [];
-        this.gameSpeed = 1;
-        this.paused = false;
-        this.tutorialTimer = 15; // show tutorial for 15 seconds
-        this.showTutorial = true;
-        this.damageNumbers = [];
-        Particles.clear();
-        Sound.resume();
-        Sound.startAmbient();
-
-        const specKeys = Object.keys(CFG.SPECS);
-        for (let i = 0; i < playerCount; i++) {
-            const pos = CFG.START_POSITIONS[i];
-            const isHuman = (i === 0);
-            const name = isHuman ? 'Игрок' : CFG.PLAYER_NAMES[i];
-            const spec = isHuman ? humanSpec : specKeys[Utils.randInt(0, specKeys.length - 1)];
-            const player = new Player(i, name, isHuman, pos.x, pos.y, spec);
-            this.players.push(player);
-        }
-
-        // Generate new random map each game
-        GameMap.init(playerCount);
-        AI.init(this.players);
-
-        // Clear tiles under all player buildings
-        for (const p of this.players) {
-            for (const b of p.buildings) {
-                const t = CFG.TILE;
-                for (let r = Math.floor(b.y / t); r < Math.ceil((b.y + b.size) / t); r++) {
-                    for (let c = Math.floor(b.x / t); c < Math.ceil((b.x + b.size) / t); c++) {
-                        GameMap.setTile(r, c, CFG.TILE_EMPTY);
-                    }
-                }
-            }
-        }
-
-        const humanBase = this.players[0].base;
-        Camera.centerOn(humanBase.getCenterX(), humanBase.getCenterY());
-        Camera.x = Camera.targetX;
-        Camera.y = Camera.targetY;
+    start(ci) {
+        Player.init(ci);
+        Enemies.clear(); Gems.clear(); Projs.clear(); Zones.clear(); FX.clear();
+        World.generated = false;
+        this.elapsed=0; this.spawnTimer=0; this.bossTimer=0;
+        this.state = ST.PLAY;
     },
 
-    getHumanPlayer() {
-        return this.players.find(p => p.isHuman);
-    },
+    loop(time) {
+        const dt = Math.min((time - this.lastTime) / 1000, 0.05);
+        this.lastTime = time;
+        Input.update();
 
-    getAllUnits() {
-        const all = [];
-        for (const p of this.players) {
-            if (!p.alive) continue;
-            for (const u of p.units) {
-                if (!u.dead) all.push(u);
-            }
-        }
-        return all;
-    },
-
-    getAllBuildings() {
-        const all = [];
-        for (const p of this.players) {
-            for (const b of p.buildings) {
-                if (!b.dead) all.push(b);
-            }
-        }
-        return all;
-    },
-
-    // Alerts system
-    alerts: [],
-    alertTimer: 0,
-    addAlert(text) {
-        this.alerts.push({ text, time: 4 });
-        Sound.play('alert');
-    },
-
-    // Unit groups (Ctrl+1..9 / 1..9)
-    unitGroups: {},
-
-    // Pause / speed
-    paused: false,
-    gameSpeed: 1,
-
-    update(dt) {
-        UI.update(dt);
-        if (this.state !== 'playing') return;
-
-        // Tutorial timer
-        if (this.tutorialTimer > 0) {
-            this.tutorialTimer -= dt;
-            if (this.tutorialTimer <= 0) this.showTutorial = false;
-        }
-
-        // Alerts decay
-        for (let i = this.alerts.length - 1; i >= 0; i--) {
-            this.alerts[i].time -= dt;
-            if (this.alerts[i].time <= 0) this.alerts.splice(i, 1);
-        }
-
-        if (this.paused) {
-            Camera.update(dt);
-            // Allow camera movement while paused
-            if (Input.keys['w'] || Input.keys['arrowup']) Camera.moveBy(0, -CFG.CAM_SPEED);
-            if (Input.keys['s'] || Input.keys['arrowdown']) Camera.moveBy(0, CFG.CAM_SPEED);
-            if (Input.keys['a'] || Input.keys['arrowleft']) Camera.moveBy(-CFG.CAM_SPEED, 0);
-            if (Input.keys['d'] || Input.keys['arrowright']) Camera.moveBy(CFG.CAM_SPEED, 0);
-            return;
-        }
-
-        const sDt = dt * this.gameSpeed;
-        this.gameTime += sDt;
-
-        if (Input.keys['w'] || Input.keys['arrowup']) Camera.moveBy(0, -CFG.CAM_SPEED);
-        if (Input.keys['s'] || Input.keys['arrowdown']) Camera.moveBy(0, CFG.CAM_SPEED);
-        if (Input.keys['a'] || Input.keys['arrowleft']) Camera.moveBy(-CFG.CAM_SPEED, 0);
-        if (Input.keys['d'] || Input.keys['arrowright']) Camera.moveBy(CFG.CAM_SPEED, 0);
-
-        Camera.update(sDt);
-
-        // Track base HP for alerts
-        const human = this.getHumanPlayer();
-        const prevBaseHp = human && human.base ? human.base.hp : 0;
-
-        for (const p of this.players) p.update(sDt);
-
-        // Alert: base under attack
-        if (human && human.base && !human.base.dead && human.base.hp < prevBaseHp) {
-            if (!this._baseAlertCD || this._baseAlertCD <= 0) {
-                this.addAlert('⚠ Ваша база под атакой!');
-                this._baseAlertCD = 10;
-            }
-        }
-        if (this._baseAlertCD > 0) this._baseAlertCD -= sDt;
-
-        const allUnits = this.getAllUnits();
-        const allBuildings = this.getAllBuildings();
-
-        for (const p of this.players) {
-            if (!p.alive) continue;
-            for (const u of p.units) {
-                if (!u.dead) u.update(sDt, allUnits, allBuildings);
-            }
-        }
-
-        // Auto-heal near base (7)
-        if (human && human.base && !human.base.dead) {
-            const bx = human.base.getCenterX(), by = human.base.getCenterY();
-            for (const u of human.units) {
-                if (u.dead || u.hp >= u.maxHp) continue;
-                if (Utils.dist(u.x, u.y, bx, by) < 80) {
-                    u.hp = Math.min(u.maxHp, u.hp + 5 * sDt);
-                }
-            }
-            // AI players too
-            for (const p of this.players) {
-                if (p.isHuman || !p.alive || !p.base || p.base.dead) continue;
-                const pbx = p.base.getCenterX(), pby = p.base.getCenterY();
-                for (const u of p.units) {
-                    if (u.dead || u.hp >= u.maxHp) continue;
-                    if (Utils.dist(u.x, u.y, pbx, pby) < 80) {
-                        u.hp = Math.min(u.maxHp, u.hp + 5 * sDt);
-                    }
-                }
-            }
-        }
-
-        GameMap.updateDerricks(this.players, allUnits, sDt);
-        GameMap.updateZones(this.players, allUnits, sDt);
-        AI.update(sDt, this.players, allUnits, allBuildings);
-        Particles.update(sDt);
-        this.checkGameEnd();
-    },
-
-    checkGameEnd() {
-        const alivePlayers = this.players.filter(p => p.alive);
-        if (alivePlayers.length <= 1 && !this.winner) {
-            this.state = 'gameover';
-            this.winner = alivePlayers[0] || null;
-            Sound.stopAmbient();
-            // Save score
-            const human = this.getHumanPlayer();
-            if (human) {
-                const kills = human.stats.killsInfantry + human.stats.killsVehicle + human.stats.killsBuilding;
-                this.saveScore(human.name, human.spec, kills, Math.floor(this.gameTime));
-            }
-        }
-
-        const human = this.getHumanPlayer();
-        if (human && !human.alive && !this.winner) {
-            this.state = 'gameover';
-            let strongest = null, maxUnits = 0;
-            for (const p of this.players) {
-                if (!p.alive) continue;
-                const cnt = p.units.filter(u => !u.dead).length;
-                if (cnt > maxUnits) { maxUnits = cnt; strongest = p; }
-            }
-            this.winner = strongest;
-        }
-    },
-
-    draw() {
         const ctx = this.ctx;
-        const w = this.canvas.width;
-        const h = this.canvas.height;
+        const cw = this.canvas.width, ch = this.canvas.height;
+        ctx.fillStyle = '#0a0a14';
+        ctx.fillRect(0, 0, cw, ch);
 
-        // Black background
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, w, h);
+        switch (this.state) {
+            case ST.MENU: this._updateMenu(dt); this._drawMenu(ctx,cw,ch); break;
+            case ST.PLAY: this._updatePlay(dt); this._drawPlay(ctx,cw,ch); break;
+            case ST.UPGRADE: this._updateUpgrade(cw,ch); this._drawUpgrade(ctx,cw,ch); break;
+            case ST.OVER: this._updateOver(); this._drawOver(ctx,cw,ch); break;
+        }
 
-        if (this.state === 'menu') {
-            UI.drawMenu(ctx, w, h);
+        Input.endFrame();
+        requestAnimationFrame(t => this.loop(t));
+    },
+
+    // ══════════ MENU ══════════
+    _updateMenu(dt) {
+        this.menuAnim += dt;
+        if (!Input.tapped) return;
+        const cw=this.canvas.width, ch=this.canvas.height;
+        const mob = Input.mobile || cw < 600;
+        const pw = mob ? Math.min(cw*.88,320) : 220;
+        const ph = mob ? 90 : 270;
+        const gap = mob ? 14 : 24;
+
+        for (let i=0; i<3; i++) {
+            let px, py;
+            if (mob) { px=(cw-pw)/2; py=ch*.28+i*(ph+gap); }
+            else { const tw=pw*3+gap*2; px=(cw-tw)/2+i*(pw+gap); py=ch*.28; }
+            if (Input.tapX>=px && Input.tapX<=px+pw && Input.tapY>=py && Input.tapY<=py+ph) {
+                Snd.resume(); Snd.play('lvl');
+                this.start(i); return;
+            }
+        }
+    },
+
+    _drawMenu(ctx,cw,ch) {
+        const mob = Input.mobile || cw < 600;
+        // Animated background particles
+        const t = this.menuAnim;
+        for (let i=0;i<20;i++) {
+            const x = ((Math.sin(i*1.3+t*.3)*0.5+0.5)*cw)|0;
+            const y = ((Math.cos(i*1.7+t*.2)*0.5+0.5)*ch)|0;
+            ctx.globalAlpha=.06;
+            ctx.fillStyle=['#0ff','#f80','#a5f','#ff0'][i%4];
+            ctx.beginPath(); ctx.arc(x,y,30+Math.sin(t+i)*10,0,Math.PI*2); ctx.fill();
+        }
+        ctx.globalAlpha=1;
+
+        // Title
+        const ts = mob ? 30 : 46;
+        this._text('RESONANCE',cw/2,ch*.06,'#0ff',ts,'center');
+        this._textShadow('SURVIVORS',cw/2,ch*.06+ts*.8,'#088',Math.floor(ts*.5),'center');
+        this._text('Выбери героя',cw/2,ch*.2,'#ccc',mob?13:15,'center');
+
+        const pw = mob ? Math.min(cw*.88,320) : 220;
+        const ph = mob ? 90 : 270;
+        const gap = mob ? 14 : 24;
+
+        for (let i=0;i<3;i++) {
+            const c = CLASSES[i];
+            let px, py;
+            if (mob) { px=(cw-pw)/2; py=ch*.28+i*(ph+gap); }
+            else { const tw=pw*3+gap*2; px=(cw-tw)/2+i*(pw+gap); py=ch*.28; }
+
+            // Card bg with gradient feel
+            const grad = ctx.createLinearGradient(px,py,px,py+ph);
+            grad.addColorStop(0,'#1a1a30'); grad.addColorStop(1,'#10101e');
+            ctx.fillStyle=grad;
+            ctx.fillRect(px,py,pw,ph);
+            // Colored side strip
+            ctx.fillStyle=c.color;
+            ctx.fillRect(px,py,4,ph);
+            // Border
+            ctx.strokeStyle=c.color; ctx.lineWidth=1.5;
+            ctx.strokeRect(px+.5,py+.5,pw-1,ph-1);
+
+            if (mob) {
+                // Icon
+                ctx.fillStyle=c.color;
+                ctx.beginPath(); ctx.arc(px+35,py+ph/2,22,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle=c.color2;
+                ctx.beginPath(); ctx.arc(px+35,py+ph/2,18,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle='#fff';
+                ctx.font='bold 18px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+                ctx.fillText(c.id[0].toUpperCase(),px+35,py+ph/2);
+                // Text
+                this._text(c.name,px+70,py+22,c.color,17,'left');
+                this._text(c.desc,px+70,py+44,'#bbb',11,'left');
+                this._text(`HP ${c.hp}   SPD ${c.speed}`,px+70,py+66,'#6f6',10,'left');
+            } else {
+                // Large icon
+                const cx=px+pw/2, iy=py+55;
+                ctx.fillStyle=c.color;
+                ctx.beginPath(); ctx.arc(cx,iy,30,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle=c.color2;
+                ctx.beginPath(); ctx.arc(cx,iy,24,0,Math.PI*2); ctx.fill();
+                ctx.fillStyle='#fff';
+                ctx.font='bold 24px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+                ctx.fillText(c.id[0].toUpperCase(),cx,iy);
+
+                this._text(c.name,cx,py+105,c.color,19,'center');
+                this._text(c.desc,cx,py+130,'#bbb',12,'center');
+
+                // Stats bars
+                this._statBar(ctx,px+15,py+155,pw-30,'HP',c.hp,200,'#4f4');
+                this._statBar(ctx,px+15,py+180,pw-30,'SPD',c.speed,200,'#4af');
+            }
+        }
+
+        // Controls hint
+        const hy = mob ? ch*.96 : ch*.94;
+        this._text(mob?'Двигай левой — стреляет авто!':'WASD движение — оружие стреляет авто!',cw/2,hy,'#555',mob?10:11,'center');
+    },
+
+    _statBar(ctx,x,y,w,label,val,max,color) {
+        ctx.fillStyle='#222'; ctx.fillRect(x,y,w,12);
+        ctx.fillStyle=color;
+        ctx.fillRect(x,y,w*(val/max),12);
+        ctx.strokeStyle='#444'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,12);
+        this._text(`${label} ${val}`,x+4,y+6,'#fff',9,'left');
+    },
+
+    // ══════════ PLAY ══════════
+    _updatePlay(dt) {
+        this.elapsed += dt;
+        const mins = this.elapsed/60;
+        // Spawn
+        const interval = CFG.SPAWN_INTERVAL * Math.max(.15, 1-mins*.05);
+        this.spawnTimer += dt*1000;
+        while (this.spawnTimer >= interval) {
+            this.spawnTimer -= interval;
+            const batch = 1 + Math.floor(mins*.5);
+            for (let b=0;b<batch;b++) Enemies.spawn(Player.x, Player.y, this.elapsed);
+        }
+        // Boss
+        this.bossTimer += dt;
+        if (this.bossTimer >= CFG.BOSS_INTERVAL) {
+            this.bossTimer = 0;
+            Enemies.spawnBoss(Player.x, Player.y, this.elapsed);
+        }
+        // Player
+        if (Player.update(dt)) {
+            this.upgradeChoices = Upgrades.buildChoices();
+            this.state = ST.UPGRADE;
+            Snd.play('lvl');
+            FX.flash('#ff0',.3);
             return;
         }
+        // Weapons
+        for (const w of Player.weapons) WeaponSys.fire(w, Player, Enemies.list, dt);
+        Enemies.update(dt, Player);
+        Projs.update(dt, Enemies.list);
+        Zones.update(dt, Enemies.list);
+        Gems.update(dt, Player);
+        FX.update(dt);
+        Cam.follow(Player); Cam.update(dt);
+        if (!Player.alive) { Snd.play('death'); this.state=ST.OVER; }
+    },
 
-        if (this.state === 'gameover') {
-            this.drawWorld(ctx);
-            Camera.resetTransform(ctx);
-            UI.drawGameOver(ctx, w, h, this.winner);
-            return;
+    _drawPlay(ctx,cw,ch) {
+        Cam.begin(ctx);
+        World.draw(ctx);
+        Zones.draw(ctx);
+        Gems.draw(ctx);
+        WeaponSys.drawAuras(ctx, Player, Player.weapons);
+        Enemies.draw(ctx);
+        Player.draw(ctx);
+        WeaponSys.drawOrbits(ctx, Player, Player.weapons);
+        Projs.draw(ctx);
+        FX.drawWorld(ctx);
+        Cam.end(ctx);
+
+        this._drawHUD(ctx,cw,ch);
+        Input.drawJoy(ctx);
+        FX.drawScreen(ctx,cw,ch);
+    },
+
+    _drawHUD(ctx,cw,ch) {
+        const p=8;
+        const mob = Input.mobile;
+
+        // ── Top: XP bar full width ──
+        const xpH = 6;
+        ctx.fillStyle='#112';
+        ctx.fillRect(0,0,cw,xpH);
+        ctx.fillStyle='#55f';
+        ctx.fillRect(0,0,cw*(Player.xp/Player.xpToNext()),xpH);
+
+        // Level badge
+        ctx.fillStyle='#22a';
+        ctx.beginPath(); ctx.arc(cw/2, xpH+12, 12, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle='#fff';
+        ctx.font='bold 11px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(Player.level, cw/2, xpH+12);
+
+        // ── Left: HP ──
+        const hpW = Math.min(140, cw*.25);
+        const hpY = xpH + 4;
+        // HP bar styled
+        ctx.fillStyle='#200';
+        ctx.fillRect(p,hpY,hpW,12);
+        const hpRatio = Player.hp/Player.maxHp;
+        const hpColor = hpRatio>.5?'#0c0':hpRatio>.25?'#fc0':'#f00';
+        ctx.fillStyle=hpColor;
+        ctx.fillRect(p,hpY,hpW*hpRatio,12);
+        ctx.strokeStyle='#444'; ctx.lineWidth=1;
+        ctx.strokeRect(p,hpY,hpW,12);
+        this._text(`${Math.ceil(Player.hp)}`,p+hpW+6,hpY+6,'#fff',9,'left');
+
+        // ── Center: Timer ──
+        const mins=Math.floor(this.elapsed/60);
+        const secs=Math.floor(this.elapsed%60);
+        this._text(`${mins}:${secs<10?'0':''}${secs}`,cw/2,hpY+6,'#0ff',13,'center');
+
+        // ── Right: Kill count ──
+        this._text(`${Player.kills}`,cw-p,hpY+6,'#f80',12,'right');
+
+        // ── Bottom: Weapon strip ──
+        const stripH = 36;
+        const stripY = ch - stripH - (mob?60:8);
+        const wCount = Player.weapons.length;
+        const wSlot = Math.min(52, (cw-20)/Math.max(wCount,1));
+
+        ctx.fillStyle='rgba(0,0,0,.45)';
+        ctx.fillRect(p-2, stripY-2, wCount*wSlot+4, stripH+4);
+
+        for (let i=0;i<wCount;i++) {
+            const w = Player.weapons[i];
+            const def = WEAPON_DEFS[w.key];
+            const sx = p + i*wSlot;
+
+            // Slot bg
+            ctx.fillStyle='#1a1a2a';
+            ctx.fillRect(sx, stripY, wSlot-3, stripH);
+            ctx.strokeStyle=def.color;
+            ctx.lineWidth=1;
+            ctx.strokeRect(sx, stripY, wSlot-3, stripH);
+
+            // Icon
+            ctx.fillStyle=def.color;
+            ctx.font='14px monospace'; ctx.textAlign='center';
+            ctx.fillText(def.icon, sx+(wSlot-3)/2, stripY+14);
+
+            // Level
+            ctx.fillStyle='#fff';
+            ctx.font='bold 9px monospace';
+            ctx.fillText(`Lv${w.level}`, sx+(wSlot-3)/2, stripY+28);
+
+            // Cooldown overlay
+            if (w.timer > 0) {
+                const cdRatio = w.timer / w.cd;
+                ctx.globalAlpha=.3;
+                ctx.fillStyle='#000';
+                ctx.fillRect(sx, stripY, wSlot-3, stripH*cdRatio);
+                ctx.globalAlpha=1;
+            }
         }
 
-        // Playing — clip game world to area between top bar and bottom panel
-        const topH = UI.topBarHeight;
-        const botH = UI.panelHeight;
-        const gameH = h - topH - botH;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(0, topH, w, gameH);
-        ctx.clip();
-
-        // Offset camera rendering to account for top bar
-        Camera.viewOffsetY = topH;
-        Camera.viewH = gameH;
-        this.drawWorld(ctx);
-        Camera.resetTransform(ctx);
-        Input.drawBuildPreview(ctx);
-
-        ctx.restore();
-
-        // Minimap (drawn inside game area)
-        Minimap.draw(ctx, w, h, this.players);
-
-        // HUD on top (not clipped)
-        const human = this.getHumanPlayer();
-        if (human) UI.drawHUD(ctx, w, h, human);
-
-        // Alerts
-        this.drawAlerts(ctx, w);
-
-        // Tutorial
-        if (this.showTutorial) this.drawTutorial(ctx, w, h, topH);
-
-        // Pause overlay
-        if (this.paused) {
-            ctx.fillStyle = 'rgba(0,0,0,0.4)';
-            ctx.fillRect(0, topH, w, gameH);
-            ctx.fillStyle = '#ff0';
-            ctx.font = 'bold 32px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('⏸ ПАУЗА', w / 2, topH + gameH / 2);
-            ctx.font = '14px Arial';
-            ctx.fillStyle = '#aaa';
-            ctx.fillText('Пробел — продолжить   +/- — скорость (x' + this.gameSpeed + ')', w / 2, topH + gameH / 2 + 30);
-        }
-
-        // Speed indicator
-        if (this.gameSpeed !== 1) {
-            ctx.fillStyle = '#ff0';
-            ctx.font = 'bold 14px Arial';
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'top';
-            ctx.fillText('x' + this.gameSpeed, w - 15, 46);
+        // Enemy count (top right small)
+        if (Enemies.list.length > 30) {
+            this._text(`x${Enemies.list.length}`,cw-p,hpY+20,'#888',8,'right');
         }
     },
 
-    drawAlerts(ctx, w) {
-        let ay = 70;
-        for (const a of this.alerts) {
-            const alpha = Math.min(1, a.time);
-            ctx.globalAlpha = alpha;
-            ctx.fillStyle = 'rgba(180,0,0,0.7)';
-            Utils.drawRoundRect(ctx, w / 2 - 160, ay, 320, 26, 5);
-            ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 13px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(a.text, w / 2, ay + 13);
-            ctx.globalAlpha = 1;
-            ay += 30;
+    // ══════════ UPGRADE ══════════
+    _updateUpgrade(cw,ch) {
+        if (!Input.tapped) return;
+        const pw=Math.min(340,cw*.88), ph=75, gap=12;
+        const sx=(cw-pw)/2;
+        for (let i=0;i<this.upgradeChoices.length;i++) {
+            const py=ch*.28+i*(ph+gap);
+            if (Input.tapX>=sx && Input.tapX<=sx+pw && Input.tapY>=py && Input.tapY<=py+ph) {
+                Upgrades.apply(this.upgradeChoices[i]);
+                Snd.play('lvl');
+                this.state=ST.PLAY; return;
+            }
         }
     },
 
-    drawWorld(ctx) {
-        Camera.applyTransform(ctx);
+    _drawUpgrade(ctx,cw,ch) {
+        this._drawPlay(ctx,cw,ch);
+        // Frosted overlay
+        ctx.fillStyle='rgba(0,0,15,.82)';
+        ctx.fillRect(0,0,cw,ch);
 
-        // Map base tiles
-        GameMap.draw(ctx);
+        // Level up banner
+        ctx.fillStyle='#22a';
+        ctx.fillRect(0,ch*.1-4,cw,40);
+        this._textShadow(`УРОВЕНЬ ${Player.level}!`,cw/2,ch*.1+16,'#ff0',22,'center');
 
-        // Oil derricks
-        GameMap.drawDerricks(ctx, this.players);
+        this._text('Выбери улучшение',cw/2,ch*.22,'#ccc',13,'center');
 
-        // Buildings
-        for (const p of this.players) {
-            if (!p.alive) continue;
-            p.drawBuildings(ctx);
+        const pw=Math.min(340,cw*.88), ph=75, gap=12;
+        const sx=(cw-pw)/2;
+
+        for (let i=0;i<this.upgradeChoices.length;i++) {
+            const c=this.upgradeChoices[i];
+            const py=ch*.28+i*(ph+gap);
+
+            // Card
+            const grad=ctx.createLinearGradient(sx,py,sx+pw,py);
+            grad.addColorStop(0,'#1a1a34'); grad.addColorStop(1,'#141428');
+            ctx.fillStyle=grad;
+            ctx.fillRect(sx,py,pw,ph);
+            // Color accent left
+            ctx.fillStyle=c.color;
+            ctx.fillRect(sx,py,3,ph);
+            // Border
+            ctx.strokeStyle=c.color; ctx.lineWidth=1.5;
+            ctx.strokeRect(sx,py,pw,ph);
+
+            // Icon
+            ctx.fillStyle=c.color;
+            ctx.beginPath(); ctx.arc(sx+32,py+ph/2,18,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle='#000';
+            ctx.font='bold 18px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+            ctx.fillText(c.icon,sx+32,py+ph/2);
+
+            this._text(c.name,sx+60,py+24,'#fff',14,'left');
+            this._text(c.desc,sx+60,py+50,'#aaa',11,'left');
+        }
+    },
+
+    // ══════════ GAME OVER ══════════
+    _updateOver() { if (Input.tapped) this.state=ST.MENU; },
+
+    _drawOver(ctx,cw,ch) {
+        ctx.fillStyle='rgba(0,0,0,.92)';
+        ctx.fillRect(0,0,cw,ch);
+
+        // Red stripe
+        ctx.fillStyle='#400';
+        ctx.fillRect(0,ch*.15,cw,50);
+        this._textShadow('ПОРАЖЕНИЕ',cw/2,ch*.15+25,'#f00',30,'center');
+
+        const mins=Math.floor(this.elapsed/60), secs=Math.floor(this.elapsed%60);
+        const c=CLASSES[Player.classIdx];
+        const ly=ch*.35, sp=32;
+
+        this._text(`${c.name}`,cw/2,ly,c.color,16,'center');
+        this._statLine(ctx,cw/2,ly+sp*1,'Время',`${mins}:${secs<10?'0':''}${secs}`,'#0ff');
+        this._statLine(ctx,cw/2,ly+sp*2,'Уровень',Player.level,'#aaf');
+        this._statLine(ctx,cw/2,ly+sp*3,'Убито',Player.kills,'#f80');
+        this._statLine(ctx,cw/2,ly+sp*4,'Оружий',Player.weapons.length,'#ff0');
+        this._statLine(ctx,cw/2,ly+sp*5,'Опыт',Player.totalXp,'#4f4');
+
+        // Weapon icons
+        const ws=Player.weapons.length, ww=36;
+        const wx=cw/2-(ws*ww)/2;
+        for(let i=0;i<ws;i++) {
+            const def=WEAPON_DEFS[Player.weapons[i].key];
+            ctx.fillStyle=def.color;
+            ctx.font='16px monospace'; ctx.textAlign='center';
+            ctx.fillText(def.icon, wx+i*ww+ww/2, ly+sp*6+5);
         }
 
-        // Units
-        for (const p of this.players) {
-            if (!p.alive) continue;
-            p.drawUnits(ctx);
-        }
-
-        // Particles (bullets, explosions)
-        Particles.draw(ctx);
-
-        // Trees layer on top (hides units like in Battle City)
-        GameMap.drawTreesLayer(ctx);
-
-        // Damage numbers
-        this.drawDamageNumbers(ctx);
+        this._text('Нажмите для рестарта',cw/2,ch*.88,'#666',12,'center');
     },
 
-    // Floating damage numbers
-    damageNumbers: [],
-    addDamageNumber(x, y, dmg, color) {
-        this.damageNumbers.push({ x, y, dmg, color, life: 1.0 });
+    _statLine(ctx,cx,y,label,value,color) {
+        this._text(label,cx-60,y,'#888',12,'right');
+        this._text(String(value),cx-40,y,color,14,'left');
     },
 
-    drawDamageNumbers(ctx) {
-        for (let i = this.damageNumbers.length - 1; i >= 0; i--) {
-            const dn = this.damageNumbers[i];
-            dn.y -= 30 * (1 / 60); // float up
-            dn.life -= 1 / 60;
-            if (dn.life <= 0) { this.damageNumbers.splice(i, 1); continue; }
-            ctx.globalAlpha = Math.min(1, dn.life * 2);
-            ctx.shadowColor = dn.color;
-            ctx.shadowBlur = 4;
-            ctx.fillStyle = dn.color;
-            ctx.font = 'bold 11px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('-' + dn.dmg, dn.x, dn.y);
-            ctx.shadowBlur = 0;
-        }
-        ctx.globalAlpha = 1;
+    // ══════════ HELPERS ══════════
+    _text(s,x,y,c,sz,al) {
+        this.ctx.fillStyle=c;
+        this.ctx.font=`bold ${sz}px monospace`;
+        this.ctx.textAlign=al; this.ctx.textBaseline='middle';
+        this.ctx.fillText(s,x,y);
     },
-
-    // Fog of War — darken areas outside human vision
-    drawFog(ctx) {
-        const human = this.getHumanPlayer();
-        if (!human) return;
-
-        // Create a temporary canvas for fog mask
-        const visionRadius = 100;
-        const buildingVision = 120;
-
-        // Gather all vision points for human player
-        const points = [];
-        for (const u of human.units) {
-            if (!u.dead) points.push({ x: u.x, y: u.y, r: visionRadius });
-        }
-        for (const b of human.buildings) {
-            if (!b.dead) points.push({ x: b.getCenterX(), y: b.getCenterY(), r: buildingVision });
-        }
-        // Derricks
-        for (const d of GameMap.oilDerricks) {
-            if (d.owner === human.id) points.push({ x: d.x, y: d.y, r: 80 });
-        }
-
-        // Draw fog as dark overlay with holes
-        ctx.fillStyle = 'rgba(0,0,10,0.65)';
-        ctx.fillRect(0, 0, CFG.MAP_W, CFG.MAP_H);
-
-        // Cut out vision circles (clear them)
-        ctx.globalCompositeOperation = 'destination-out';
-        for (const pt of points) {
-            const grad = ctx.createRadialGradient(pt.x, pt.y, pt.r * 0.3, pt.x, pt.y, pt.r);
-            grad.addColorStop(0, 'rgba(0,0,0,1)');
-            grad.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.globalCompositeOperation = 'source-over';
-    },
-
-    drawTutorial(ctx, w, h, topH) {
-        const alpha = Math.min(1, this.tutorialTimer / 2);
-        ctx.globalAlpha = alpha;
-
-        const human = this.getHumanPlayer();
-        if (!human) { ctx.globalAlpha = 1; return; }
-
-        // Arrow pointing to base
-        const baseScreen = Camera.worldToScreen(human.base.getCenterX(), human.base.getCenterY());
-        this.drawArrow(ctx, baseScreen.x, baseScreen.y - 50, baseScreen.x, baseScreen.y - 20, '#0f0');
-        this.drawLabel(ctx, baseScreen.x, baseScreen.y - 60, 'Ваша база', '#0f0');
-
-        // Arrow to bottom panel
-        const panelY = h - UI.panelHeight;
-        this.drawArrow(ctx, w / 2, panelY - 10, w / 2, panelY + 15, '#ff0');
-        this.drawLabel(ctx, w / 2, panelY - 22, 'Строительство и найм ↓', '#ff0');
-
-        // Hints
-        const hints = [
-            '1. Постройте КАЗАРМЫ [B] для лимита населения',
-            '2. Наймите наёмников в БАЗЕ (кликните на базу)',
-            '3. Захватите нефтяные вышки (отправьте юнитов)',
-            '4. Стройте БАШНИ [T] для защиты',
-            '5. Улучшайте базу до 3 ур. для ЗАВОДА',
-        ];
-        const hx = 15, hy = topH + 15;
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        Utils.drawRoundRect(ctx, hx, hy, 330, hints.length * 20 + 15, 8);
-        ctx.fill();
-        ctx.fillStyle = '#69F0AE';
-        ctx.font = 'bold 13px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText('Подсказки:', hx + 10, hy + 5);
-        ctx.font = '12px Arial';
-        ctx.fillStyle = '#ccc';
-        for (let i = 0; i < hints.length; i++) {
-            ctx.fillText(hints[i], hx + 10, hy + 22 + i * 20);
-        }
-
-        // Tap to dismiss
-        ctx.fillStyle = '#666';
-        ctx.font = '11px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('Подсказки исчезнут через ' + Math.ceil(this.tutorialTimer) + 'с', hx + 165, hy + hints.length * 20 + 8);
-
-        ctx.globalAlpha = 1;
-    },
-
-    drawArrow(ctx, x1, y1, x2, y2, color) {
-        const t = Date.now() * 0.005;
-        const bounce = Math.sin(t) * 4;
-        ctx.strokeStyle = color;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 6;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1 + bounce);
-        ctx.lineTo(x2, y2 + bounce);
-        ctx.stroke();
-        // arrowhead
-        const angle = Math.atan2(y2 - y1, x2 - x1);
-        ctx.beginPath();
-        ctx.moveTo(x2 + bounce * 0.3, y2 + bounce);
-        ctx.lineTo(x2 - 6 * Math.cos(angle - 0.4) + bounce * 0.3, y2 - 6 * Math.sin(angle - 0.4) + bounce);
-        ctx.lineTo(x2 - 6 * Math.cos(angle + 0.4) + bounce * 0.3, y2 - 6 * Math.sin(angle + 0.4) + bounce);
-        ctx.closePath();
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-    },
-
-    drawLabel(ctx, x, y, text, color) {
-        ctx.fillStyle = color;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 6;
-        ctx.font = 'bold 13px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(text, x, y);
-        ctx.shadowBlur = 0;
-    },
-
-    // Leaderboard (localStorage)
-    saveScore(playerName, spec, kills, time) {
-        const scores = this.loadScores();
-        scores.push({ name: playerName, spec, kills, time, date: Date.now() });
-        scores.sort((a, b) => b.kills - a.kills);
-        if (scores.length > 10) scores.length = 10;
-        try { localStorage.setItem('resonance_scores', JSON.stringify(scores)); } catch(e) {}
-    },
-
-    loadScores() {
-        try {
-            const data = localStorage.getItem('resonance_scores');
-            return data ? JSON.parse(data) : [];
-        } catch(e) { return []; }
-    },
+    _textShadow(s,x,y,c,sz,al) {
+        this.ctx.fillStyle='#000';
+        this.ctx.font=`bold ${sz}px monospace`;
+        this.ctx.textAlign=al; this.ctx.textBaseline='middle';
+        this.ctx.fillText(s,x+2,y+2);
+        this.ctx.fillStyle=c;
+        this.ctx.fillText(s,x,y);
+    }
 };
 
 window.addEventListener('load', () => {
+    document.getElementById('loading').style.display='none';
     Game.init();
 });
