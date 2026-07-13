@@ -402,7 +402,7 @@ function draw(){
             ctx.beginPath();ctx.moveTo(P.r+2,0);ctx.lineTo(-P.r,-P.r*.7);ctx.lineTo(-P.r*.5,0);ctx.lineTo(-P.r,P.r*.7);ctx.closePath();ctx.fill();
             ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
             // Engine glow
-            if(dx||dy||joyActive){
+            if(Math.abs(P.vx)>5||Math.abs(P.vy)>5){
                 ctx.fillStyle='#08f';ctx.globalAlpha=.5+Math.sin(t*20)*.3;
                 ctx.beginPath();ctx.moveTo(-P.r*.5,P.r*.3);ctx.lineTo(-P.r-6,0);ctx.lineTo(-P.r*.5,-P.r*.3);ctx.fill();
                 ctx.globalAlpha=1;
