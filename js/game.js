@@ -6,7 +6,7 @@ const Game = {
     p1: { name: 'Игрок 1', type: null, score: 0 }, // type: 'solid'/'stripe'/null
     p2: { name: 'Игрок 2', type: null, score: 0 },
     // Aiming
-    aimX: 0, aimY: 0, power: 0, maxPower: 650,
+    aimX: 0, aimY: 0, power: 0, maxPower: 4550,
     dragging: false, dragStartX: 0, dragStartY: 0,
     // Shot tracking
     firstHit: null, pocketedThisShot: [],
@@ -73,7 +73,7 @@ const Game = {
         if (!cue.active) return;
         const dx = this.dragStartX - p.x;
         const dy = this.dragStartY - p.y;
-        const power = Math.min(Math.sqrt(dx * dx + dy * dy) * 3, this.maxPower);
+        const power = Math.min(Math.sqrt(dx * dx + dy * dy) * 21, this.maxPower);
         if (power < 15) return; // too weak
         const angle = Math.atan2(dy, dx);
         cue.vx = Math.cos(angle) * power;
@@ -291,7 +291,7 @@ const Game = {
             // Power line from cue to drag start (shows direction)
             const dx = this.dragStartX - this.aimX;
             const dy = this.dragStartY - this.aimY;
-            const power = Math.min(Math.sqrt(dx * dx + dy * dy) * 3, this.maxPower);
+            const power = Math.min(Math.sqrt(dx * dx + dy * dy) * 21, this.maxPower);
             const angle = Math.atan2(dy, dx);
 
             // Aim line (dotted)
