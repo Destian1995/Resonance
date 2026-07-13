@@ -14,7 +14,7 @@ const Game = {
     // Cue ball placement
     placing: false,
     // Visual
-    shotTrail: [], msg: '', msgTimer: 0,
+    shotTrail: [], msg: '', msgTimer: 0, pocketFlash: null,
 
     init() {
         this.canvas = document.getElementById('game');
@@ -153,10 +153,13 @@ const Game = {
                 if (b.pocketed && !this.pocketedThisShot.includes(b.id) && b.id !== 0) {
                     this.pocketedThisShot.push(b.id);
                     Snd.play('pocket');
+                    // Pocket VFX — flash + message
+                    this.pocketFlash = { x: b.sinkX, y: b.sinkY, t: 0.4, color: b.color };
                 }
                 if (b.id === 0 && b.pocketed && !this.cuePocketed) {
                     this.cuePocketed = true;
                     Snd.play('foul');
+                    this.pocketFlash = { x: b.sinkX, y: b.sinkY, t: 0.5, color: '#f44' };
                 }
             }
 
@@ -189,6 +192,22 @@ const Game = {
             }
             // Balls
             for (let i = this.balls.length - 1; i >= 0; i--) drawBall(ctx, this.balls[i]);
+            // Pocket flash effect
+            if (this.pocketFlash) {
+                const pf = this.pocketFlash;
+                pf.t -= 0.016;
+                if (pf.t <= 0) { this.pocketFlash = null; }
+                else {
+                    const a = pf.t / 0.4;
+                    ctx.globalAlpha = a * 0.6;
+                    ctx.fillStyle = pf.color;
+                    ctx.beginPath(); ctx.arc(pf.x, pf.y, 30 * (1 - a) + 10, 0, Math.PI * 2); ctx.fill();
+                    ctx.globalAlpha = a;
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath(); ctx.arc(pf.x, pf.y, 8 * a, 0, Math.PI * 2); ctx.fill();
+                    ctx.globalAlpha = 1;
+                }
+            }
             // Aiming line
             if (this.state === 'aiming' && !this.placing) this._drawAim(ctx);
             // Placing indicator
