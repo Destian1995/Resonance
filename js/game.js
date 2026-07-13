@@ -138,7 +138,7 @@ function update(dt){
             for(let s=0;s<spread;s++){
                 const sa=a+(s-(spread-1)/2)*.15;
                 bullets.push({x:P.x+Math.cos(sa)*12,y:P.y+Math.sin(sa)*12,
-                    vx:Math.cos(sa)*500,vy:Math.sin(sa)*500,life:.8,dmg:P.dmg,
+                    vx:Math.cos(sa)*500,vy:Math.sin(sa)*500,life:.8,dmg:P.dmg,r:3,
                     color:P.rapidFire>0?'#f44':P.spreadShot>0?'#4ff':'#ff0'});
             }
             snd('shoot');
