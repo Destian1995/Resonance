@@ -18,8 +18,9 @@ const G = {
     radarAngle:0, radarContacts:[],
     wave:0,killsNeeded:0,kills:0,
     commsLog:[],alertLevel:0,
-    // Aiming
-    aimAngle:0, aimActive:false,
+    // Targeting system
+    selectedTarget:null, // ref to enemy
+    detectedEnemies:[], // enemies detected by radar/sonar
 
     init(){
         this.cv=document.getElementById('game');
@@ -89,7 +90,7 @@ const G = {
                 speed:type==='destroyer'?5:3.5,
                 hp:type==='destroyer'?60:30,maxHp:type==='destroyer'?60:30,
                 type,fireTimer:4000+Math.random()*5000,
-                detected:false,blipAge:99
+                detected:false,blipAge:99,lastDetectTime:-99,lastKnownDist:999,id:Math.random()
             });
         }
         this._msg('ШТАБ',`Волна ${this.wave}: ${count} целей. Удачной охоты!`);
@@ -157,13 +158,15 @@ const G = {
             // Radar detect
             const relA=Math.atan2(e.y-s.y,e.x-s.x);
             let sw=this.radarAngle-relA;while(sw>Math.PI)sw-=Math.PI*2;while(sw<-Math.PI)sw+=Math.PI*2;
-            // Sub at depth = harder to detect by enemy, but radar works same
             if(Math.abs(sw)<.15){
-                e.detected=true;e.blipAge=0;
+                e.detected=true;e.blipAge=0;e.lastDetectTime=this.t;
                 const dist=Math.sqrt((e.x-s.x)**2+(e.y-s.y)**2);
+                e.lastKnownDist=dist;
                 this.radarContacts.push({x:e.x,y:e.y,age:0,type:e.type,dist});
             }
             e.blipAge+=dt;
+            // Lose detection after 8 seconds without sweep hit
+            if(this.t-e.lastDetectTime>8) e.detected=false;
 
             // Enemy fires
             const dist=Math.sqrt((e.x-s.x)**2+(e.y-s.y)**2);
@@ -181,6 +184,12 @@ const G = {
 
         // Radar contacts age
         for(let i=this.radarContacts.length-1;i>=0;i--){this.radarContacts[i].age+=dt;if(this.radarContacts[i].age>5)this.radarContacts.splice(i,1);}
+
+        // Build detected enemies list
+        this.detectedEnemies=this.enemies.filter(e=>e.hp>0&&e.detected);
+        // Clean selected target if dead or lost
+        if(this.selectedTarget&&(this.selectedTarget.hp<=0||!this.selectedTarget.detected))
+            this.selectedTarget=null;
 
         // ── Our torpedoes (aimed, hit chance) ──
         for(let i=this.torps.length-1;i>=0;i--){
@@ -209,8 +218,9 @@ const G = {
         // ── Our missiles ──
         for(let i=this.missiles.length-1;i>=0;i--){
             const m=this.missiles[i];
+            // Home toward assigned target, fallback nearest
             let best=null,bd=Infinity;
-            for(const e of this.enemies){if(e.hp<=0)continue;const d=Math.sqrt((m.x-e.x)**2+(m.y-e.y)**2);if(d<bd){bd=d;best=e;}}
+            for(const e of this.enemies){if(e.hp<=0)continue;if(m.targetId&&e.id===m.targetId){best=e;break;}const d=Math.sqrt((m.x-e.x)**2+(m.y-e.y)**2);if(d<bd){bd=d;best=e;}}
             if(best){const a=Math.atan2(best.y-m.y,best.x-m.x);m.vx+=(Math.cos(a)*180-m.vx)*dt*2;m.vy+=(Math.sin(a)*180-m.vy)*dt*2;}
             m.x+=m.vx*dt;m.y+=m.vy*dt;m.life-=dt;
             if(m.life<=0){this.missiles.splice(i,1);continue;}
@@ -646,6 +656,29 @@ const G = {
         if(s.sonarPing>0){const pr=(1-s.sonarPing/2)*r;ctx.strokeStyle='#4f4';ctx.lineWidth=2;ctx.globalAlpha=s.sonarPing/2;ctx.beginPath();ctx.arc(cx,cy,pr,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;}
 
         ctx.fillStyle='#4f4';ctx.beginPath();ctx.arc(cx,cy,2,0,Math.PI*2);ctx.fill();
+
+        // Selected target highlight on radar
+        if(this.selectedTarget&&this.selectedTarget.detected){
+            const e=this.selectedTarget;
+            const dx=e.x-s.x,dy=e.y-s.y,dist=Math.sqrt(dx*dx+dy*dy);
+            if(dist<=range){
+                const a=Math.atan2(dy,dx)-s.heading;
+                const bx=cx+Math.cos(a)*(dist/range*r),by=cy+Math.sin(a)*(dist/range*r);
+                // Pulsing target bracket
+                const pulse=.5+Math.sin(this.t*6)*.3;
+                ctx.strokeStyle='#0f0';ctx.lineWidth=1.5;ctx.globalAlpha=pulse;
+                ctx.strokeRect(bx-6,by-6,12,12);
+                // Corner brackets
+                ctx.beginPath();
+                ctx.moveTo(bx-8,by-4);ctx.lineTo(bx-8,by-8);ctx.lineTo(bx-4,by-8);
+                ctx.moveTo(bx+4,by-8);ctx.lineTo(bx+8,by-8);ctx.lineTo(bx+8,by-4);
+                ctx.moveTo(bx+8,by+4);ctx.lineTo(bx+8,by+8);ctx.lineTo(bx+4,by+8);
+                ctx.moveTo(bx-4,by+8);ctx.lineTo(bx-8,by+8);ctx.lineTo(bx-8,by+4);
+                ctx.stroke();
+                ctx.globalAlpha=1;
+            }
+        }
+
         ctx.fillStyle='#2a4a2a';ctx.font='bold 7px monospace';ctx.textAlign='center';ctx.fillText('РАДАР',cx,cy+r+8);
     },
 
@@ -718,22 +751,49 @@ const G = {
     },
 
     // ── Ship actions ──
+    selectTarget(enemy){
+        if(!enemy||!enemy.detected||enemy.hp<=0)return;
+        this.selectedTarget=enemy;
+        const dist=Math.sqrt((enemy.x-this.ship.x)**2+(enemy.y-this.ship.y)**2)|0;
+        this._msg('НАВЕДЕНИЕ',`Цель захвачена: ${enemy.type==='destroyer'?'Эсминец':'Катер'} — ${dist}м`);
+        Snd.play('comms');
+    },
+    nextTarget(){
+        if(this.detectedEnemies.length===0){this._msg('РАДАР','Нет обнаруженных целей!');return;}
+        const cur=this.selectedTarget;
+        const idx=cur?this.detectedEnemies.indexOf(cur):-1;
+        const next=(idx+1)%this.detectedEnemies.length;
+        this.selectTarget(this.detectedEnemies[next]);
+    },
     fireTorpedo(){
-        const s=this.ship;if(s.torpedoes<=0)return;
+        const s=this.ship;
+        if(!this.selectedTarget){this._msg('ОРУЖИЕ','Сначала выберите цель!');Snd.play('comms');return;}
+        if(s.torpedoes<=0){this._msg('ОРУЖИЕ','Торпеды не заряжены!');return;}
+        const tgt=this.selectedTarget;
+        const dist=Math.sqrt((tgt.x-s.x)**2+(tgt.y-s.y)**2);
+        if(dist>800){this._msg('ОРУЖИЕ','Цель вне зоны поражения!');Snd.play('comms');return;}
         s.torpedoes--;if(s.torpedoes<s.maxTorpedoes&&s.torpReload<=0)s.torpReload=8;
-        const a=s.heading;
-        // Accuracy depends on distance to nearest enemy
+        // Aim at target
+        const a=Math.atan2(tgt.y-s.y,tgt.x-s.x);
+        // Accuracy: closer = better, detected recently = better
         let acc=.5;
-        for(const e of this.enemies){if(e.hp<=0)continue;const d=Math.sqrt((e.x-s.x)**2+(e.y-s.y)**2);if(d<300)acc=.9;else if(d<500)acc=.7;}
-        this.torps.push({x:s.x+Math.cos(a)*15,y:s.y+Math.sin(a)*15,vx:Math.cos(a)*100,vy:Math.sin(a)*100,life:10,accuracy:acc});
-        this._msg('ОРУЖИЕ',`Торпеда! Точность: ${(acc*100)|0}%`);Snd.play('torpedo');Snd.play('comms');
+        if(dist<200)acc=.95;else if(dist<400)acc=.8;else if(dist<600)acc=.65;
+        const age=this.t-(tgt.lastDetectTime||0);
+        if(age>3)acc*=.7; // stale contact = worse accuracy
+        this.torps.push({x:s.x+Math.cos(a)*15,y:s.y+Math.sin(a)*15,vx:Math.cos(a)*100,vy:Math.sin(a)*100,life:12,accuracy:acc,targetId:tgt.id});
+        this._msg('ОРУЖИЕ',`Торпеда к цели! Расст: ${dist|0}м, точность: ${(acc*100)|0}%`);
+        Snd.play('torpedo');Snd.play('comms');
     },
     fireMissile(){
-        const s=this.ship;if(s.missiles<=0)return;
+        const s=this.ship;
+        if(!this.selectedTarget){this._msg('ОРУЖИЕ','Сначала выберите цель!');Snd.play('comms');return;}
+        if(s.missiles<=0){this._msg('ОРУЖИЕ','Ракеты не заряжены!');return;}
+        const tgt=this.selectedTarget;
         s.missiles--;if(s.missiles<s.maxMissiles&&s.missileReload<=0)s.missileReload=15;
-        const a=s.heading;
-        this.missiles.push({x:s.x,y:s.y,vx:Math.cos(a)*120,vy:Math.sin(a)*120,life:12});
-        this._msg('ОРУЖИЕ','Ракета пущена!');Snd.play('missile');Snd.play('comms');
+        const a=Math.atan2(tgt.y-s.y,tgt.x-s.x);
+        this.missiles.push({x:s.x,y:s.y,vx:Math.cos(a)*120,vy:Math.sin(a)*120,life:12,targetId:tgt.id});
+        this._msg('ОРУЖИЕ',`Ракета к цели! Самонаведение активно.`);
+        Snd.play('missile');Snd.play('comms');
     },
     activateSonar(){
         const s=this.ship;if(s.sonarCd>0)return;
