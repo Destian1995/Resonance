@@ -42,11 +42,12 @@ const G = {
         if(this.state==='menu'){this.state='pick';return;}
         if(this.state==='pick'){
             const cw=this.cv.width,ch=this.cv.height;
-            // Surface button
-            if(p.y>ch*.35&&p.y<ch*.35+90){
-                if(p.x<cw/2){this.shipType='surface';this._startGame();}
-                else{this.shipType='sub';this._startGame();}
-            }
+            const mob=cw<600;
+            const bw=mob?cw*.85:cw*.38, bh=mob?90:100, gap=mob?12:0;
+            const x1=mob?(cw-bw)/2:cw*.06, x2=mob?(cw-bw)/2:cw*.54;
+            const y1=ch*.25, y2=mob?y1+bh+gap:y1;
+            if(p.x>=x1&&p.x<=x1+bw&&p.y>=y1&&p.y<=y1+bh){this.shipType='surface';this._startGame();return;}
+            if(p.x>=x2&&p.x<=x2+bw&&p.y>=y2&&p.y<=y2+bh){this.shipType='sub';this._startGame();return;}
             return;
         }
         if(this.state==='gameover'||this.state==='win'){this.state='menu';return;}
@@ -62,7 +63,9 @@ const G = {
         s.flares=this.shipType==='sub'?0:2;
         s.hp=this.shipType==='sub'?70:100;s.maxHp=s.hp;
         s.torpReload=0;s.missileReload=0;s.sonarPing=0;s.sonarCd=0;
-        s.depth=0;s.depthTarget=0;s.o2=100;s.maxO2=100;
+        s.depth=this.shipType==='sub'?1.5:0;
+        s.depthTarget=this.shipType==='sub'?2:0;
+        s.o2=100;s.maxO2=100;
         this.enemies=[];this.torps=[];this.missiles=[];this.enemyTorps=[];
         this.explosions=[];this.radarContacts=[];this.commsLog=[];
         this.wave=0;this.kills=0;this.alertLevel=0;this.t=0;this.aimAngle=0;
@@ -259,25 +262,28 @@ const G = {
         if(this.state==='pick'){this._drawPick(ctx,cw,ch);return;}
         if(this.state==='gameover'||this.state==='win'){this._drawEnd(ctx,cw,ch);return;}
 
-        // ── VIEW ──
-        const viewH=ch*.48;
+        // ── VIEW (40% screen) ──
+        const viewH=Math.floor(ch*.38);
         this._drawView(ctx,cw,viewH);
         this._drawFrame(ctx,cw,viewH);
 
-        // ── CONSOLE ──
-        const panelY=viewH+4;
-        ctx.fillStyle='#0a0c14';ctx.fillRect(0,panelY,cw,ch-panelY);
-        // Metal edge
+        // ── CONSOLE (60% screen) ──
+        const panelY=viewH+2;
+        const panelH=ch-panelY;
+        ctx.fillStyle='#0a0c14';ctx.fillRect(0,panelY,cw,panelH);
         ctx.fillStyle='#1a1e28';ctx.fillRect(0,panelY,cw,2);
 
-        // Layout: Compass(left-top) + Radar(left-bottom) | Controls(center) | Comms(right)
-        const rSz=Math.min((ch-panelY-40)*.5, cw*.13, 120);
-        // Compass rose
-        this._drawCompass(ctx, 8+rSz/2, panelY+8+rSz*.4, rSz*.4);
-        // Radar
-        this._drawRadar(ctx, 8+rSz/2, panelY+rSz+16+rSz/2, rSz/2);
+        // Radar/Compass size — fits in panel
+        const rSz=Math.max(50, Math.min(panelH*.42, cw*.12, 110));
+        // Compass rose (top-left of panel)
+        const compR=rSz*.35;
+        this._drawCompass(ctx, 8+compR+2, panelY+8+compR, compR);
+        // Radar (below compass)
+        const radarR=rSz*.45;
+        const radarCY=panelY+8+compR*2+14+radarR;
+        this._drawRadar(ctx, 8+radarR+2, Math.min(radarCY, ch-radarR-14), radarR);
         // Controls
-        UI.draw(ctx,cw,ch,panelY,rSz+20);
+        UI.draw(ctx,cw,ch,panelY,(radarR+6)*2+8);
         // Comms
         this._drawComms(ctx,cw,ch,panelY);
     },
@@ -664,25 +670,34 @@ const G = {
 
     _drawPick(ctx,cw,ch){
         ctx.fillStyle='#0a0e18';ctx.fillRect(0,0,cw,ch);
-        ctx.fillStyle='#0ff';ctx.font='bold 20px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText('ВЫБЕРИТЕ КОРАБЛЬ',cw/2,ch*.15);
+        ctx.fillStyle='#0ff';ctx.font=`bold ${cw<500?16:22}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('ВЫБЕРИТЕ КОРАБЛЬ',cw/2,ch*.12);
+
+        const mob=cw<600;
+        const bw=mob?cw*.85:cw*.38, bh=mob?90:100;
+        const gap=mob?12:0;
+        const x1=mob?(cw-bw)/2:cw*.06, x2=mob?(cw-bw)/2:cw*.54;
+        const y1=ch*.25, y2=mob?y1+bh+gap:y1;
 
         // Surface ship
-        const bw=cw*.38,bh=80,by=ch*.35;
-        ctx.fillStyle='#1a2a3a';ctx.fillRect(cw*.08,by,bw,bh);
-        ctx.strokeStyle='#4af';ctx.lineWidth=2;ctx.strokeRect(cw*.08,by,bw,bh);
-        ctx.fillStyle='#4af';ctx.font='bold 15px monospace';ctx.fillText('⚓ КОРАБЛЬ',cw*.08+bw/2,by+25);
-        ctx.fillStyle='#aaa';ctx.font='10px monospace';
-        ctx.fillText('HP:100 | Ракеты+Торпеды',cw*.08+bw/2,by+45);
-        ctx.fillText('Ловушки | Видим врагам',cw*.08+bw/2,by+60);
+        ctx.fillStyle='#0e1a28';ctx.fillRect(x1,y1,bw,bh);
+        ctx.strokeStyle='#4af';ctx.lineWidth=2;ctx.strokeRect(x1,y1,bw,bh);
+        ctx.fillStyle='#4af';ctx.font=`bold ${mob?14:17}px monospace`;ctx.fillText('⚓ НАДВОДНЫЙ КОРАБЛЬ',x1+bw/2,y1+22);
+        ctx.fillStyle='#aaa';ctx.font=`${mob?10:11}px monospace`;
+        ctx.fillText('HP:100 | Ракеты + Торпеды + Ловушки',x1+bw/2,y1+46);
+        ctx.fillText('Видим врагам | Быстрый поворот',x1+bw/2,y1+64);
+        ctx.fillStyle='#4af';ctx.font='bold 10px monospace';
+        ctx.fillText('▶ ТАПНИТЕ ЧТОБЫ ВЫБРАТЬ ◀',x1+bw/2,y1+bh-10);
 
         // Submarine
-        ctx.fillStyle='#1a2a2a';ctx.fillRect(cw*.54,by,bw,bh);
-        ctx.strokeStyle='#4f4';ctx.lineWidth=2;ctx.strokeRect(cw*.54,by,bw,bh);
-        ctx.fillStyle='#4f4';ctx.font='bold 15px monospace';ctx.fillText('🔱 ПОДЛОДКА',cw*.54+bw/2,by+25);
-        ctx.fillStyle='#aaa';ctx.font='10px monospace';
-        ctx.fillText('HP:70 | 8 торпед | Погружение',cw*.54+bw/2,by+45);
-        ctx.fillText('Скрытность | Кислород!',cw*.54+bw/2,by+60);
+        ctx.fillStyle='#0e1e1a';ctx.fillRect(x2,y2,bw,bh);
+        ctx.strokeStyle='#4f4';ctx.lineWidth=2;ctx.strokeRect(x2,y2,bw,bh);
+        ctx.fillStyle='#4f4';ctx.font=`bold ${mob?14:17}px monospace`;ctx.fillText('🔱 ПОДВОДНАЯ ЛОДКА',x2+bw/2,y2+22);
+        ctx.fillStyle='#aaa';ctx.font=`${mob?10:11}px monospace`;
+        ctx.fillText('HP:70 | 8 торпед | 3 уровня глубины',x2+bw/2,y2+46);
+        ctx.fillText('Скрытность на глубине | Кислород!',x2+bw/2,y2+64);
+        ctx.fillStyle='#4f4';ctx.font='bold 10px monospace';
+        ctx.fillText('▶ ТАПНИТЕ ЧТОБЫ ВЫБРАТЬ ◀',x2+bw/2,y2+bh-10);
     },
 
     _drawEnd(ctx,cw,ch){
