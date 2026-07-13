@@ -31,6 +31,7 @@ const G = {
         this.ctx=this.cv.getContext('2d');
         this._resize();
         window.addEventListener('resize',()=>this._resize());
+        Snd.init();
         this.lt=performance.now();
         this.cv.addEventListener('mousedown',e=>this._click(e));
         this.cv.addEventListener('touchstart',e=>{e.preventDefault();this._click(e.touches[0]);},{passive:false});
@@ -43,7 +44,7 @@ const G = {
         const r=this.cv.getBoundingClientRect();
         const mx=(e.clientX-r.left)*(this.cv.width/r.width);
         const my=(e.clientY-r.top)*(this.cv.height/r.height);
-        if(this.state==='menu'){this._startGame();return;}
+        if(this.state==='menu'){Snd.resume();this._startGame();return;}
         if(this.state==='gameover'||this.state==='win'){this.state='menu';return;}
         UI.handleClick(mx,my);
     },
@@ -59,7 +60,9 @@ const G = {
         this.wave=0;this.kills=0;this.alertLevel=0;this.t=0;
         this._nextWave();
         this.state='play';
+        Snd.startAmbience();
         this._addComms('ШТАБ','Капитан, вы вышли на боевое дежурство. Уничтожьте все вражеские корабли.');
+        Snd.play('comms');
     },
 
     _nextWave(){
@@ -86,6 +89,8 @@ const G = {
         }
         this._addComms('ШТАБ',`Волна ${this.wave}: обнаружено ${count} вражеских кораблей. Удачной охоты!`);
         this.alertLevel=1;
+        Snd.play('comms');
+        Snd.play('alert');
     },
 
     _addComms(from,text){
@@ -123,8 +128,9 @@ const G = {
         this.waveOffset+=dt;
 
         // Radar sweep
+        const prevRA=this.radarAngle;
         this.radarAngle+=dt*1.8;
-        if(this.radarAngle>Math.PI*2)this.radarAngle-=Math.PI*2;
+        if(this.radarAngle>Math.PI*2){this.radarAngle-=Math.PI*2;Snd.play('radar');}
 
         // Sonar
         if(s.sonarPing>0)s.sonarPing-=dt;
@@ -167,6 +173,7 @@ const G = {
                 this.enemyTorps.push({x:e.x,y:e.y,vx:Math.cos(a)*80,vy:Math.sin(a)*80,life:10});
                 if(distToPlayer<500)this.alertLevel=2;
                 this._addComms('СОНАР','Торпеда в воде! Вражеская торпеда обнаружена!');
+                Snd.play('alert');Snd.play('comms');
             }
         }
 
@@ -187,6 +194,7 @@ const G = {
                     e.hp-=35;t.life=0;
                     this.explosions.push({x:e.x,y:e.y,t:1.5,r:0,type:'hit'});
                     this._addComms('ОРУЖИЕ','Попадание торпедой!');
+                    Snd.play('explosion');Snd.play('comms');
                     if(e.hp<=0){this.kills++;this.explosions.push({x:e.x,y:e.y,t:3,r:0,type:'sink'});this._addComms('НАБЛЮДАТЕЛЬ',`Вражеский ${e.type==='destroyer'?'эсминец':'катер'} потоплен!`);}
                     break;
                 }
@@ -227,7 +235,8 @@ const G = {
                 s.hp-=25;t.life=0;
                 this.explosions.push({x:s.x,y:s.y,t:2,r:0,type:'hit'});
                 this._addComms('ПОВРЕЖДЕНИЯ',`Попадание! Прочность корпуса: ${Math.max(0,s.hp)}%`);
-                if(s.hp<=0){this.state='gameover';this._addComms('','Корабль потоплен...');}
+                Snd.play('explosion');Snd.play('foul');
+                if(s.hp<=0){this.state='gameover';this._addComms('','Корабль потоплен...');Snd.play('alert');}
             }
         }
 
@@ -282,43 +291,124 @@ const G = {
         this._drawComms(ctx,cw,ch,panelY);
     },
 
+    // Day/Night: cycle = 120s. 0=dawn, .25=noon, .5=dusk, .75=midnight
+    _dayPhase(){ return (this.t % 120) / 120; },
+    _isNight(){ const p=this._dayPhase(); return p>.45 && p<.95; },
+    _dayLerp(day, night){ const p=this._dayPhase();
+        let n; if(p<.2)n=0; else if(p<.3)n=(p-.2)/.1; // dawn->day
+        else if(p<.45)n=0; else if(p<.55)n=(p-.45)/.1; // day->dusk
+        else if(p<.85)n=1; else n=1-(p-.85)/.1; // night->dawn
+        n=Math.max(0,Math.min(1,n));
+        return day.map((d,i)=>Math.floor(d+(night[i]-d)*n));
+    },
+
     _drawOceanView(ctx,cw,ch){
         const horizonY=ch*0.35;
         const s=this.ship;
+        const phase=this._dayPhase();
+        const night=this._isNight();
 
-        // Sky gradient
+        // ── SKY — dynamic day/night ──
+        const skyTop=this._dayLerp([40,80,160],[8,12,30]);
+        const skyMid=this._dayLerp([80,140,210],[14,20,50]);
+        const skyBot=this._dayLerp([120,170,220],[25,35,60]);
         const skyGrd=ctx.createLinearGradient(0,0,0,horizonY);
-        skyGrd.addColorStop(0,'#0a1428');skyGrd.addColorStop(.5,'#1a2a4a');skyGrd.addColorStop(1,'#2a3a5a');
+        skyGrd.addColorStop(0,`rgb(${skyTop[0]},${skyTop[1]},${skyTop[2]})`);
+        skyGrd.addColorStop(.5,`rgb(${skyMid[0]},${skyMid[1]},${skyMid[2]})`);
+        skyGrd.addColorStop(1,`rgb(${skyBot[0]},${skyBot[1]},${skyBot[2]})`);
         ctx.fillStyle=skyGrd;ctx.fillRect(0,0,cw,horizonY);
 
-        // Stars
-        for(let i=0;i<30;i++){
-            const sx=(Math.sin(i*7.3+1)*0.5+0.5)*cw;
-            const sy=(Math.sin(i*3.1+2)*0.5+0.5)*horizonY*.7;
-            ctx.fillStyle=`rgba(255,255,255,${.3+Math.sin(this.t*2+i)*.2})`;
+        // Sun / Moon
+        const sunAngle=(phase-.25)*Math.PI*2; // noon at top
+        const sunX=cw/2+Math.cos(sunAngle)*cw*.35;
+        const sunY=horizonY-Math.sin(-sunAngle)*horizonY*.6;
+        if(!night && sunY<horizonY+10){
+            // Sun
+            ctx.globalAlpha=.15;ctx.fillStyle='#ff8';
+            ctx.beginPath();ctx.arc(sunX,sunY,40,0,Math.PI*2);ctx.fill();
+            ctx.globalAlpha=.6;ctx.fillStyle='#ffa';
+            ctx.beginPath();ctx.arc(sunX,sunY,14,0,Math.PI*2);ctx.fill();
+            ctx.globalAlpha=1;
+            // Sun reflection on horizon
+            ctx.globalAlpha=.08;
+            ctx.fillStyle='#ffa';
+            ctx.fillRect(sunX-30,horizonY-3,60,6);
+            ctx.globalAlpha=1;
+        }
+        if(night){
+            // Moon
+            const moonX=cw*.7+Math.sin(this.t*.05)*50;
+            const moonY=horizonY*.25+Math.cos(this.t*.03)*20;
+            ctx.globalAlpha=.1;ctx.fillStyle='#ccf';
+            ctx.beginPath();ctx.arc(moonX,moonY,25,0,Math.PI*2);ctx.fill();
+            ctx.globalAlpha=.7;ctx.fillStyle='#ddf';
+            ctx.beginPath();ctx.arc(moonX,moonY,8,0,Math.PI*2);ctx.fill();
+            ctx.globalAlpha=1;
+        }
+
+        // Stars (visible at night, fade during day)
+        const starAlpha=night?.5:.03;
+        for(let i=0;i<40;i++){
+            const sx=(Math.sin(i*7.3+1)*.5+.5)*cw;
+            const sy=(Math.sin(i*3.1+2)*.5+.5)*horizonY*.7;
+            ctx.fillStyle=`rgba(255,255,255,${starAlpha*(.3+Math.sin(this.t*2+i)*.3)})`;
             ctx.fillRect(sx,sy,1.5,1.5);
         }
 
-        // Ocean gradient
+        // Clouds (slow drift)
+        ctx.globalAlpha=night?.04:.08;
+        for(let c=0;c<5;c++){
+            const cx2=(c*280+this.t*8+c*100)%((cw+200))-100;
+            const cy2=horizonY*.2+c*25+Math.sin(c*2)*15;
+            ctx.fillStyle='#fff';
+            ctx.beginPath();ctx.ellipse(cx2,cy2,50+c*10,10+c*3,0,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.ellipse(cx2+25,cy2-5,30+c*5,8+c*2,0,0,Math.PI*2);ctx.fill();
+        }
+        ctx.globalAlpha=1;
+
+        // ── OCEAN ──
+        const seaTop=this._dayLerp([30,70,100],[10,18,35]);
+        const seaBot=this._dayLerp([10,30,50],[5,10,18]);
         const seaGrd=ctx.createLinearGradient(0,horizonY,0,ch*.55);
-        seaGrd.addColorStop(0,'#1a2a3a');seaGrd.addColorStop(.3,'#0a1a2a');seaGrd.addColorStop(1,'#060e18');
+        seaGrd.addColorStop(0,`rgb(${seaTop[0]},${seaTop[1]},${seaTop[2]})`);
+        seaGrd.addColorStop(1,`rgb(${seaBot[0]},${seaBot[1]},${seaBot[2]})`);
         ctx.fillStyle=seaGrd;ctx.fillRect(0,horizonY,cw,ch*.55-horizonY);
 
-        // Wave lines
-        ctx.strokeStyle='rgba(100,140,180,0.12)';ctx.lineWidth=1;
-        for(let w=0;w<8;w++){
-            const wy=horizonY+10+w*((ch*.55-horizonY)/8);
+        // Animated waves (more layers, perspective)
+        const waveAlpha=night?.08:.14;
+        for(let w=0;w<12;w++){
+            const wy=horizonY+6+w*((ch*.55-horizonY)/12);
+            const depth=w/12;
+            const amp=1+depth*4; // bigger waves closer
+            const spd=1.2+depth*.8;
+            const freq=.03-depth*.01;
+            ctx.strokeStyle=`rgba(${night?'80,100,130':'100,160,200'},${waveAlpha*(1-depth*.4)})`;
+            ctx.lineWidth=.8+depth;
             ctx.beginPath();
-            for(let wx=0;wx<cw;wx+=4){
-                const wave=Math.sin(wx*.02+this.t*1.5+w)*(2+w*.5);
-                ctx[wx?'lineTo':'moveTo'](wx,wy+wave);
+            for(let wx=0;wx<cw;wx+=3){
+                const wv=Math.sin(wx*freq+this.t*spd+w*.7)*amp
+                        +Math.sin(wx*freq*1.7+this.t*spd*.6+w*1.3)*amp*.4;
+                ctx[wx?'lineTo':'moveTo'](wx,wy+wv);
             }
             ctx.stroke();
+            // White foam on crests (near waves only)
+            if(depth>.5){
+                ctx.fillStyle=`rgba(255,255,255,${.03*depth})`;
+                for(let wx=0;wx<cw;wx+=20){
+                    const wv=Math.sin(wx*freq+this.t*spd+w*.7)*amp;
+                    if(wv<-amp*.5) ctx.fillRect(wx,wy+wv,4+Math.random()*6,1);
+                }
+            }
         }
 
-        // Horizon glow
-        ctx.fillStyle='rgba(40,60,80,0.3)';
-        ctx.fillRect(0,horizonY-2,cw,4);
+        // Horizon glow / sunset line
+        if(phase>.15&&phase<.35){ // sunrise/set
+            ctx.globalAlpha=.15;ctx.fillStyle='#f84';ctx.fillRect(0,horizonY-4,cw,8);ctx.globalAlpha=1;
+        } else if(phase>.45&&phase<.55){
+            ctx.globalAlpha=.12;ctx.fillStyle='#f64';ctx.fillRect(0,horizonY-4,cw,8);ctx.globalAlpha=1;
+        }
+        ctx.fillStyle=`rgba(${night?'20,30,50':'60,80,100'},0.3)`;
+        ctx.fillRect(0,horizonY-1,cw,3);
 
         // Draw visible explosions in ocean view
         for(const ex of this.explosions){
@@ -346,8 +436,9 @@ const G = {
         ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(cw/2-60,5,120,22);
         ctx.strokeStyle='#4a6';ctx.lineWidth=1;ctx.strokeRect(cw/2-60,5,120,22);
         const hdg=((s.heading*180/Math.PI)%360+360)%360;
-        ctx.fillStyle='#4f8';ctx.font='bold 14px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText(`${hdg.toFixed(0)}°`,cw/2,16);
+        ctx.fillStyle='#4f8';ctx.font='bold 13px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+        const dayIcon=night?'🌙':'☀';
+        ctx.fillText(`${dayIcon} ${hdg.toFixed(0)}°`,cw/2,16);
     },
 
     _drawBridgeFrame(ctx,cw,ch){
@@ -524,6 +615,7 @@ const G = {
         const a=s.heading;
         this.torps.push({x:s.x+Math.cos(a)*15,y:s.y+Math.sin(a)*15,vx:Math.cos(a)*120,vy:Math.sin(a)*120,life:8});
         this._addComms('ОРУЖИЕ','Торпеда выпущена!');
+        Snd.play('torpedo');Snd.play('comms');
     },
 
     fireMissile(){
@@ -534,12 +626,14 @@ const G = {
         const a=s.heading;
         this.missiles.push({x:s.x,y:s.y,vx:Math.cos(a)*150,vy:Math.sin(a)*150,life:12});
         this._addComms('ОРУЖИЕ','Ракета запущена! Самонаведение активно.');
+        Snd.play('missile');Snd.play('comms');
     },
 
     activateSonar(){
         const s=this.ship;
         if(s.sonarCd>0)return;
         s.sonarPing=2;s.sonarCd=5;
+        Snd.play('sonar');
         // Reveal all enemies
         for(const e of this.enemies){
             e.detected=true;e.blipAge=0;
