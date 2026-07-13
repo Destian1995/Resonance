@@ -128,7 +128,7 @@ const G = {
             s.depth+=(s.depthTarget-s.depth)*dt*.5;
             if(s.depth>.3) s.o2=Math.max(0,s.o2-dt*2);
             else s.o2=Math.min(s.maxO2,s.o2+dt*5);
-            if(s.o2<=0){s.hp-=dt*10;this._msg('АВАРИЯ','Кислород на нуле! Всплывайте!');}
+            if(s.o2<=0){s.hp-=dt*5;if(!this._o2warn||this.t-this._o2warn>3){this._o2warn=this.t;this._msg('АВАРИЯ','Кислород на нуле! Всплывайте!');Snd.play('alert');}}
             // Depth-dependent ambient sounds
             Snd.updateSubSounds(dt, s.depth);
             // Random bubbles when moving underwater
@@ -253,7 +253,7 @@ const G = {
                     this.explosions.push({x:s.x,y:s.y,t:2,r:0,type:'hit'});
                     this._msg('ПОВРЕЖДЕНИЯ',`Попадание! Корпус: ${Math.max(0,s.hp)}%`);
                     Snd.play('explosion');Snd.play('foul');
-                    if(s.hp<=0){this.state='gameover';Snd.play('alert');}
+                    s.hp=Math.max(0,s.hp);if(s.hp<=0){this.state='gameover';Snd.play('alert');}
                 } else {
                     this._msg('СОНАР','Торпеда прошла мимо!');
                 }
@@ -278,28 +278,36 @@ const G = {
         if(this.state==='pick'){this._drawPick(ctx,cw,ch);return;}
         if(this.state==='gameover'||this.state==='win'){this._drawEnd(ctx,cw,ch);return;}
 
-        // ── VIEW (40% screen) ──
-        const viewH=Math.floor(ch*.38);
+        // ── VIEW (35%) ──
+        const viewH=Math.floor(ch*.33);
         this._drawView(ctx,cw,viewH);
         this._drawFrame(ctx,cw,viewH);
 
-        // ── CONSOLE (60% screen) ──
+        // ── CONSOLE (67%) ──
         const panelY=viewH+2;
         const panelH=ch-panelY;
         ctx.fillStyle='#0a0c14';ctx.fillRect(0,panelY,cw,panelH);
         ctx.fillStyle='#1a1e28';ctx.fillRect(0,panelY,cw,2);
 
-        // Radar/Compass size — fits in panel
-        const rSz=Math.max(50, Math.min(panelH*.42, cw*.12, 110));
-        // Compass rose (top-left of panel)
-        const compR=rSz*.35;
-        this._drawCompass(ctx, 8+compR+2, panelY+8+compR, compR);
-        // Radar (below compass)
-        const radarR=rSz*.45;
-        const radarCY=panelY+8+compR*2+14+radarR;
-        this._drawRadar(ctx, 8+radarR+2, Math.min(radarCY, ch-radarR-14), radarR);
+        // Sizes
+        const rSz=Math.max(40, Math.min(panelH*.35, cw*.1, 90));
+        const compR=rSz*.32;
+        const radarR=rSz*.42;
+
+        // Col layout: [Compass+Radar] [Ship Schematic] [Controls] [Comms]
+        const leftCol=(radarR+4)*2+8;
+
+        // Compass
+        this._drawCompass(ctx, 6+compR, panelY+6+compR, compR);
+        // Radar
+        this._drawRadar(ctx, 6+radarR, panelY+6+compR*2+10+radarR, radarR);
+
+        // Ship damage schematic
+        const schX=leftCol+4, schW=Math.min(110, cw*.1);
+        this._drawSchematic(ctx, schX, panelY+6, schW, panelH-12);
+
         // Controls
-        UI.draw(ctx,cw,ch,panelY,(radarR+6)*2+8);
+        UI.draw(ctx,cw,ch,panelY, schX+schW+6);
         // Comms
         this._drawComms(ctx,cw,ch,panelY);
     },
@@ -597,6 +605,136 @@ const G = {
             ctx.beginPath();ctx.moveTo(cw/2-30,vh/2);ctx.lineTo(cw/2+30,vh/2);ctx.stroke();
             ctx.beginPath();ctx.moveTo(cw/2,vh/2-30);ctx.lineTo(cw/2,vh/2+30);ctx.stroke();
         }
+    },
+
+    _drawSchematic(ctx, x, y, w, h) {
+        const s=this.ship, isSub=this.shipType==='sub';
+        const hpR=Math.max(0,s.hp)/s.maxHp;
+
+        // Background panel
+        ctx.fillStyle='#080a10';ctx.fillRect(x,y,w,h);
+        ctx.strokeStyle='#1a2a2a';ctx.lineWidth=1;ctx.strokeRect(x,y,w,h);
+
+        const cx=x+w/2, cy=y+h/2;
+        const shipL=h*.7, shipW=w*.35;
+
+        if(isSub){
+            // ── SUBMARINE TOP-DOWN ──
+            // Hull outline
+            ctx.save();ctx.translate(cx,cy);
+
+            // Hull body (ellipse)
+            ctx.fillStyle=hpR>.6?'#1a3a3a':hpR>.3?'#3a3a1a':'#3a1a1a';
+            ctx.beginPath();ctx.ellipse(0,0,shipW*.5,shipL*.45,0,0,Math.PI*2);ctx.fill();
+            ctx.strokeStyle=hpR>.5?'#4a8a8a':'#8a4a4a';ctx.lineWidth=1.5;
+            ctx.beginPath();ctx.ellipse(0,0,shipW*.5,shipL*.45,0,0,Math.PI*2);ctx.stroke();
+
+            // Conning tower
+            ctx.fillStyle='#2a4a4a';
+            ctx.fillRect(-shipW*.2,-shipL*.1,shipW*.4,shipL*.15);
+            ctx.strokeStyle='#4a6a6a';ctx.strokeRect(-shipW*.2,-shipL*.1,shipW*.4,shipL*.15);
+
+            // Bow
+            ctx.fillStyle='#3a5a5a';
+            ctx.beginPath();ctx.moveTo(0,-shipL*.45);ctx.lineTo(-shipW*.15,-shipL*.35);ctx.lineTo(shipW*.15,-shipL*.35);ctx.fill();
+
+            // Propeller
+            ctx.fillStyle='#4a4a4a';
+            ctx.fillRect(-shipW*.1,shipL*.38,shipW*.2,shipL*.08);
+
+            // Torpedo tubes (bow)
+            ctx.fillStyle='#2a3a3a';
+            for(let i=-1;i<=1;i+=2) ctx.fillRect(i*shipW*.15-2,-shipL*.44,4,6);
+
+            // Damage indicators — sections
+            const sections=[
+                {name:'НОС',yOff:-shipL*.32,hp:hpR>.8?1:hpR>.4?.5:0},
+                {name:'ЦТР',yOff:0,hp:hpR>.5?1:hpR>.2?.5:0},
+                {name:'КОРМА',yOff:shipL*.3,hp:hpR>.3?1:.5}
+            ];
+            // Simulate damage distribution
+            const dmgSeed=s.hp;
+            for(let i=0;i<sections.length;i++){
+                const sec=sections[i];
+                const secHp=Math.max(0, Math.min(1, hpR*1.5-Math.abs(((dmgSeed*7+i*31)%100)/100-0.5)));
+                if(secHp<.8){
+                    // Damage marks
+                    ctx.fillStyle=secHp<.3?'#f44':'#fa4';
+                    ctx.globalAlpha=.5;
+                    const dx=(((dmgSeed+i*17)%7)-3)*3;
+                    ctx.fillRect(dx-3,sec.yOff-3,6,6);
+                    // Crack lines
+                    ctx.strokeStyle='#f44';ctx.lineWidth=.8;ctx.globalAlpha=.4;
+                    ctx.beginPath();ctx.moveTo(dx-5,sec.yOff-2);ctx.lineTo(dx+5,sec.yOff+3);ctx.stroke();
+                    ctx.globalAlpha=1;
+                }
+            }
+
+            // Depth indicator line
+            ctx.fillStyle='#4af';ctx.font='bold 7px monospace';ctx.textAlign='center';
+            ctx.fillText(`${(s.depth*60)|0}м`,0,shipL*.48+8);
+
+            ctx.restore();
+        } else {
+            // ── SURFACE SHIP TOP-DOWN ──
+            ctx.save();ctx.translate(cx,cy);
+
+            // Hull
+            ctx.fillStyle=hpR>.6?'#1a2a3a':hpR>.3?'#3a3a1a':'#3a1a1a';
+            ctx.beginPath();
+            ctx.moveTo(0,-shipL*.45); // bow point
+            ctx.lineTo(-shipW*.45,-shipL*.2);ctx.lineTo(-shipW*.5,shipL*.2);
+            ctx.lineTo(-shipW*.3,shipL*.42);ctx.lineTo(shipW*.3,shipL*.42);
+            ctx.lineTo(shipW*.5,shipL*.2);ctx.lineTo(shipW*.45,-shipL*.2);
+            ctx.closePath();ctx.fill();
+            ctx.strokeStyle=hpR>.5?'#4a6a8a':'#8a4a4a';ctx.lineWidth=1.5;ctx.stroke();
+
+            // Superstructure
+            ctx.fillStyle='#2a3a4a';
+            ctx.fillRect(-shipW*.2,-shipL*.15,shipW*.4,shipL*.25);
+            // Bridge
+            ctx.fillStyle='#3a4a5a';
+            ctx.fillRect(-shipW*.15,-shipL*.12,shipW*.3,shipL*.08);
+            // Radar mast
+            ctx.fillStyle='#4a5a6a';
+            ctx.fillRect(-1,-shipL*.18,2,shipL*.06);
+
+            // Gun turrets
+            ctx.fillStyle='#3a3a3a';
+            ctx.beginPath();ctx.arc(0,-shipL*.3,4,0,Math.PI*2);ctx.fill();
+            ctx.beginPath();ctx.arc(0,shipL*.15,4,0,Math.PI*2);ctx.fill();
+            ctx.fillRect(-1,-shipL*.3,2,6); // barrel fwd
+            ctx.fillRect(-1,shipL*.15,2,6); // barrel aft
+
+            // Missile launchers
+            ctx.fillStyle='#4a4a3a';
+            ctx.fillRect(-shipW*.12,shipL*.05,shipW*.24,shipL*.06);
+
+            // Damage indicators
+            for(let i=0;i<3;i++){
+                const secHp=Math.max(0,Math.min(1,hpR*1.3-Math.abs(((s.hp*5+i*23)%100)/100-.5)));
+                if(secHp<.8){
+                    const dy=[-shipL*.3,0,shipL*.25][i];
+                    const dx=(((s.hp+i*13)%5)-2)*4;
+                    ctx.fillStyle=secHp<.3?'rgba(255,50,50,.6)':'rgba(255,160,50,.5)';
+                    ctx.fillRect(dx-4,dy-4,8,8);
+                    ctx.strokeStyle='#f44';ctx.lineWidth=.7;ctx.globalAlpha=.4;
+                    ctx.beginPath();ctx.moveTo(dx-6,dy);ctx.lineTo(dx+6,dy+3);ctx.stroke();
+                    ctx.globalAlpha=1;
+                }
+            }
+
+            ctx.restore();
+        }
+
+        // HP text below
+        ctx.fillStyle=hpR>.5?'#4a8':'#f44';
+        ctx.font='bold 8px monospace';ctx.textAlign='center';
+        ctx.fillText(`${Math.max(0,s.hp)|0}%`,cx,y+h-4);
+
+        // Label
+        ctx.fillStyle='#2a4a3a';ctx.font='bold 7px monospace';
+        ctx.fillText(isSub?'ПЛ':'КОРАБЛЬ',cx,y+8);
     },
 
     _drawFrame(ctx,cw,vh){
