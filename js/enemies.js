@@ -18,7 +18,8 @@ const Enemies = {
     list:[],
 
     spawnWave(wn){
-        const count=5+wn*3, scale=1+(wn-1)*.12;
+        const count=Math.min(5+wn*3, 60); // cap at 60 per wave
+        const scale=1+(wn-1)*.12;
         const avail=wn<3?ENEMY_TYPES.slice(0,2):wn<6?ENEMY_TYPES.slice(0,4):ENEMY_TYPES;
         for(let i=0;i<count;i++) this._spawn(U.pick(avail),scale,i*.25);
     },
@@ -65,8 +66,8 @@ const Enemies = {
 
             // Healer
             if(e.healer){for(const o of this.list){if(o!==e&&o.alive&&o.hp<o.maxHp&&U.dist(e,o)<55){o.hp=Math.min(o.maxHp,o.hp+4*dt);if(Math.random()<.03)FX.sparkle(o.x,o.y,'#4f4',2,12);}}}
-            // Summoner
-            if(e.summoner){e.summonTimer+=dt*1000;if(e.summonTimer>4000){e.summonTimer=0;for(let s=0;s<3;s++){this._spawn(ENEMY_TYPES[0],1,0);const l=this.list[this.list.length-1];l.x=e.x+(Math.random()-.5)*40;l.y=e.y+(Math.random()-.5)*40;}FX.ring(e.x,e.y,'#a4f',40,.3);}}
+            // Summoner (max 150 enemies total to prevent freeze)
+            if(e.summoner&&this.list.length<150){e.summonTimer+=dt*1000;if(e.summonTimer>5000){e.summonTimer=0;for(let s=0;s<2;s++){this._spawn(ENEMY_TYPES[0],1,0);const l=this.list[this.list.length-1];l.x=e.x+(Math.random()-.5)*40;l.y=e.y+(Math.random()-.5)*40;}FX.ring(e.x,e.y,'#a4f',40,.3);}}
 
             // Move to core
             const a=U.angle(e,core);

@@ -145,13 +145,15 @@ const Buildings = {
 
     draw(ctx,time) {
         const t=time||0;
-        // Draw range circles for towers
-        for(const b of this.list){
-            if(b.hp<=0||!b.def.range)continue;
-            ctx.globalAlpha=.04;ctx.fillStyle=b.def.color;
-            const range=b.def.range*CFG.HEX_R*1.8*(.9+b.level*.1);
-            ctx.beginPath();ctx.arc(b.x,b.y,range,0,Math.PI*2);ctx.fill();
-            ctx.globalAlpha=1;
+        // Range circles only during build phase (lighter)
+        if(Game.state===ST.BUILD){
+            for(const b of this.list){
+                if(b.hp<=0||!b.def.range)continue;
+                ctx.globalAlpha=.04;ctx.strokeStyle=b.def.color;ctx.lineWidth=1;
+                const range=b.def.range*CFG.HEX_R*1.8*(.9+b.level*.1);
+                ctx.beginPath();ctx.arc(b.x,b.y,range,0,Math.PI*2);ctx.stroke();
+                ctx.globalAlpha=1;
+            }
         }
 
         for(const b of this.list){

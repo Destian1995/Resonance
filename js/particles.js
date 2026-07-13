@@ -1,9 +1,9 @@
 // ============ PARTICLES ============
 const FX={
     list:[],rings:[],bolts:[],nums:[],flash:0,flashCol:'#fff',
-    spawn(x,y,c,n,sp,l){n=n||4;sp=sp||60;l=l||.4;for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=sp*(.5+Math.random()*.5);this.list.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:l*(.7+Math.random()*.3),ml:l,color:c,sz:2+Math.random()*3,glow:false});}},
-    sparkle(x,y,c,n,sp){n=n||6;sp=sp||80;for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=sp*(.3+Math.random()*.7);this.list.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.5+Math.random()*.3,ml:.8,color:c,sz:3+Math.random()*3,glow:true});}},
-    trail(x,y,c,s){this.list.push({x:x+(Math.random()-.5)*4,y:y+(Math.random()-.5)*4,vx:(Math.random()-.5)*10,vy:(Math.random()-.5)*10,life:.2,ml:.2,color:c,sz:s||2,glow:true});},
+    spawn(x,y,c,n,sp,l){if(this.list.length>800)return;n=n||4;sp=sp||60;l=l||.4;for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=sp*(.5+Math.random()*.5);this.list.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:l*(.7+Math.random()*.3),ml:l,color:c,sz:2+Math.random()*3,glow:false});}},
+    sparkle(x,y,c,n,sp){if(this.list.length>800)return;n=n||6;sp=sp||80;for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=sp*(.3+Math.random()*.7);this.list.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.5+Math.random()*.3,ml:.8,color:c,sz:3+Math.random()*3,glow:true});}},
+    trail(x,y,c,s){if(this.list.length>800)return;this.list.push({x:x+(Math.random()-.5)*4,y:y+(Math.random()-.5)*4,vx:(Math.random()-.5)*10,vy:(Math.random()-.5)*10,life:.2,ml:.2,color:c,sz:s||2,glow:true});},
     ring(x,y,c,mr,d){this.rings.push({x,y,color:c,r:0,maxR:mr||80,life:d||.4,ml:d||.4});},
     bolt(x1,y1,x2,y2,c,l){const segs=[];for(let i=0;i<=6;i++){const t=i/6;segs.push({x:U.lerp(x1,x2,t)+(i>0&&i<6?(Math.random()-.5)*18:0),y:U.lerp(y1,y2,t)+(i>0&&i<6?(Math.random()-.5)*18:0)});}this.bolts.push({segs,color:c||'#4ef',life:l||.25,ml:l||.25});},
     num(x,y,t,c,big){this.nums.push({x:x+(Math.random()-.5)*8,y:y-8,text:String(t),color:c||'#fff',life:.9,ml:.9,vy:-65,big:!!big});},
