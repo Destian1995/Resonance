@@ -432,7 +432,7 @@ const G = {
         for(let i=0;i<particleCount;i++){
             const px=((Math.sin(i*5.3+t*.15)*500+t*8+i*73)%cw+cw)%cw;
             const py=((Math.cos(i*3.7+t*.1)*300+t*3+i*47)%vh+vh)%vh;
-            const sz=.5+Math.sin(i)*1;
+            const sz=Math.max(.3, .5+Math.sin(i)*.4);
             ctx.globalAlpha=deepFactor<.5?.08:.04+deepFactor*.03;
             ctx.fillStyle=deepFactor<.5?'#8cf':'#446';
             ctx.beginPath();ctx.arc(px,py,sz,0,Math.PI*2);ctx.fill();
