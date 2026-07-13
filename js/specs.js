@@ -87,6 +87,7 @@ const Spells = {
         const spell = SPECS[this.specIdx].spells[idx];
         spell.cast(enemies);
         this.cooldowns[idx] = spell.cd;
+        Game.stats.spellsCast++;
         return true;
     }
 };

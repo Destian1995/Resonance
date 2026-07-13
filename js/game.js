@@ -4,6 +4,10 @@ const Game = {
     wave:0, gold:0, kills:0, coreHp:CFG.CORE_HP,
     buildTimer:0, upgradeChoices:[], selectedTower:null,
     phase:'build', time:0,
+    // Stats tracking
+    stats: { goldSpent:0, goldEarned:0, towersBuilt:0, towersSold:0, spellsCast:0,
+             towersByType:{}, enemiesReachedCore:0, maxWave:0, damageDealt:0 },
+    endTimer:0,  // delay before showing stats
 
     init(){
         this.canvas=document.getElementById('game');
@@ -21,12 +25,20 @@ const Game = {
         Spells.init(si);
         this.wave=0;this.gold=CFG.START_GOLD;this.kills=0;this.coreHp=CFG.CORE_HP;
         this.selectedTower='arrow';this.phase='build';this.buildTimer=CFG.BUILD_TIME;this.time=0;
+        this.endTimer=0;
+        this.stats={goldSpent:0,goldEarned:CFG.START_GOLD,towersBuilt:0,towersSold:0,spellsCast:0,
+                    towersByType:{},enemiesReachedCore:0,maxWave:0,damageDealt:0};
         // Center camera on map
         Cam.x=World.centerX-Cam.w/2;Cam.y=World.centerY-Cam.h/2;
         this.state=ST.BUILD;
     },
     startWave(){this.wave++;this.phase='wave';Enemies.spawnWave(this.wave);if(this.wave%CFG.BOSS_EVERY===0)Enemies.spawnBoss(this.wave);Snd.play('wave');this.state=ST.WAVE;},
-    endWave(){this.gold+=CFG.GOLD_PER_WAVE;if(this.wave>=CFG.WAVE_MAX){this.state=ST.WIN;return;}this.upgradeChoices=Upgrades.buildChoices(this.wave);this.state=ST.UPGRADE;},
+    endWave(){
+        this.gold+=CFG.GOLD_PER_WAVE;this.stats.goldEarned+=CFG.GOLD_PER_WAVE;
+        this.stats.maxWave=Math.max(this.stats.maxWave,this.wave);
+        if(this.wave>=CFG.WAVE_MAX){this.endTimer=0;this.state=ST.WIN;return;}
+        this.upgradeChoices=Upgrades.buildChoices(this.wave);this.state=ST.UPGRADE;
+    },
 
     loop(time){
         const dt=Math.min((time-this.lastTime)/1000,.05);this.lastTime=time;this.time+=dt;
@@ -112,15 +124,19 @@ const Game = {
             const hex=U.pixelToHex(wp.x,wp.y);
             const cell=World.getCell(hex.q,hex.r);
             if(cell&&cell.building){
-                // Tap existing building = upgrade or sell
                 if(!Buildings.upgrade(hex.q,hex.r)){
                     const refund=Buildings.sell(hex.q,hex.r);
-                    if(refund>0)this.gold+=refund;
+                    if(refund>0){this.gold+=refund;this.stats.towersSold++;}
+                } else {
+                    this.stats.goldSpent+=Math.floor(cell.building.def.cost*.7);
                 }
             } else if(this.selectedTower){
                 const def=TOWER_DEFS[this.selectedTower];
                 if(def&&this.gold>=def.cost&&Buildings.place(hex.q,hex.r,this.selectedTower)){
                     this.gold-=def.cost;
+                    this.stats.goldSpent+=def.cost;
+                    this.stats.towersBuilt++;
+                    this.stats.towersByType[this.selectedTower]=(this.stats.towersByType[this.selectedTower]||0)+1;
                 }
             }
         }
@@ -133,7 +149,17 @@ const Game = {
         Buildings.update(dt,Enemies.list);
         Enemies.update(dt);
         FX.update(dt);Cam.update(dt);
-        if(this.coreHp<=0){this.coreHp=0;Snd.play('death');this.state=ST.OVER;return;}
+        if(this.coreHp<=0){
+            this.coreHp=0;Snd.play('death');
+            this.stats.maxWave=Math.max(this.stats.maxWave,this.wave);
+            this.endTimer=0;
+            // Core explosion VFX
+            FX.ring(World.centerX,World.centerY,'#f44',120,.6);
+            FX.ring(World.centerX,World.centerY,'#f80',80,.4);
+            FX.sparkle(World.centerX,World.centerY,'#f44',25,120);
+            FX.doFlash('#f00',.4);Cam.addShake(12);
+            this.state=ST.OVER;return;
+        }
         if(Enemies.list.length===0)this.endWave();
     },
 
@@ -291,18 +317,103 @@ const Game = {
         }
     },
 
-    // ══ END ══
-    _updateEnd(){if(Input.tapped)this.state=ST.MENU;},
+    // ══ END — animated stats screen ══
+    _updateEnd(){
+        this.endTimer+=.016; // ~60fps
+        FX.update(.016);
+        if(Input.tapped&&this.endTimer>1.5)this.state=ST.MENU;
+    },
     _drawEnd(ctx,cw,ch,won){
-        ctx.fillStyle='rgba(0,0,0,.92)';ctx.fillRect(0,0,cw,ch);
-        ctx.fillStyle=won?'#024':'#400';ctx.fillRect(0,ch*.15,cw,46);
-        this._txt(won?'ПОБЕДА!':'ПОРАЖЕНИЕ',cw/2,ch*.15+23,won?'#0ff':'#f00',28,'center');
-        const ly=ch*.35,sp=30;
-        this._txt(`Волна: ${this.wave}/${CFG.WAVE_MAX}`,cw/2,ly,'#fff',15,'center');
-        this._txt(`Убито: ${this.kills}`,cw/2,ly+sp,'#f80',14,'center');
-        this._txt(`Башен: ${Buildings.list.length}`,cw/2,ly+sp*2,'#4af',13,'center');
-        this._txt(`Спец: ${SPECS[Spells.specIdx].name}`,cw/2,ly+sp*3,SPECS[Spells.specIdx].color,13,'center');
-        this._txt('Нажмите для рестарта',cw/2,ch*.85,'#666',12,'center');
+        // Background — keep showing the game frozen
+        Cam.begin(ctx);
+        World.draw(ctx,this.phase,this.time);
+        Buildings.draw(ctx,this.time);
+        Enemies.draw(ctx);
+        FX.drawWorld(ctx);
+        Cam.end(ctx);
+
+        // Dark overlay fades in
+        const fadeIn=Math.min(1,this.endTimer/.8);
+        ctx.fillStyle=`rgba(0,0,${won?8:0},${fadeIn*.88})`;
+        ctx.fillRect(0,0,cw,ch);
+
+        // Title banner
+        if(this.endTimer>.3){
+            const bannerAlpha=Math.min(1,(this.endTimer-.3)/.4);
+            ctx.globalAlpha=bannerAlpha;
+            ctx.fillStyle=won?'#024':'#400';
+            ctx.fillRect(0,ch*.08,cw,50);
+            this._txt(won?'ПОБЕДА!':'ЯДРО УНИЧТОЖЕНО',cw/2,ch*.08+25,won?'#0ff':'#f44',won?28:24,'center');
+            ctx.globalAlpha=1;
+        }
+
+        // Stats appear one by one
+        const mob=Input.mobile||cw<600;
+        const statX=cw/2, startY=ch*.22;
+        const lineH=mob?28:32;
+        const st=this.stats;
+        const spec=SPECS[Spells.specIdx];
+
+        const lines=[
+            {delay:.6,  icon:'📊', label:'СТАТИСТИКА',  value:'',        color:'#888', header:true},
+            {delay:.8,  icon:'🌊', label:'Волна',        value:`${this.wave} / ${CFG.WAVE_MAX}`, color:'#4af'},
+            {delay:1.0, icon:'☠',  label:'Убито врагов', value:`${this.kills}`,   color:'#f80'},
+            {delay:1.2, icon:'💀', label:'Дошли до ядра',value:`${st.enemiesReachedCore}`, color:'#f44'},
+            {delay:1.4, icon:'🏗', label:'Построено',    value:`${st.towersBuilt} башен`, color:'#4af'},
+            {delay:1.6, icon:'💰', label:'Заработано',   value:`${st.goldEarned} золота`, color:'#ff0'},
+            {delay:1.8, icon:'💸', label:'Потрачено',    value:`${st.goldSpent} золота`,  color:'#fa0'},
+            {delay:2.0, icon:'🔧', label:'Продано',      value:`${st.towersSold} башен`,  color:'#aaa'},
+            {delay:2.2, icon:'🏰', label:'Осталось башен',value:`${Buildings.list.length}`,color:'#4cf'},
+        ];
+
+        // Tower breakdown
+        const towerTypes=Object.entries(st.towersByType);
+        if(towerTypes.length>0){
+            lines.push({delay:2.4,icon:'📋',label:'ПО ТИПАМ',value:'',color:'#888',header:true});
+            let d=2.5;
+            for(const[type,count] of towerTypes){
+                const def=TOWER_DEFS[type];
+                if(def) lines.push({delay:d,icon:def.icon,label:def.name,value:`x${count}`,color:def.color});
+                d+=.15;
+            }
+        }
+
+        lines.push({delay:Math.max(2.8,2.5+towerTypes.length*.15),icon:spec.icon,label:'Спец',value:spec.name,color:spec.color});
+
+        for(const line of lines){
+            if(this.endTimer<line.delay) continue;
+            const alpha=Math.min(1,(this.endTimer-line.delay)/.3);
+            ctx.globalAlpha=alpha;
+            const y=startY+(lines.indexOf(line))*lineH;
+
+            if(y>ch*.85) continue; // don't overflow
+
+            if(line.header){
+                // Section header
+                ctx.fillStyle='#222';ctx.fillRect(statX-120,y-4,240,lineH-4);
+                this._txt(`${line.icon} ${line.label}`,statX,y+lineH/2-4,line.color,mob?11:13,'center');
+            } else {
+                // Stat row: icon + label left, value right
+                const rowW=Math.min(300,cw*.7);
+                const lx=statX-rowW/2, rx=statX+rowW/2;
+                // Background bar
+                ctx.fillStyle='rgba(20,20,40,.6)';ctx.fillRect(lx-4,y,rowW+8,lineH-4);
+                ctx.strokeStyle='#333';ctx.lineWidth=.5;ctx.strokeRect(lx-4,y,rowW+8,lineH-4);
+                // Icon + Label
+                this._txt(`${line.icon} ${line.label}`,lx+4,y+lineH/2-2,'#ccc',mob?10:12,'left');
+                // Value
+                this._txt(line.value,rx,y+lineH/2-2,line.color,mob?11:13,'right');
+            }
+        }
+        ctx.globalAlpha=1;
+
+        // Restart hint
+        if(this.endTimer>2.5){
+            const blink=Math.sin(this.endTimer*3)>.0;
+            if(blink) this._txt('Нажмите для рестарта',cw/2,ch*.92,'#888',mob?11:13,'center');
+        }
+
+        FX.drawScreen(ctx,cw,ch);
     },
 
     _txt(s,x,y,c,sz,al){this.ctx.fillStyle=c;this.ctx.font=`bold ${sz}px monospace`;this.ctx.textAlign=al;this.ctx.textBaseline='middle';this.ctx.fillText(s,x,y);}

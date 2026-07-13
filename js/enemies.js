@@ -56,7 +56,8 @@ const Enemies = {
                 if(e.boss){FX.doFlash('#ff0',.35);Cam.addShake(10);FX.ring(e.x,e.y,'#ff0',90,.5);}
                 FX.num(e.x,e.y,`+${e.xp}`,'#ff0',e.boss);
                 Snd.play(e.boss?'boom':'hit',.1);
-                Game.gold+=CFG.GOLD_PER_KILL+(e.boss?30:0);Game.kills++;
+                const killGold=CFG.GOLD_PER_KILL+(e.boss?30:0);
+                Game.gold+=killGold;Game.stats.goldEarned+=killGold;Game.kills++;
                 this.list.splice(i,1);continue;
             }
 
@@ -76,6 +77,7 @@ const Enemies = {
             // Damage core
             if(U.dist(e,core)<e.r+18){
                 Game.coreHp-=e.dmg;
+                Game.stats.enemiesReachedCore++;
                 if(e.bomber){Game.coreHp-=e.dmg*2;FX.ring(e.x,e.y,'#f84',45,.3);Cam.addShake(5);}
                 e.hp=0;FX.spawn(core.x,core.y,'#f00',5);FX.doFlash('#f00',.1);Cam.addShake(3);
             }
