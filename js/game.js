@@ -18,9 +18,14 @@ const G = {
     radarAngle:0, radarContacts:[],
     wave:0,killsNeeded:0,kills:0,
     commsLog:[],alertLevel:0,
-    // Targeting system
-    selectedTarget:null, // ref to enemy
-    detectedEnemies:[], // enemies detected by radar/sonar
+    // Targeting
+    selectedTarget:null, detectedEnemies:[],
+    // Weather
+    weather:'calm', // calm, rain, heavy, storm
+    weatherTimer:0, weatherIntensity:0,
+    windAngle:0, windForce:0,
+    stormDmgTimer:0,
+    roll:0, pitch:0, // ship rocking
 
     init(){
         this.cv=document.getElementById('game');
@@ -71,7 +76,10 @@ const G = {
         s.o2=100;s.maxO2=100;
         this.enemies=[];this.torps=[];this.missiles=[];this.enemyTorps=[];
         this.explosions=[];this.radarContacts=[];this.commsLog=[];
-        this.wave=0;this.kills=0;this.alertLevel=0;this.t=0;this.aimAngle=0;
+        this.wave=0;this.kills=0;this.alertLevel=0;this.t=0;
+        this.weather='calm';this.weatherTimer=40+Math.random()*30;
+        this.weatherIntensity=0;this.windAngle=Math.random()*Math.PI*2;this.windForce=0;
+        this.stormDmgTimer=0;this.roll=0;this.pitch=0;this._o2warn=0;
         this._nextWave();
         this.state='play';
         const shipName=this.shipType==='sub'?'подводная лодка':'корабль';
@@ -109,30 +117,88 @@ const G = {
     // ══════════ UPDATE ══════════
     _update(dt){
         const s=this.ship;
+
+        // ── WEATHER SYSTEM ──
+        this.weatherTimer-=dt;
+        if(this.weatherTimer<=0){
+            const weathers=['calm','calm','rain','rain','heavy','storm'];
+            const prev=this.weather;
+            this.weather=weathers[Math.floor(Math.random()*weathers.length)];
+            this.weatherTimer=30+Math.random()*40;
+            this.windAngle=Math.random()*Math.PI*2;
+            if(this.weather!==prev){
+                const names={calm:'Штиль',rain:'Дождь',heavy:'Сильный шторм',storm:'ШТОРМ!'};
+                this._msg('МЕТЕО',`Погода: ${names[this.weather]}`);
+                Snd.play('comms');
+                if(this.weather==='storm')Snd.play('alert');
+            }
+        }
+        // Weather intensity transitions
+        const targetIntensity={calm:0,rain:.3,heavy:.6,storm:1}[this.weather];
+        this.weatherIntensity+=(targetIntensity-this.weatherIntensity)*dt*.5;
+        this.windForce=this.weatherIntensity*8;
+
+        // Ship rocking from waves (surface only or shallow sub)
+        const rockFactor=this.shipType==='sub'?Math.max(0,1-s.depth):1;
+        this.roll=Math.sin(this.t*1.5)*this.weatherIntensity*12*rockFactor;
+        this.pitch=Math.sin(this.t*1.1+1)*this.weatherIntensity*5*rockFactor;
+
+        // Storm damage to surface ships (if speed > half during storm)
+        if(this.weather==='storm'&&this.shipType==='surface'){
+            this.stormDmgTimer-=dt;
+            if(s.enginePower>=3&&this.stormDmgTimer<=0){
+                this.stormDmgTimer=4+Math.random()*3;
+                const dmg=3+Math.floor(Math.random()*5);
+                s.hp-=dmg;s.hp=Math.max(0,s.hp);
+                this._msg('ПОВРЕЖДЕНИЯ',`Шторм! Волна ударила! -${dmg}% корпус`);
+                Snd.play('explosion',.1);
+                if(s.hp<=0){this.state='gameover';Snd.play('alert');}
+            }
+        }
+        // Storm pushes ship off course
+        if(this.weatherIntensity>.3&&rockFactor>.3){
+            s.x+=Math.cos(this.windAngle)*this.windForce*dt*rockFactor;
+            s.y+=Math.sin(this.windAngle)*this.windForce*dt*rockFactor;
+            // Random heading drift in storm
+            if(this.weatherIntensity>.6) s.heading+=Math.sin(this.t*3)*.02*this.weatherIntensity*rockFactor;
+        }
+
         // ── Navigation ──
         const speeds=[0,2.5,5,9,12];
-        const targetSpd=speeds[s.enginePower]*(this.shipType==='sub'&&s.depth===2?.6:1);
-        s.speed+=(targetSpd-s.speed)*dt*.8;
+        const depthSlow=this.shipType==='sub'?Math.max(.4, 1-s.depth*.25):1;
+        const stormSlow=this.weatherIntensity>.5?1-this.weatherIntensity*.3:1;
+        const targetSpd=speeds[s.enginePower]*depthSlow*stormSlow;
+        s.speed+=(targetSpd-s.speed)*dt*.6; // slightly slower acceleration
 
-        // Smooth heading turn
         let dh=s.targetHeading-s.heading;
         while(dh>Math.PI)dh-=Math.PI*2;while(dh<-Math.PI)dh+=Math.PI*2;
-        const turnRate=this.shipType==='sub'?.4:.7;
+        const turnRate=(this.shipType==='sub'?.35:.6)*stormSlow;
         s.heading+=dh*dt*turnRate;
 
         s.x+=Math.cos(s.heading)*s.speed*dt*8;
         s.y+=Math.sin(s.heading)*s.speed*dt*8;
 
-        // Sub depth + sounds
+        // ── Sub depth (SMOOTH) ──
         if(this.shipType==='sub'){
-            s.depth+=(s.depthTarget-s.depth)*dt*.5;
-            if(s.depth>.3) s.o2=Math.max(0,s.o2-dt*2);
-            else s.o2=Math.min(s.maxO2,s.o2+dt*5);
-            if(s.o2<=0){s.hp-=dt*5;if(!this._o2warn||this.t-this._o2warn>3){this._o2warn=this.t;this._msg('АВАРИЯ','Кислород на нуле! Всплывайте!');Snd.play('alert');}}
-            // Depth-dependent ambient sounds
+            // Very smooth depth change — takes ~6 seconds to fully dive/surface
+            const depthSpeed=.25; // units per second
+            const dd=s.depthTarget-s.depth;
+            if(Math.abs(dd)>.01){
+                s.depth+=Math.sign(dd)*Math.min(Math.abs(dd), depthSpeed*dt);
+                // Creaking when crossing depth thresholds
+                if((s.depth>.95&&dd>0)||(s.depth<1.05&&dd<0)){
+                    if(Math.random()<dt*.5)Snd.play('bubble',.08);
+                }
+            }
+            s.depth=Math.max(0,Math.min(2,s.depth));
+
+            // O2
+            if(s.depth>.2) s.o2=Math.max(0,s.o2-dt*(1.5+s.depth*.5));
+            else s.o2=Math.min(s.maxO2,s.o2+dt*8);
+            if(s.o2<=0){s.hp=Math.max(0,s.hp-dt*4);if(!this._o2warn||this.t-this._o2warn>3){this._o2warn=this.t;this._msg('АВАРИЯ','Кислород на нуле! Всплывайте!');Snd.play('alert');}}
+
             Snd.updateSubSounds(dt, s.depth);
-            // Random bubbles when moving underwater
-            if(s.speed>1&&s.depth>.3&&Math.random()<dt*.5) Snd.play('bubble',.1);
+            if(s.speed>1&&s.depth>.3&&Math.random()<dt*.4) Snd.play('bubble',.08);
         }
 
         // Radar
@@ -358,14 +424,28 @@ const G = {
             seaG.addColorStop(0,`rgb(${ot})`);seaG.addColorStop(1,`rgb(${ob})`);
             ctx.fillStyle=seaG;ctx.fillRect(0,horizonY,cw,vh-horizonY);
 
-            // Waves
+            // Waves — amplified by weather
+            const stormAmp=1+this.weatherIntensity*3; // waves 1x-4x bigger
+            const stormSpd=1+this.weatherIntensity*1.5;
             for(let w=0;w<10;w++){
-                const wy=horizonY+4+w*((vh-horizonY)/10);
-                const dep=w/10,amp=1+dep*3.5,spd=1+dep*.7,freq=.025-dep*.008;
-                ctx.strokeStyle=`rgba(${night?'60,80,110':'80,140,180'},${.1*(1-dep*.3)})`;ctx.lineWidth=.7+dep;
+                const wy=horizonY+4+w*((vh-horizonY)/10)+this.pitch*w*.3;
+                const dep=w/10, amp=(1+dep*3.5)*stormAmp, spd=(1+dep*.7)*stormSpd, freq=.025-dep*.008;
+                ctx.strokeStyle=`rgba(${night?'60,80,110':'80,140,180'},${(.1+this.weatherIntensity*.08)*(1-dep*.3)})`;
+                ctx.lineWidth=(.7+dep)*(1+this.weatherIntensity*.5);
                 ctx.beginPath();
-                for(let wx=0;wx<cw;wx+=3){const wv=Math.sin(wx*freq+this.t*spd+w*.7)*amp+Math.sin(wx*freq*1.6+this.t*spd*.5+w)*amp*.3;ctx[wx?'lineTo':'moveTo'](wx,wy+wv);}
+                for(let wx=0;wx<cw;wx+=3){
+                    const wv=Math.sin(wx*freq+this.t*spd+w*.7)*amp+Math.sin(wx*freq*1.6+this.t*spd*.5+w)*amp*.3+this.roll*dep;
+                    ctx[wx?'lineTo':'moveTo'](wx,wy+wv);
+                }
                 ctx.stroke();
+                // White foam on crests in storm
+                if(this.weatherIntensity>.4&&dep>.3){
+                    ctx.fillStyle=`rgba(220,230,240,${this.weatherIntensity*.06})`;
+                    for(let fx=0;fx<cw;fx+=15){
+                        const wv=Math.sin(fx*freq+this.t*spd+w*.7)*amp;
+                        if(wv<-amp*.4) ctx.fillRect(fx,wy+wv,5+Math.random()*6,1.5);
+                    }
+                }
             }
 
             // Horizon
@@ -383,6 +463,50 @@ const G = {
                 ctx.globalAlpha=ex.t/2;ctx.fillStyle=ex.type==='sink'?'#f80':'#ff4';
                 ctx.beginPath();ctx.arc(scrX,scrY,sz,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
             }
+        }
+
+        // ── WEATHER EFFECTS (surface view) ──
+        if(!isSub||depth<.3){
+            const wi=this.weatherIntensity;
+            if(wi>.1){
+                // Rain
+                ctx.strokeStyle=`rgba(150,170,200,${wi*.15})`;ctx.lineWidth=1;
+                const rainCount=Math.floor(wi*60);
+                for(let i=0;i<rainCount;i++){
+                    const rx=((i*137+this.t*400)%cw+cw)%cw;
+                    const ry=((i*89+this.t*600)%vh+vh)%vh;
+                    const len=4+wi*8;
+                    ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx-2,ry+len);ctx.stroke();
+                }
+                // Fog/mist overlay
+                ctx.globalAlpha=wi*.2;ctx.fillStyle='#8899aa';ctx.fillRect(0,0,cw,vh);ctx.globalAlpha=1;
+            }
+            if(wi>.7){
+                // Lightning flash (random)
+                if(Math.random()<dt*.3){
+                    ctx.globalAlpha=.3+Math.random()*.3;ctx.fillStyle='#fff';ctx.fillRect(0,0,cw,vh);ctx.globalAlpha=1;
+                    Snd.play('explosion',.1);
+                }
+                // Spray at bottom of view
+                ctx.fillStyle='rgba(200,220,240,0.08)';
+                for(let i=0;i<10;i++){
+                    const sx=Math.random()*cw, sy=vh-Math.random()*20;
+                    ctx.beginPath();ctx.arc(sx,sy,3+Math.random()*4,0,Math.PI*2);ctx.fill();
+                }
+            }
+            // Rocking effect — tilt the whole view slightly
+            if(wi>.2){
+                // Already handled by roll/pitch on ship, but add view wobble
+            }
+        }
+
+        // Weather indicator
+        if(this.weatherIntensity>.15){
+            const wNames={calm:'',rain:'🌧',heavy:'⛈',storm:'🌊⚡'};
+            ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(cw-70,3,65,18);
+            ctx.fillStyle=this.weatherIntensity>.7?'#f44':'#aaa';
+            ctx.font='bold 10px monospace';ctx.textAlign='right';ctx.textBaseline='middle';
+            ctx.fillText(wNames[this.weather]||'',cw-8,12);
         }
 
         // Compass at top
