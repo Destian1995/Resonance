@@ -55,7 +55,9 @@ const G = {
     },
 
     _startGame(){
-        Snd.resume();Snd.startAmbience();
+        Snd.resume();
+        if(this.shipType==='sub'){Snd.startSubAmbience();Snd.play('dive');}
+        else Snd.startAmbience();
         const s=this.ship;
         s.x=0;s.y=0;s.heading=0;s.targetHeading=0;s.speed=0;s.rudder=0;s.enginePower=0;
         s.torpedoes=this.shipType==='sub'?8:6;s.maxTorpedoes=s.torpedoes;
@@ -120,12 +122,16 @@ const G = {
         s.x+=Math.cos(s.heading)*s.speed*dt*8;
         s.y+=Math.sin(s.heading)*s.speed*dt*8;
 
-        // Sub depth
+        // Sub depth + sounds
         if(this.shipType==='sub'){
             s.depth+=(s.depthTarget-s.depth)*dt*.5;
             if(s.depth>.3) s.o2=Math.max(0,s.o2-dt*2);
             else s.o2=Math.min(s.maxO2,s.o2+dt*5);
             if(s.o2<=0){s.hp-=dt*10;this._msg('АВАРИЯ','Кислород на нуле! Всплывайте!');}
+            // Depth-dependent ambient sounds
+            Snd.updateSubSounds(dt, s.depth);
+            // Random bubbles when moving underwater
+            if(s.speed>1&&s.depth>.3&&Math.random()<dt*.5) Snd.play('bubble',.1);
         }
 
         // Radar
@@ -743,9 +749,12 @@ const G = {
         else this._msg('ЗАЩИТА','Ловушки выпущены.');
         Snd.play('comms');
     },
-    setDepth(d){if(this.shipType!=='sub')return;this.ship.depthTarget=d;
+    setDepth(d){if(this.shipType!=='sub')return;
+        const wasDeep=this.ship.depthTarget;
+        this.ship.depthTarget=d;
         const names=['Всплытие','Перископ (30м)','Глубина (100м)'];
         this._msg('РУБКА',names[d]);Snd.play('comms');
+        if(d>wasDeep)Snd.play('dive');else if(d<wasDeep)Snd.play('surface');
     }
 };
 
