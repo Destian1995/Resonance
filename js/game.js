@@ -273,9 +273,9 @@ const G = {
         ctx.fillRect(0,panelY,cw,3);
 
         // Layout: Radar(left) | Controls(center) | Comms(right)
-        const radarSize=Math.min(panelH-20, cw*.28);
-        const radarX=10+radarSize/2;
-        const radarY=panelY+10+radarSize/2;
+        const radarSize=Math.min(panelH-16, cw*.2, 200);
+        const radarX=8+radarSize/2;
+        const radarY=panelY+8+radarSize/2;
 
         this._drawRadar(ctx,radarX,radarY,radarSize/2);
         UI.draw(ctx,cw,ch,panelY,radarSize);
@@ -451,7 +451,7 @@ const G = {
 
     _drawComms(ctx,cw,ch,panelY){
         // Comms panel (right side)
-        const cx=cw*.72, cy=panelY+10, cwidth=cw*.27, cheight=ch-panelY-20;
+        const cx=cw*.73, cy=panelY+6, cwidth=cw*.26, cheight=ch-panelY-12;
         ctx.fillStyle='#0a0c10';ctx.fillRect(cx,cy,cwidth,cheight);
         ctx.strokeStyle='#2a3a2a';ctx.lineWidth=1;ctx.strokeRect(cx,cy,cwidth,cheight);
 
