@@ -1,421 +1,450 @@
-// ============ GAME — pure TD, no hero ============
+// ============ 8-BALL POOL ============
 const Game = {
-    state:ST.MENU, canvas:null, ctx:null, lastTime:0,
-    wave:0, gold:0, kills:0, coreHp:CFG.CORE_HP,
-    buildTimer:0, upgradeChoices:[], selectedTower:null,
-    phase:'build', time:0,
-    // Stats tracking
-    stats: { goldSpent:0, goldEarned:0, towersBuilt:0, towersSold:0, spellsCast:0,
-             towersByType:{}, enemiesReachedCore:0, maxWave:0, damageDealt:0 },
-    endTimer:0,  // delay before showing stats
+    canvas: null, ctx: null, lastTime: 0,
+    state: 'menu', // menu, aiming, moving, turnEnd, foul, win
+    balls: [], turn: 1, // 1 or 2
+    p1: { name: 'Игрок 1', type: null, score: 0 }, // type: 'solid'/'stripe'/null
+    p2: { name: 'Игрок 2', type: null, score: 0 },
+    // Aiming
+    aimX: 0, aimY: 0, power: 0, maxPower: 650,
+    dragging: false, dragStartX: 0, dragStartY: 0,
+    // Shot tracking
+    firstHit: null, pocketedThisShot: [],
+    cuePocketed: false, foulMsg: '',
+    // Cue ball placement
+    placing: false,
+    // Visual
+    shotTrail: [], msg: '', msgTimer: 0,
 
-    init(){
-        this.canvas=document.getElementById('game');
-        this.ctx=this.canvas.getContext('2d');
+    init() {
+        this.canvas = document.getElementById('game');
+        this.ctx = this.canvas.getContext('2d');
         this._resize();
-        window.addEventListener('resize',()=>this._resize());
-        Input.init(this.canvas);Snd.init();
-        this.lastTime=performance.now();
-        requestAnimationFrame(t=>this.loop(t));
-    },
-    _resize(){this.canvas.width=window.innerWidth;this.canvas.height=window.innerHeight;this.ctx.imageSmoothingEnabled=false;Cam.init(this.canvas.width,this.canvas.height);},
-
-    startGame(si){
-        World.generate();Buildings.clear();Enemies.clear();FX.clear();
-        Spells.init(si);
-        this.wave=0;this.gold=CFG.START_GOLD;this.kills=0;this.coreHp=CFG.CORE_HP;
-        this.selectedTower='arrow';this.phase='build';this.buildTimer=CFG.BUILD_TIME;this.time=0;
-        this.endTimer=0;
-        this.stats={goldSpent:0,goldEarned:CFG.START_GOLD,towersBuilt:0,towersSold:0,spellsCast:0,
-                    towersByType:{},enemiesReachedCore:0,maxWave:0,damageDealt:0};
-        // Center camera on map
-        Cam.x=World.centerX-Cam.w/2;Cam.y=World.centerY-Cam.h/2;
-        this.state=ST.BUILD;
-    },
-    startWave(){this.wave++;this.phase='wave';Enemies.spawnWave(this.wave);if(this.wave%CFG.BOSS_EVERY===0)Enemies.spawnBoss(this.wave);Snd.play('wave');this.state=ST.WAVE;},
-    endWave(){
-        this.gold+=CFG.GOLD_PER_WAVE;this.stats.goldEarned+=CFG.GOLD_PER_WAVE;
-        this.stats.maxWave=Math.max(this.stats.maxWave,this.wave);
-        if(this.wave>=CFG.WAVE_MAX){this.endTimer=0;this.state=ST.WIN;return;}
-        this.upgradeChoices=Upgrades.buildChoices(this.wave);this.state=ST.UPGRADE;
+        window.addEventListener('resize', () => { this._resize(); Table.init(this.canvas.width, this.canvas.height); });
+        Snd.init();
+        this._initInput();
+        this.lastTime = performance.now();
+        requestAnimationFrame(t => this.loop(t));
     },
 
-    loop(time){
-        const dt=Math.min((time-this.lastTime)/1000,.05);this.lastTime=time;this.time+=dt;
-        Input.update();
-        const ctx=this.ctx,cw=this.canvas.width,ch=this.canvas.height;
-        ctx.fillStyle='#080810';ctx.fillRect(0,0,cw,ch);
-        switch(this.state){
-            case ST.MENU:this._updateMenu();this._drawMenu(ctx,cw,ch);break;
-            case ST.BUILD:this._updateBuild(dt);this._drawGame(ctx,cw,ch);break;
-            case ST.WAVE:this._updateWave(dt);this._drawGame(ctx,cw,ch);break;
-            case ST.UPGRADE:this._updateUpgrade(cw,ch);this._drawUpgrade(ctx,cw,ch);break;
-            case ST.WIN:this._updateEnd();this._drawEnd(ctx,cw,ch,true);break;
-            case ST.OVER:this._updateEnd();this._drawEnd(ctx,cw,ch,false);break;
+    _resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.ctx.imageSmoothingEnabled = true;
+    },
+
+    _initInput() {
+        const c = this.canvas;
+        // Mouse
+        c.addEventListener('mousedown', e => this._onDown(this._mpos(e)));
+        c.addEventListener('mousemove', e => this._onMove(this._mpos(e)));
+        c.addEventListener('mouseup', e => this._onUp(this._mpos(e)));
+        // Touch
+        c.addEventListener('touchstart', e => { e.preventDefault(); this._onDown(this._tpos(e)); }, { passive: false });
+        c.addEventListener('touchmove', e => { e.preventDefault(); this._onMove(this._tpos(e)); }, { passive: false });
+        c.addEventListener('touchend', e => { e.preventDefault(); this._onUp(this._tpos(e)); }, { passive: false });
+    },
+
+    _mpos(e) { const r = this.canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * (this.canvas.width / r.width), y: (e.clientY - r.top) * (this.canvas.height / r.height) }; },
+    _tpos(e) { const t = e.changedTouches[0]; return this._mpos(t); },
+
+    _onDown(p) {
+        Snd.resume();
+        if (this.state === 'menu') { this.startGame(); return; }
+        if (this.state === 'win') { this.state = 'menu'; return; }
+        if (this.placing) { this._placeCue(p); return; }
+        if (this.state !== 'aiming') return;
+        const cue = this.balls[0];
+        if (!cue.active) return;
+        this.dragging = true;
+        this.dragStartX = p.x;
+        this.dragStartY = p.y;
+        this.aimX = p.x; this.aimY = p.y;
+    },
+
+    _onMove(p) {
+        this.aimX = p.x; this.aimY = p.y;
+    },
+
+    _onUp(p) {
+        if (!this.dragging) return;
+        this.dragging = false;
+        const cue = this.balls[0];
+        if (!cue.active) return;
+        const dx = this.dragStartX - p.x;
+        const dy = this.dragStartY - p.y;
+        const power = Math.min(Math.sqrt(dx * dx + dy * dy) * 3, this.maxPower);
+        if (power < 15) return; // too weak
+        const angle = Math.atan2(dy, dx);
+        cue.vx = Math.cos(angle) * power;
+        cue.vy = Math.sin(angle) * power;
+        this.state = 'moving';
+        this.firstHit = null;
+        this.pocketedThisShot = [];
+        this.cuePocketed = false;
+        this.shotTrail = [{ x: cue.x, y: cue.y }];
+        Snd.play('cue');
+    },
+
+    _placeCue(p) {
+        const cue = this.balls[0];
+        // Must be on table, behind head string
+        const tx = Math.max(Table.x + Table.cushion + cue.r, Math.min(p.x, Table.x + Table.w * 0.25));
+        const ty = Math.max(Table.y + Table.cushion + cue.r, Math.min(p.y, Table.y + Table.h - Table.cushion - cue.r));
+        // Check not overlapping other balls
+        let ok = true;
+        for (let i = 1; i < this.balls.length; i++) {
+            if (!this.balls[i].active) continue;
+            const dx = tx - this.balls[i].x, dy = ty - this.balls[i].y;
+            if (Math.sqrt(dx*dx + dy*dy) < cue.r + this.balls[i].r + 2) { ok = false; break; }
         }
-        Input.endFrame();requestAnimationFrame(t=>this.loop(t));
-    },
-
-    // ══ MENU ══
-    _updateMenu(){
-        if(!Input.tapped)return;
-        const cw=this.canvas.width,ch=this.canvas.height,mob=Input.mobile||cw<600;
-        const pw=mob?Math.min(cw*.88,320):220,ph=mob?100:250,gap=mob?12:20;
-        for(let i=0;i<3;i++){
-            let px,py;
-            if(mob){px=(cw-pw)/2;py=ch*.25+i*(ph+gap);}
-            else{px=(cw-(pw*3+gap*2))/2+i*(pw+gap);py=ch*.25;}
-            if(Input.tapX>=px&&Input.tapX<=px+pw&&Input.tapY>=py&&Input.tapY<=py+ph){
-                Snd.resume();Snd.play('lvl');this.startGame(i);return;
-            }
+        if (ok) {
+            cue.x = tx; cue.y = ty;
+            cue.active = true; cue.pocketed = false;
+            this.placing = false;
+            this.state = 'aiming';
         }
     },
-    _drawMenu(ctx,cw,ch){
-        const mob=Input.mobile||cw<600,t=this.time;
-        // BG particles
-        for(let i=0;i<15;i++){
-            ctx.globalAlpha=.04;ctx.fillStyle=['#0ff','#f60','#4cf'][i%3];
-            ctx.beginPath();ctx.arc((Math.sin(i*1.3+t*.2)*.5+.5)*cw,(Math.cos(i*1.7+t*.15)*.5+.5)*ch,25+Math.sin(t+i)*8,0,Math.PI*2);ctx.fill();
-        }
-        ctx.globalAlpha=1;
-        this._txt('RESONANCE',cw/2,ch*.06,'#0ff',mob?26:44,'center');
-        this._txt('TOWER DEFENSE',cw/2,ch*.06+(mob?24:40),'#088',mob?13:18,'center');
-        this._txt('Выбери специализацию',cw/2,ch*.18,'#aaa',mob?11:14,'center');
 
-        const pw=mob?Math.min(cw*.88,320):220,ph=mob?100:250,gap=mob?12:20;
-        for(let i=0;i<3;i++){
-            const s=SPECS[i];
-            let px,py;
-            if(mob){px=(cw-pw)/2;py=ch*.25+i*(ph+gap);}
-            else{px=(cw-(pw*3+gap*2))/2+i*(pw+gap);py=ch*.25;}
+    startGame() {
+        Table.init(this.canvas.width, this.canvas.height);
+        this.balls = createBalls(Table);
+        this.turn = 1;
+        this.p1 = { name: 'Игрок 1', type: null, score: 0 };
+        this.p2 = { name: 'Игрок 2', type: null, score: 0 };
+        this.placing = false;
+        this.msg = ''; this.msgTimer = 0;
+        this.state = 'aiming';
+        this.showMsg('Игрок 1 — ваш удар!');
+    },
 
-            const grad=ctx.createLinearGradient(px,py,px,py+ph);
-            grad.addColorStop(0,'#151528');grad.addColorStop(1,'#0e0e1a');
-            ctx.fillStyle=grad;ctx.fillRect(px,py,pw,ph);
-            ctx.fillStyle=s.color;ctx.fillRect(px,py,4,ph);
-            ctx.strokeStyle=s.color;ctx.lineWidth=1.5;ctx.strokeRect(px,py,pw,ph);
+    showMsg(text) { this.msg = text; this.msgTimer = 2.5; },
 
-            if(mob){
-                ctx.fillStyle=s.color;ctx.font='28px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
-                ctx.fillText(s.icon,px+30,py+ph/2);
-                this._txt(s.name,px+60,py+18,s.color,16,'left');
-                this._txt(s.desc,px+60,py+40,'#bbb',9,'left');
-                for(let a=0;a<3;a++) this._txt(`${s.spells[a].icon} ${s.spells[a].name}`,px+60,py+58+a*14,'#aaa',8,'left');
-            } else {
-                ctx.fillStyle=s.color;ctx.font='36px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
-                ctx.fillText(s.icon,px+pw/2,py+45);
-                this._txt(s.name,px+pw/2,py+85,s.color,20,'center');
-                this._txt(s.desc,px+pw/2,py+110,'#bbb',10,'center');
-                for(let a=0;a<3;a++){
-                    const sp=s.spells[a];
-                    this._txt(`${sp.icon} ${sp.name}`,px+12,py+140+a*22,sp.color,10,'left');
-                    this._txt(sp.desc,px+12,py+153+a*22,'#888',8,'left');
+    currentPlayer() { return this.turn === 1 ? this.p1 : this.p2; },
+    otherPlayer() { return this.turn === 1 ? this.p2 : this.p1; },
+
+    loop(time) {
+        const dt = Math.min((time - this.lastTime) / 1000, 0.05);
+        this.lastTime = time;
+        const ctx = this.ctx, cw = this.canvas.width, ch = this.canvas.height;
+
+        // Update
+        if (this.state === 'moving') {
+            Physics.update(this.balls, Table, dt);
+            // Track trail
+            const cue = this.balls[0];
+            if (cue.active && this.shotTrail.length < 300) {
+                const last = this.shotTrail[this.shotTrail.length - 1];
+                if (Math.abs(cue.x - last.x) > 3 || Math.abs(cue.y - last.y) > 3) {
+                    this.shotTrail.push({ x: cue.x, y: cue.y });
                 }
             }
-        }
-        this._txt(mob?'Тап = строить башни!':'Тап строит башни. Защищай ядро!',cw/2,ch*.95,'#555',mob?9:11,'center');
-    },
-
-    // ══ BUILD ══
-    _updateBuild(dt){
-        this.buildTimer-=dt;FX.update(dt);Spells.update(dt);
-        if(Input.tapped){
-            const wp=Cam.screenToWorld(Input.tapX,Input.tapY);
-            const hex=U.pixelToHex(wp.x,wp.y);
-            const cell=World.getCell(hex.q,hex.r);
-            if(cell&&cell.building){
-                if(!Buildings.upgrade(hex.q,hex.r)){
-                    const refund=Buildings.sell(hex.q,hex.r);
-                    if(refund>0){this.gold+=refund;this.stats.towersSold++;}
-                } else {
-                    this.stats.goldSpent+=Math.floor(cell.building.def.cost*.7);
-                }
-            } else if(this.selectedTower){
-                const def=TOWER_DEFS[this.selectedTower];
-                if(def&&this.gold>=def.cost&&Buildings.place(hex.q,hex.r,this.selectedTower)){
-                    this.gold-=def.cost;
-                    this.stats.goldSpent+=def.cost;
-                    this.stats.towersBuilt++;
-                    this.stats.towersByType[this.selectedTower]=(this.stats.towersByType[this.selectedTower]||0)+1;
+            // Track first ball hit by cue
+            if (!this.firstHit) {
+                for (let i = 1; i < this.balls.length; i++) {
+                    const b = this.balls[i];
+                    if (b.pocketed && !this.pocketedThisShot.includes(b.id)) {
+                        // Not a first-hit tracker, but track pocketed
+                    }
                 }
             }
-        }
-        if(this.buildTimer<=0)this.startWave();
-    },
+            // Check pocketed this frame
+            for (const b of this.balls) {
+                if (b.pocketed && !this.pocketedThisShot.includes(b.id) && b.id !== 0) {
+                    this.pocketedThisShot.push(b.id);
+                    Snd.play('pocket');
+                }
+                if (b.id === 0 && b.pocketed && !this.cuePocketed) {
+                    this.cuePocketed = true;
+                    Snd.play('foul');
+                }
+            }
 
-    // ══ WAVE ══
-    _updateWave(dt){
-        Spells.update(dt);
-        Buildings.update(dt,Enemies.list);
-        Enemies.update(dt);
-        FX.update(dt);Cam.update(dt);
-        if(this.coreHp<=0){
-            this.coreHp=0;Snd.play('death');
-            this.stats.maxWave=Math.max(this.stats.maxWave,this.wave);
-            this.endTimer=0;
-            // Core explosion VFX
-            FX.ring(World.centerX,World.centerY,'#f44',120,.6);
-            FX.ring(World.centerX,World.centerY,'#f80',80,.4);
-            FX.sparkle(World.centerX,World.centerY,'#f44',25,120);
-            FX.doFlash('#f00',.4);Cam.addShake(12);
-            this.state=ST.OVER;return;
-        }
-        if(Enemies.list.length===0)this.endWave();
-    },
-
-    // ══ DRAW ══
-    _drawGame(ctx,cw,ch){
-        Cam.begin(ctx);
-        World.draw(ctx,this.phase,this.time);
-        Buildings.draw(ctx,this.time);
-        Enemies.draw(ctx);
-        FX.drawWorld(ctx);
-
-        // Build: hover hex
-        if(this.state===ST.BUILD){
-            const wp=Cam.screenToWorld(Input.tapX||cw/2,Input.tapY||ch/2);
-            const hex=U.pixelToHex(wp.x,wp.y);
-            const hp=U.hexToPixel(hex.q,hex.r);
-            const canB=World.canBuild(hex.q,hex.r);
-            U.drawHex(ctx,hp.x,hp.y,CFG.HEX_R-2,null,canB?'rgba(0,255,100,.25)':'rgba(255,60,60,.25)');
-        }
-        Cam.end(ctx);
-
-        // Night overlay
-        if(this.phase==='wave'){
-            ctx.globalAlpha=.3;ctx.fillStyle='#000018';ctx.fillRect(0,0,cw,ch);
-            // Core light
-            const cpx=World.centerX-Cam.x+Cam.sx,cpy=World.centerY-Cam.y+Cam.sy;
-            const grad=ctx.createRadialGradient(cpx,cpy,60,cpx,cpy,250);
-            grad.addColorStop(0,'rgba(0,0,20,0)');grad.addColorStop(1,'rgba(0,0,20,.3)');
-            ctx.globalAlpha=1;ctx.fillStyle=grad;ctx.fillRect(0,0,cw,ch);
+            // All stopped?
+            if (Physics.allStopped(this.balls)) {
+                this._evaluateShot();
+            }
         }
 
-        this._drawHUD(ctx,cw,ch);
-        FX.drawScreen(ctx,cw,ch);
-    },
+        if (this.msgTimer > 0) this.msgTimer -= dt;
 
-    _drawHUD(ctx,cw,ch){
-        const p=8,mob=Input.mobile;
+        // Draw
+        ctx.fillStyle = '#1a1a2a';
+        ctx.fillRect(0, 0, cw, ch);
 
-        // Core HP bar (top center)
-        const coreW=Math.min(220,cw*.35);
-        const cx=(cw-coreW)/2;
-        ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(cx-2,p-2,coreW+4,18);
-        ctx.fillStyle='#112';ctx.fillRect(cx,p,coreW,14);
-        const hpR=this.coreHp/CFG.CORE_HP;
-        ctx.fillStyle=hpR>.5?'#4af':hpR>.25?'#fa0':'#f44';
-        ctx.fillRect(cx,p,coreW*hpR,14);
-        ctx.strokeStyle='#444';ctx.lineWidth=1;ctx.strokeRect(cx,p,coreW,14);
-        this._txt(`💎 ${Math.ceil(this.coreHp)}/${CFG.CORE_HP}`,cw/2,p+7,'#fff',10,'center');
-
-        // Gold (left)
-        this._txt(`💰 ${this.gold}`,p,p+7,'#ff0',13,'left');
-        // Wave (right)
-        this._txt(`${this.wave}/${CFG.WAVE_MAX}`,cw-p,p+7,'#aaa',12,'right');
-
-        // Phase
-        if(this.state===ST.BUILD){
-            const tl=Math.ceil(this.buildTimer);
-            this._txt(`☀ ДЕНЬ — ${tl}с`,cw/2,p+26,'#ff0',11,'center');
+        if (this.state === 'menu') {
+            this._drawMenu(ctx, cw, ch);
         } else {
-            this._txt(`🌙 ВОЛНА ${this.wave}`,cw/2,p+26,'#f66',11,'center');
-            this._txt(`x${Enemies.list.length}`,cw-p,p+22,'#888',9,'right');
-        }
-
-        // Build palette
-        if(this.state===ST.BUILD){
-            const types=['arrow','fire','ice','lightning','cannon','wall','trap','heal'];
-            const bsz=mob?46:52,gap=4;
-            const totalW=types.length*(bsz+gap);
-            const sx=(cw-totalW)/2,by=ch-(mob?85:60);
-
-            ctx.fillStyle='rgba(0,0,0,.7)';
-            ctx.fillRect(sx-6,by-20,totalW+12,bsz+28);
-
-            // Scroll hint
-            this._txt('Тап на башню = апгрейд. Ещё раз = продать.',cw/2,by-10,'#666',8,'center');
-
-            for(let i=0;i<types.length;i++){
-                const t=types[i],def=TOWER_DEFS[t];
-                const bx=sx+i*(bsz+gap),sel=this.selectedTower===t,afford=this.gold>=def.cost;
-
-                ctx.fillStyle=sel?'#2a2a4a':'#12121e';
-                ctx.fillRect(bx,by,bsz,bsz);
-                ctx.strokeStyle=sel?def.color:(afford?'#444':'#1a1a1a');
-                ctx.lineWidth=sel?2:1;
-                ctx.strokeRect(bx,by,bsz,bsz);
-
-                // Icon
-                ctx.fillStyle=afford?def.color:'#333';
-                ctx.font=`${mob?16:18}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
-                ctx.fillText(def.icon,bx+bsz/2,by+bsz/2-8);
-                this._txt(`${def.cost}`,bx+bsz/2,by+bsz-10,afford?'#ff0':'#444',9,'center');
-
-                // Tap to select
-                if(Input.tapped&&Input.tapY>=by&&Input.tapY<=by+bsz&&Input.tapX>=bx&&Input.tapX<=bx+bsz){
-                    this.selectedTower=t;Input.tapped=false;
+            Table.draw(ctx);
+            // Shot trail
+            if (this.shotTrail.length > 1) {
+                ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.shotTrail[0].x, this.shotTrail[0].y);
+                for (let i = 1; i < this.shotTrail.length; i++) {
+                    ctx.lineTo(this.shotTrail[i].x, this.shotTrail[i].y);
                 }
+                ctx.stroke();
+            }
+            // Balls
+            for (let i = this.balls.length - 1; i >= 0; i--) drawBall(ctx, this.balls[i]);
+            // Aiming line
+            if (this.state === 'aiming' && !this.placing) this._drawAim(ctx);
+            // Placing indicator
+            if (this.placing) this._drawPlacing(ctx, cw, ch);
+            // HUD
+            this._drawHUD(ctx, cw, ch);
+        }
+
+        requestAnimationFrame(t => this.loop(t));
+    },
+
+    _evaluateShot() {
+        const cp = this.currentPlayer();
+        const op = this.otherPlayer();
+        let foul = false;
+        let switchTurn = true;
+
+        // Assign types on first legal pot
+        if (!cp.type && this.pocketedThisShot.length > 0) {
+            const potted = this.pocketedThisShot.filter(id => id !== 8);
+            if (potted.length > 0) {
+                const first = potted[0];
+                if (first >= 1 && first <= 7) { cp.type = 'solid'; op.type = 'stripe'; }
+                else if (first >= 9 && first <= 15) { cp.type = 'stripe'; op.type = 'solid'; }
             }
         }
 
-        // Spell buttons (both phases, bottom-right)
-        const spec=SPECS[Spells.specIdx];
-        const ssz=mob?50:46,sg=8;
-        const sax=cw-p-ssz;
-        for(let i=0;i<3;i++){
-            const say=ch*.35+i*(ssz+sg);
-            const cd=Spells.cooldowns[i],sp=spec.spells[i],ready=cd<=0;
-            ctx.fillStyle=ready?'#1a2a3a':'#0e0e14';
-            ctx.fillRect(sax,say,ssz,ssz);
-            ctx.strokeStyle=ready?sp.color:'#222';ctx.lineWidth=ready?2:1;
-            ctx.strokeRect(sax,say,ssz,ssz);
-            if(!ready){ctx.globalAlpha=.35;ctx.fillStyle='#000';ctx.fillRect(sax,say,ssz,ssz*(cd/sp.cd));ctx.globalAlpha=1;}
-            ctx.fillStyle=ready?'#fff':'#555';
-            ctx.font=`${mob?20:18}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';
-            ctx.fillText(sp.icon,sax+ssz/2,say+ssz/2);
-            if(!ready)this._txt(`${Math.ceil(cd/1000)}`,sax+ssz/2,say+ssz-8,'#888',8,'center');
+        // Foul: cue ball pocketed
+        if (this.cuePocketed) {
+            foul = true;
+            this.foulMsg = 'Фол! Белый шар в лузе';
+        }
 
-            if(Input.tapped&&Input.tapX>=sax&&Input.tapX<=sax+ssz&&Input.tapY>=say&&Input.tapY<=say+ssz){
-                Spells.cast(i,Enemies.list);Input.tapped=false;
+        // Count pocketed by type
+        let pottedOwn = 0;
+        for (const id of this.pocketedThisShot) {
+            if (id === 8) continue;
+            const isSolid = id >= 1 && id <= 7;
+            const isStripe = id >= 9 && id <= 15;
+            if ((cp.type === 'solid' && isSolid) || (cp.type === 'stripe' && isStripe)) {
+                pottedOwn++; cp.score++;
+            } else if (cp.type) {
+                // Potted opponent's ball — not a foul in 8-ball but no continuation
             }
         }
 
-        // Kills counter
-        this._txt(`☠ ${this.kills}`,p,ch-p-6,'#888',10,'left');
-    },
-
-    // ══ UPGRADE ══
-    _updateUpgrade(cw,ch){
-        if(!Input.tapped)return;
-        const pw=Math.min(340,cw*.88),ph=70,gap=12,sx=(cw-pw)/2;
-        for(let i=0;i<this.upgradeChoices.length;i++){
-            const py=ch*.3+i*(ph+gap);
-            if(Input.tapX>=sx&&Input.tapX<=sx+pw&&Input.tapY>=py&&Input.tapY<=py+ph){
-                this.upgradeChoices[i].apply();Snd.play('lvl');
-                this.phase='build';this.buildTimer=CFG.BUILD_TIME;this.state=ST.BUILD;return;
-            }
-        }
-    },
-    _drawUpgrade(ctx,cw,ch){
-        this._drawGame(ctx,cw,ch);
-        ctx.fillStyle='rgba(0,0,15,.85)';ctx.fillRect(0,0,cw,ch);
-        ctx.fillStyle='#22a';ctx.fillRect(0,ch*.08,cw,40);
-        this._txt(`Волна ${this.wave} пройдена!`,cw/2,ch*.08+20,'#0ff',20,'center');
-        this._txt('Выбери улучшение',cw/2,ch*.22,'#ccc',12,'center');
-        const pw=Math.min(340,cw*.88),ph=70,gap=12,sx=(cw-pw)/2;
-        for(let i=0;i<this.upgradeChoices.length;i++){
-            const c=this.upgradeChoices[i],py=ch*.3+i*(ph+gap);
-            ctx.fillStyle='#1a1a30';ctx.fillRect(sx,py,pw,ph);
-            ctx.fillStyle=c.color;ctx.fillRect(sx,py,3,ph);
-            ctx.strokeStyle=c.color;ctx.lineWidth=1.5;ctx.strokeRect(sx,py,pw,ph);
-            ctx.fillStyle=c.color;ctx.beginPath();ctx.arc(sx+30,py+ph/2,16,0,Math.PI*2);ctx.fill();
-            ctx.fillStyle='#000';ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
-            ctx.fillText(c.icon,sx+30,py+ph/2);
-            this._txt(c.name,sx+56,py+22,'#fff',13,'left');
-            this._txt(c.desc,sx+56,py+48,'#aaa',10,'left');
-        }
-    },
-
-    // ══ END — animated stats screen ══
-    _updateEnd(){
-        this.endTimer+=.016; // ~60fps
-        FX.update(.016);
-        if(Input.tapped&&this.endTimer>1.5)this.state=ST.MENU;
-    },
-    _drawEnd(ctx,cw,ch,won){
-        // Background — keep showing the game frozen
-        Cam.begin(ctx);
-        World.draw(ctx,this.phase,this.time);
-        Buildings.draw(ctx,this.time);
-        Enemies.draw(ctx);
-        FX.drawWorld(ctx);
-        Cam.end(ctx);
-
-        // Dark overlay fades in
-        const fadeIn=Math.min(1,this.endTimer/.8);
-        ctx.fillStyle=`rgba(0,0,${won?8:0},${fadeIn*.88})`;
-        ctx.fillRect(0,0,cw,ch);
-
-        // Title banner
-        if(this.endTimer>.3){
-            const bannerAlpha=Math.min(1,(this.endTimer-.3)/.4);
-            ctx.globalAlpha=bannerAlpha;
-            ctx.fillStyle=won?'#024':'#400';
-            ctx.fillRect(0,ch*.08,cw,50);
-            this._txt(won?'ПОБЕДА!':'ЯДРО УНИЧТОЖЕНО',cw/2,ch*.08+25,won?'#0ff':'#f44',won?28:24,'center');
-            ctx.globalAlpha=1;
-        }
-
-        // Stats appear one by one
-        const mob=Input.mobile||cw<600;
-        const statX=cw/2, startY=ch*.22;
-        const lineH=mob?28:32;
-        const st=this.stats;
-        const spec=SPECS[Spells.specIdx];
-
-        const lines=[
-            {delay:.6,  icon:'📊', label:'СТАТИСТИКА',  value:'',        color:'#888', header:true},
-            {delay:.8,  icon:'🌊', label:'Волна',        value:`${this.wave} / ${CFG.WAVE_MAX}`, color:'#4af'},
-            {delay:1.0, icon:'☠',  label:'Убито врагов', value:`${this.kills}`,   color:'#f80'},
-            {delay:1.2, icon:'💀', label:'Дошли до ядра',value:`${st.enemiesReachedCore}`, color:'#f44'},
-            {delay:1.4, icon:'🏗', label:'Построено',    value:`${st.towersBuilt} башен`, color:'#4af'},
-            {delay:1.6, icon:'💰', label:'Заработано',   value:`${st.goldEarned} золота`, color:'#ff0'},
-            {delay:1.8, icon:'💸', label:'Потрачено',    value:`${st.goldSpent} золота`,  color:'#fa0'},
-            {delay:2.0, icon:'🔧', label:'Продано',      value:`${st.towersSold} башен`,  color:'#aaa'},
-            {delay:2.2, icon:'🏰', label:'Осталось башен',value:`${Buildings.list.length}`,color:'#4cf'},
-        ];
-
-        // Tower breakdown
-        const towerTypes=Object.entries(st.towersByType);
-        if(towerTypes.length>0){
-            lines.push({delay:2.4,icon:'📋',label:'ПО ТИПАМ',value:'',color:'#888',header:true});
-            let d=2.5;
-            for(const[type,count] of towerTypes){
-                const def=TOWER_DEFS[type];
-                if(def) lines.push({delay:d,icon:def.icon,label:def.name,value:`x${count}`,color:def.color});
-                d+=.15;
-            }
-        }
-
-        lines.push({delay:Math.max(2.8,2.5+towerTypes.length*.15),icon:spec.icon,label:'Спец',value:spec.name,color:spec.color});
-
-        for(const line of lines){
-            if(this.endTimer<line.delay) continue;
-            const alpha=Math.min(1,(this.endTimer-line.delay)/.3);
-            ctx.globalAlpha=alpha;
-            const y=startY+(lines.indexOf(line))*lineH;
-
-            if(y>ch*.85) continue; // don't overflow
-
-            if(line.header){
-                // Section header
-                ctx.fillStyle='#222';ctx.fillRect(statX-120,y-4,240,lineH-4);
-                this._txt(`${line.icon} ${line.label}`,statX,y+lineH/2-4,line.color,mob?11:13,'center');
+        // 8-ball potted?
+        const eightPotted = this.pocketedThisShot.includes(8);
+        if (eightPotted) {
+            // Check if player has cleared their group
+            const ownBalls = cp.type === 'solid' ? [1,2,3,4,5,6,7] : [9,10,11,12,13,14,15];
+            const remaining = ownBalls.filter(id => this.balls.find(b => b.id === id && b.active));
+            if (remaining.length === 0 && !foul) {
+                // Win!
+                this.state = 'win';
+                this.showMsg(`${cp.name} победил!`);
+                Snd.play('win');
+                return;
             } else {
-                // Stat row: icon + label left, value right
-                const rowW=Math.min(300,cw*.7);
-                const lx=statX-rowW/2, rx=statX+rowW/2;
-                // Background bar
-                ctx.fillStyle='rgba(20,20,40,.6)';ctx.fillRect(lx-4,y,rowW+8,lineH-4);
-                ctx.strokeStyle='#333';ctx.lineWidth=.5;ctx.strokeRect(lx-4,y,rowW+8,lineH-4);
-                // Icon + Label
-                this._txt(`${line.icon} ${line.label}`,lx+4,y+lineH/2-2,'#ccc',mob?10:12,'left');
-                // Value
-                this._txt(line.value,rx,y+lineH/2-2,line.color,mob?11:13,'right');
+                // Potted 8-ball too early or with foul = lose
+                this.state = 'win';
+                this.showMsg(`${op.name} победил! (${cp.name} забил 8 рано)`);
+                Snd.play('foul');
+                return;
             }
         }
-        ctx.globalAlpha=1;
 
-        // Restart hint
-        if(this.endTimer>2.5){
-            const blink=Math.sin(this.endTimer*3)>.0;
-            if(blink) this._txt('Нажмите для рестарта',cw/2,ch*.92,'#888',mob?11:13,'center');
+        // Foul: place cue ball
+        if (foul) {
+            this.showMsg(this.foulMsg);
+            this.turn = this.turn === 1 ? 2 : 1;
+            // Reset cue ball for placement
+            const cue = this.balls[0];
+            cue.active = false; cue.pocketed = false;
+            this.placing = true;
+            this.state = 'aiming';
+            return;
         }
 
-        FX.drawScreen(ctx,cw,ch);
+        // Continue if potted own ball
+        if (pottedOwn > 0) {
+            switchTurn = false;
+            this.showMsg(`${cp.name} продолжает!`);
+        }
+
+        if (switchTurn) {
+            this.turn = this.turn === 1 ? 2 : 1;
+            this.showMsg(`${this.currentPlayer().name} — ваш удар`);
+        }
+
+        this.shotTrail = [];
+        this.state = 'aiming';
     },
 
-    _txt(s,x,y,c,sz,al){this.ctx.fillStyle=c;this.ctx.font=`bold ${sz}px monospace`;this.ctx.textAlign=al;this.ctx.textBaseline='middle';this.ctx.fillText(s,x,y);}
+    _drawAim(ctx) {
+        const cue = this.balls[0];
+        if (!cue.active) return;
+
+        if (this.dragging) {
+            // Power line from cue to drag start (shows direction)
+            const dx = this.dragStartX - this.aimX;
+            const dy = this.dragStartY - this.aimY;
+            const power = Math.min(Math.sqrt(dx * dx + dy * dy) * 3, this.maxPower);
+            const angle = Math.atan2(dy, dx);
+
+            // Aim line (dotted)
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 6]);
+            ctx.beginPath();
+            ctx.moveTo(cue.x, cue.y);
+            ctx.lineTo(cue.x + Math.cos(angle) * 200, cue.y + Math.sin(angle) * 200);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Power bar
+            const pRatio = power / this.maxPower;
+            const barW = 120, barH = 10;
+            const bx = cue.x - barW / 2, by = cue.y - 30;
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+            ctx.fillStyle = pRatio < 0.3 ? '#4f4' : pRatio < 0.7 ? '#ff0' : '#f44';
+            ctx.fillRect(bx, by, barW * pRatio, barH);
+
+            // Cue stick visual
+            const stickLen = 100 + power * 0.15;
+            const sx = cue.x - Math.cos(angle) * (cue.r + 6 + power * 0.08);
+            const sy = cue.y - Math.sin(angle) * (cue.r + 6 + power * 0.08);
+            const ex = sx - Math.cos(angle) * stickLen;
+            const ey = sy - Math.sin(angle) * stickLen;
+
+            // Cue stick
+            ctx.strokeStyle = '#c8a050';
+            ctx.lineWidth = 5;
+            ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+            ctx.strokeStyle = '#e8c878';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + (ex - sx) * 0.15, sy + (ey - sy) * 0.15); ctx.stroke();
+            // Tip
+            ctx.fillStyle = '#4a8';
+            ctx.beginPath(); ctx.arc(sx, sy, 3, 0, Math.PI * 2); ctx.fill();
+        }
+    },
+
+    _drawPlacing(ctx, cw, ch) {
+        // Show placement zone
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(Table.x + Table.w * 0.25, Table.y + Table.cushion);
+        ctx.lineTo(Table.x + Table.w * 0.25, Table.y + Table.h - Table.cushion);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Ghost cue ball at mouse
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = '#f0f0ee';
+        ctx.beginPath();
+        ctx.arc(
+            Math.max(Table.x + Table.cushion + BALL_R, Math.min(this.aimX, Table.x + Table.w * 0.25)),
+            Math.max(Table.y + Table.cushion + BALL_R, Math.min(this.aimY, Table.y + Table.h - Table.cushion - BALL_R)),
+            BALL_R, 0, Math.PI * 2
+        );
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        this._txt('Поставьте белый шар', cw / 2, Table.y - 30, '#ff0', 14, 'center');
+    },
+
+    _drawHUD(ctx, cw, ch) {
+        const p = 10;
+        // Pocketed balls display
+        const ty = Table.y - 44;
+
+        // Player 1 info (left)
+        const p1col = this.turn === 1 ? '#fff' : '#888';
+        this._txt(this.p1.name, p, ty, p1col, 13, 'left');
+        if (this.p1.type) {
+            this._txt(this.p1.type === 'solid' ? 'Цельные (1-7)' : 'Полосатые (9-15)', p, ty + 18, '#aaa', 10, 'left');
+        }
+        // Pocketed balls for P1
+        let px1 = p;
+        for (const b of this.balls) {
+            if (!b.pocketed || b.id === 0 || b.id === 8) continue;
+            const isMine = (this.p1.type === 'solid' && b.id <= 7) || (this.p1.type === 'stripe' && b.id >= 9);
+            if (isMine || !this.p1.type) {
+                ctx.fillStyle = b.color;
+                ctx.beginPath(); ctx.arc(px1 + 7, ty + 36, 6, 0, Math.PI * 2); ctx.fill();
+                px1 += 16;
+            }
+        }
+
+        // Player 2 info (right)
+        const p2col = this.turn === 2 ? '#fff' : '#888';
+        this._txt(this.p2.name, cw - p, ty, p2col, 13, 'right');
+        if (this.p2.type) {
+            this._txt(this.p2.type === 'solid' ? 'Цельные (1-7)' : 'Полосатые (9-15)', cw - p, ty + 18, '#aaa', 10, 'right');
+        }
+
+        // Turn arrow
+        const arrowX = this.turn === 1 ? p + 70 : cw - p - 70;
+        if (this.state === 'aiming') {
+            ctx.fillStyle = '#ff0';
+            ctx.beginPath(); ctx.arc(arrowX, ty + 6, 5, 0, Math.PI * 2); ctx.fill();
+        }
+
+        // Message
+        if (this.msgTimer > 0 && this.msg) {
+            const alpha = Math.min(1, this.msgTimer / 0.3);
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            const mw = 300, mh = 36;
+            ctx.fillRect(cw / 2 - mw / 2, ch * 0.15, mw, mh);
+            this._txt(this.msg, cw / 2, ch * 0.15 + 18, '#fff', 14, 'center');
+            ctx.globalAlpha = 1;
+        }
+    },
+
+    _drawMenu(ctx, cw, ch) {
+        // Table preview
+        Table.init(cw, ch);
+        Table.draw(ctx);
+
+        // Overlay
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillRect(0, 0, cw, ch);
+
+        this._txt('RESONANCE', cw / 2, ch * 0.15, '#0ff', 38, 'center');
+        this._txt('BILLIARDS', cw / 2, ch * 0.15 + 36, '#088', 20, 'center');
+
+        // 8-ball illustration
+        ctx.fillStyle = '#111';
+        ctx.beginPath(); ctx.arc(cw / 2, ch * 0.45, 35, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(cw / 2, ch * 0.45, 14, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('8', cw / 2, ch * 0.45);
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.beginPath(); ctx.arc(cw / 2 - 10, ch * 0.45 - 12, 10, 0, Math.PI * 2); ctx.fill();
+
+        this._txt('Нажмите чтобы начать', cw / 2, ch * 0.65, '#aaa', 14, 'center');
+        this._txt('Тяни от белого шара — сила и направление', cw / 2, ch * 0.73, '#666', 11, 'center');
+        this._txt('8-Ball: забей свои шары, затем чёрный 8', cw / 2, ch * 0.8, '#666', 11, 'center');
+    },
+
+    _txt(s, x, y, c, sz, al) {
+        this.ctx.fillStyle = c;
+        this.ctx.font = `bold ${sz}px monospace`;
+        this.ctx.textAlign = al; this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(s, x, y);
+    }
 };
-window.addEventListener('load',()=>{document.getElementById('loading').style.display='none';Game.init();});
+
+window.addEventListener('load', () => {
+    document.getElementById('loading').style.display = 'none';
+    Game.init();
+});
