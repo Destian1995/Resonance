@@ -2,7 +2,7 @@
 const CFG = {
     HEX_R: 30,
     GRID_RINGS: 7,
-    BUILD_TIME: 25,
+    BUILD_TIME: 7,
     WAVE_MAX: 20,
     BOSS_EVERY: 5,
     CORE_HP: 150,
