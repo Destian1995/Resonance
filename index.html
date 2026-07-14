@@ -419,6 +419,85 @@ body{
 }
 @keyframes hint-arrow{0%,100%{opacity:1}50%{opacity:0.2}}
 
+/* Camera Overlay */
+#camera-overlay{
+    display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(2,4,8,0.97);z-index:160;
+    flex-direction:column;align-items:center;justify-content:center;
+}
+#camera-overlay.show{display:flex}
+#camera-overlay canvas{border:1px solid var(--border);border-radius:2px;max-width:95vw;max-height:75vh}
+#camera-controls{
+    display:flex;gap:8px;align-items:center;margin-top:12px;
+}
+#camera-controls button{
+    background:var(--panel);border:1px solid var(--border);color:var(--text);
+    padding:8px 18px;font-family:inherit;font-size:12px;cursor:pointer;border-radius:3px;
+}
+#camera-controls button:hover{border-color:var(--accent);color:var(--accent2)}
+#camera-label{color:var(--accent2);font-size:14px;margin-bottom:8px;text-align:center}
+#camera-close{
+    position:absolute;top:10px;right:14px;
+    background:rgba(0,0,0,0.5);border:1px solid var(--dim);color:var(--dim);
+    font-size:20px;width:36px;height:36px;cursor:pointer;border-radius:4px;font-family:inherit;
+}
+#camera-close:hover{border-color:var(--accent);color:var(--accent2)}
+
+/* Topo Map Overlay */
+#topo-overlay{
+    display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(2,4,8,0.97);z-index:160;
+    flex-direction:column;align-items:center;justify-content:center;
+}
+#topo-overlay.show{display:flex}
+#topo-overlay canvas{border:1px solid var(--border);border-radius:2px;max-width:95vw;max-height:85vh}
+#topo-close{
+    position:absolute;top:10px;right:14px;
+    background:rgba(0,0,0,0.5);border:1px solid var(--dim);color:var(--dim);
+    font-size:20px;width:36px;height:36px;cursor:pointer;border-radius:4px;font-family:inherit;
+}
+#topo-close:hover{border-color:var(--accent);color:var(--accent2)}
+#topo-label{color:var(--accent2);font-size:14px;margin-bottom:8px}
+
+/* Mission Log Overlay */
+#mlog-overlay{
+    display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,0.75);z-index:100;justify-content:center;align-items:center;
+}
+#mlog-overlay.show{display:flex}
+#mlog-panel{
+    background:#080c14;border:1px solid var(--accent);border-radius:4px;
+    padding:20px;width:520px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;position:relative;
+}
+#mlog-panel h3{color:var(--accent2);margin-bottom:10px;font-size:14px}
+#mlog-entries{
+    flex:1;overflow-y:auto;font-size:11px;line-height:1.7;min-height:0;
+}
+.mlog-entry{
+    padding:4px 6px;border-bottom:1px solid #0a1218;display:flex;gap:6px;align-items:flex-start;
+}
+.mlog-icon{flex-shrink:0;width:16px;text-align:center;font-size:12px}
+.mlog-time{color:#1a2a36;font-size:9px;flex-shrink:0;width:70px}
+.mlog-cat{font-size:9px;padding:0 4px;border-radius:2px;flex-shrink:0}
+.mlog-cat-event{background:#1a0808;color:var(--red2)}
+.mlog-cat-repair{background:#0a1a10;color:var(--green)}
+.mlog-cat-eva{background:#120a1a;color:#cc88ff}
+.mlog-cat-crew{background:#0a1a22;color:#44bbdd}
+.mlog-cat-supply{background:#1a1a08;color:var(--yellow)}
+.mlog-cat-comm{background:#0a0a1a;color:#8888ee}
+.mlog-cat-invest{background:#1a1028;color:#aa66ff}
+.mlog-text{color:var(--text2);flex:1}
+#mlog-close{position:absolute;top:6px;right:10px;background:none;border:none;color:var(--dim);font-size:16px;cursor:pointer}
+
+/* Mute button */
+#mute-btn{
+    background:transparent;border:1px solid var(--border);color:var(--dim);
+    padding:1px 6px;font-family:inherit;font-size:10px;cursor:pointer;border-radius:2px;
+}
+#mute-btn:hover{border-color:var(--accent);color:var(--accent2)}
+#mute-btn.muted{color:var(--red);border-color:var(--red)}
+.qa-evac{grid-column:1/-1;background:#1a0808!important;border-color:#440000!important;color:var(--red2)!important;font-weight:bold;font-size:11px!important;text-transform:uppercase;letter-spacing:1px}.qa-evac:hover{background:#2a0c0c!important;border-color:var(--red)!important;box-shadow:0 0 10px rgba(200,20,40,0.3)}.qa-dock{animation:dock-glow 1.5s infinite;border-color:#00aa44!important;color:#00ff88!important}@keyframes dock-glow{0%,100%{box-shadow:0 0 4px rgba(0,200,80,0.3);background:#081a10}50%{box-shadow:0 0 12px rgba(0,200,80,0.5);background:#0d2a18}}.drill-speed-btns{display:flex;gap:4px;margin:6px 0}.drill-speed-btn{flex:1;padding:6px;border:1px solid var(--border);border-radius:3px;background:var(--panel);color:var(--text);cursor:pointer;font-family:inherit;font-size:11px;text-align:center}.drill-speed-btn.active{border-color:var(--accent);color:var(--accent2);background:#0a1520}.drill-speed-btn:hover{border-color:var(--accent)}.drill-rock{padding:4px 8px;background:#0a0e18;border:1px solid var(--border);border-radius:2px;margin:4px 0;font-size:11px;color:var(--text2)}.cs-psych{font-size:7px;margin-top:1px;display:flex;justify-content:space-around}.cs-stress-ok{color:var(--green)}.cs-stress-warn{color:var(--yellow)}.cs-stress-crit{color:var(--red2)}.cs-morale-ok{color:var(--accent2)}.cs-morale-warn{color:var(--yellow)}.cs-morale-crit{color:var(--red2)}.asteroid-warning{padding:8px;background:rgba(200,100,0,0.1);border:1px solid var(--orange);border-radius:4px;margin:8px 0;text-align:center;color:var(--orange);font-weight:bold}#evac-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,0,0,0.95);z-index:180;justify-content:center;align-items:center;flex-direction:column}#evac-overlay.show{display:flex}#evac-overlay h2{color:var(--red2);font-size:32px;margin-bottom:16px;animation:pulse-ind 0.8s infinite}#evac-overlay .evac-timer{color:var(--red2);font-size:72px;font-weight:bold;margin:20px 0}#evac-overlay .evac-status{color:var(--text);font-size:14px;margin:4px 0;text-align:center}
+
 /* Scrollbars */
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:var(--bg)}
@@ -620,6 +699,7 @@ body{
         <span class="tb-label" style="font-size:8px">TX</span>
     </div>
     <div class="tb-section" style="border:none">
+        <button id="mute-btn" onclick="toggleMute()">&#9835; SND</button>
         <div class="spd-controls">
             <button class="spd-btn" id="spb-0" onclick="togglePause()">▌▌</button>
         </div>
@@ -747,6 +827,14 @@ body{
     <button onclick="location.reload()">ПЕРЕЗАПУСК СИМУЛЯЦИИ</button>
 </div>
 
+<!-- EVACUATION OVERLAY -->
+<div id="evac-overlay">
+    <h2 id="evac-title">ПРОТОКОЛ ЭВАКУАЦИИ</h2>
+    <div class="evac-timer" id="evac-timer">60</div>
+    <div class="evac-status" id="evac-status">Экипаж направляется к спасательной капсуле...</div>
+    <div class="evac-status" id="evac-stats"></div>
+</div>
+
 <!-- RADAR ZOOM OVERLAY -->
 <div id="radar-zoom-overlay">
     <button id="radar-zoom-close" onclick="closeRadarZoom()">✕</button>
@@ -756,6 +844,34 @@ body{
     <div id="radar-zoom-detail">
         <h3 id="rzd-title">Наведите на объект</h3>
         <div id="rzd-body"></div>
+    </div>
+</div>
+
+<!-- CAMERA OVERLAY -->
+<div id="camera-overlay">
+    <button id="camera-close" onclick="closeCameras()">&#10005;</button>
+    <div id="camera-label">CAM-1: ---</div>
+    <canvas id="camera-canvas" width="640" height="480"></canvas>
+    <div id="camera-controls">
+        <button onclick="camPrev()">&#9664; ПРЕД</button>
+        <span id="cam-idx" style="color:var(--dim);font-size:11px">1/6</span>
+        <button onclick="camNext()">СЛЕД &#9654;</button>
+    </div>
+</div>
+
+<!-- TOPO MAP OVERLAY -->
+<div id="topo-overlay">
+    <button id="topo-close" onclick="closeTopoMap()">&#10005;</button>
+    <div id="topo-label">TOPOGRAPHIC MAP --- R=50km</div>
+    <canvas id="topo-canvas" width="700" height="700"></canvas>
+</div>
+
+<!-- MISSION LOG OVERLAY -->
+<div id="mlog-overlay">
+    <div id="mlog-panel">
+        <button id="mlog-close" onclick="closeMissionLog()">&#10005;</button>
+        <h3>БОРТОВОЙ ЖУРНАЛ</h3>
+        <div id="mlog-entries"></div>
     </div>
 </div>
 
@@ -789,10 +905,10 @@ function alarmTone(){ beep(880,0.15,0.1); setTimeout(()=>beep(660,0.15,0.1),200)
 
 // ---- CREW ----
 const CREW = [
-    { id:'CDR-07341', name:'Козлов', full:'Козлов А.В.', role:'Командир экспедиции', callsign:'CDR-07341', status:'free', task:null, health:100, fatigue:0, loc:'HAB' },
-    { id:'ENG-01256', name:'Чен', full:'Чен Ли', role:'Инженер-электрик', callsign:'ENG-01256', status:'free', task:null, health:100, fatigue:0, loc:'PWR' },
-    { id:'ENG-03489', name:'Мюллер', full:'Мюллер К.', role:'Инженер СЖО', callsign:'ENG-03489', status:'free', task:null, health:100, fatigue:0, loc:'LSS' },
-    { id:'GEO-08812', name:'Танака', full:'Танака Ю.', role:'Геолог-оператор', callsign:'GEO-08812', status:'free', task:null, health:100, fatigue:0, loc:'LAB' },
+    { id:'CDR-07341', name:'Козлов', full:'Козлов А.В.', role:'Командир экспедиции', callsign:'CDR-07341', status:'free', task:null, health:100, fatigue:0, loc:'HAB', stress:0, morale:80 },
+    { id:'ENG-01256', name:'Чен', full:'Чен Ли', role:'Инженер-электрик', callsign:'ENG-01256', status:'free', task:null, health:100, fatigue:0, loc:'PWR', stress:0, morale:80 },
+    { id:'ENG-03489', name:'Мюллер', full:'Мюллер К.', role:'Инженер СЖО', callsign:'ENG-03489', status:'free', task:null, health:100, fatigue:0, loc:'LSS', stress:0, morale:80 },
+    { id:'GEO-08812', name:'Танака', full:'Танака Ю.', role:'Геолог-оператор', callsign:'GEO-08812', status:'free', task:null, health:100, fatigue:0, loc:'LAB', stress:0, morale:80 },
 ];
 
 // ---- SYSTEMS ----
@@ -1109,6 +1225,14 @@ const AMBIENT_CHATTER = [
     {cond:T,weight:1,lines:[CH('{c1}','Менял термопасту на процессоре бортового компьютера. Грелся до 85°C, теперь 62°C.')]},
     {cond:T,weight:1,lines:[CH('{c1}','Обновил прошивку контроллера шлюза. Версия 2.4.1 — исправлена ошибка с таймером.')]},
     {cond:T,weight:1,lines:[CH('{c1}','{name2}, посмотри логи с датчика D-14. Шум появился после последнего лунотрясения.'),CH('{c2}','Вижу. Похоже на ложные срабатывания. Откалибрую заново.')]},
+    // === CREW PSYCHOLOGY ===
+    {cond:()=>CREW.some(c=>c.stress>50),weight:4,lines:[CH('{c1}','Нервы на пределе. Каждый звук заставляет вздрагивать.'),CH('{c2}','Понимаю. Дыши глубже. Мы справимся.')]},
+    {cond:()=>CREW.some(c=>c.stress>60),weight:3,lines:[CH('{c1}','Плохо спал. Кошмары — обшивка трещит, воздух уходит...'),CH('{c2}','Сходи к аптечке, возьми мелатонин. И поговори с Землёй, поможет.')]},
+    {cond:()=>CREW.some(c=>c.morale<40),weight:4,lines:[CH('{c1}','Зачем мы вообще здесь? Иногда кажется, что нас забыли.'),CH('{c2}','Не говори так. Земля следит за каждым нашим шагом. Мы важны.')]},
+    {cond:()=>CREW.some(c=>c.morale<30),weight:5,lines:[CH('{c1}','Я устал от этой луны. От пыли. От тесноты. От всего.'),CH('{c2}','Потерпи. До ротации осталось не так много. Мы справимся.')]},
+    {cond:()=>CREW.some(c=>c.stress>70&&c.morale<40),weight:6,lines:[CH('{c1}','Может, хватит уже? Может, пора просить эвакуацию?'),CH('{c2}','Успокойся. Мы здесь ради чего-то большего. Возьми себя в руки.')]},
+    {cond:()=>CREW.every(c=>c.stress<20&&c.morale>70),weight:3,lines:[CH('{c1}','Хорошая смена сегодня. Всё работает, все здоровы.'),CH('{c2}','Да, давно такого не было. Наслаждаемся моментом.')]},
+    {cond:()=>CREW.some(c=>c.stress>40),weight:2,lines:[CH('{c1}','Звонил семье вчера через канал. Стало легче.'),CH('{c2}','Это важно. Не забывай связываться регулярно.')]},
     // === MYSTERY REACTIONS / THEORIES / PARANOIA ===
     {cond:T,weight:1,lines:[CH('{c1}','Ты слышал про аномалию Apollo 12? Они тоже фиксировали сейсмические паттерны...'),CH('{c2}','Не начинай. Есть рациональное объяснение. Всегда есть.')]},
     {cond:T,weight:1,lines:[CH('{c1}','Марс-Аврора сообщала о похожих явлениях в прошлом месяце. Совпадение?'),CH('{c2}','Передай им наши данные. Пусть сравнят.')]},
@@ -1242,6 +1366,7 @@ function updateInvestigations(sdt){
 
             wo.status='ЗАВЕРШЁН';
             radioMsg(c?c.callsign:'Экипаж','crew',conclusionText);
+            addMissionLog('invest',`Расследование "${wo.title}" завершено. Итог: ${outcomeType==='scientific'?'научное объяснение':outcomeType==='inconclusive'?'неопределённый результат':'новое открытие!'}`);
             slog(`Расследование WO-${String(wo.id).padStart(4,'0')}: ${outcomeType==='scientific'?'научное объяснение':outcomeType==='inconclusive'?'неопределённый результат':'новое открытие!'}`
                 ,outcomeType==='discovery'?'ok':outcomeType==='inconclusive'?'wrn':'inf');
 
@@ -1267,6 +1392,23 @@ let chatterCD = 4;
 let radioMessages = [];
 let earthLog = [];
 let sysLog = [];
+
+// ---- NEW FEATURE STATES ----
+// Docking
+let dockingState = {active:false, shipId:'', eta:0, approved:false, shipNum:0, dsObj:null};
+let dockingCD = rng(300,500);
+// Evacuation
+let evacState = {active:false, countdown:0, phase:0};
+// Drill
+let drillState = {active:false, depth:0, speed:1, rockType:'реголит', jamCD:0};
+// Asteroid
+let asteroidThreat = {active:false, id:'', distance:0, eta:0, dsObj:null};
+let asteroidCD = rng(800,1200);
+// Cascade tracking
+let cascadeLastMsgCD = 0;
+// Crew psychology
+let stressChatterCD = rng(20,40);
+let lastEarthContactTime = 0;
 
 // ---- HELPERS ----
 function rng(a,b){return Math.random()*(b-a)+a}
@@ -1310,6 +1452,8 @@ function elog(dir,msg){
 
 // ---- RADIO ----
 function radioMsg(callsign, channel, text){
+    // Track Earth contact for crew psychology
+    if(channel === 'earth') lastEarthContactTime = gt;
     // Mark if this is a crew reply to dispatcher
     const prev = radioMessages.length > 0 ? radioMessages[radioMessages.length-1] : null;
     const isReply = prev && prev.ch === 'dispatch' && channel === 'crew';
@@ -1317,6 +1461,7 @@ function radioMsg(callsign, channel, text){
     if(radioMessages.length>150)radioMessages.shift();
     renderRadio();
     radioClick();
+    if(ambientInitialized && Math.random()<0.3) playRadioStatic();
 }
 
 // Radio filter
@@ -1524,7 +1669,13 @@ function assignWO(wo){
         return;
     }
     const c=avail[0];
-    const repTime=rng(25,70);
+    // Stress refusal check
+    if(c.stress > 70 && Math.random() < 0.1){
+        radioMsg(c.callsign,'crew','Я не могу сейчас. Мне нужен перерыв. Простите, Диспетчер.');
+        slog(c.name+' отказался от задания (стресс: '+Math.round(c.stress)+'%)','wrn');
+        return;
+    }
+    const repTime=rng(25,70) * (c.stress > 70 ? 1.3 : 1); // stress slows work
     wo.status='В РАБОТЕ';
     wo.assignee=c.full;
     wo.timeLeft=repTime;
@@ -1556,8 +1707,14 @@ function renderActions(){
         <button class="qa-btn" onclick="cmdSendReport()">Рапорт на Землю</button>
         <button class="qa-btn" onclick="cmdRestCrew()">Отдых экипажа</button>
         ${hasMysteryWO?`<button class="qa-btn" onclick="cmdInvestigate()" ${avail<1?'disabled':''} style="border-color:#6644aa;color:#aa88ff">Начать расследование</button>`:''}
+        <button class="qa-btn" onclick="cmdDrillControl()" style="border-color:#1a1a10;color:#aaaa44">Управление буром</button>
+        ${dockingState.active&&!dockingState.approved?`<button class="qa-btn qa-dock" onclick="cmdApproveDocking()">Разрешить стыковку</button>`:''}
+        <button class="qa-btn" onclick="openCameras()" style="border-color:#1a2a1a;color:#44aa66">Камеры базы</button>
+        <button class="qa-btn" onclick="openTopoMap()" style="border-color:#0a1a2a;color:#4488cc">Карта местности</button>
+        <button class="qa-btn" onclick="openMissionLog()" style="border-color:#1a1a28;color:#8888cc">Бортжурнал</button>
         <button class="qa-btn qa-danger" onclick="cmdEmergVent()">Аварийн. вентиляция</button>
         <button class="qa-btn qa-danger" onclick="cmdRebootSys()">Перезагр. системы</button>
+        <button class="qa-btn qa-evac" onclick="cmdEvacuation()">ЭВАКУАЦИЯ</button>
     `;
 }
 
@@ -1603,6 +1760,7 @@ function execEVA(c1,c2,purpose){
     c1.status='eva'; c1.task='EVA: '+purpose;
     c2.status='eva'; c2.task='EVA: '+purpose;
 
+    addMissionLog('eva',`EVA начат. Экипаж: ${c1.full}, ${c2.full}. Цель: ${purpose}.`);
     radioMsg('Диспетчер','dispatch',`${c1.callsign}, ${c2.callsign}, разрешаю EVA. Цель: ${purpose}. Соблюдайте протокол безопасности.`);
     setTimeout(()=>radioMsg(c1.callsign,'eva',`Принял, шлюзование... Давление выравнено. Открываю люк.`),2000/speed);
     setTimeout(()=>radioMsg(c2.callsign,'eva',`EVA-2 вышел. Фал закреплён. Видимость отличная, вижу Землю на горизонте.`),5000/speed);
@@ -1622,6 +1780,7 @@ function execEVA(c1,c2,purpose){
             c2.status='free';c2.task=null;c2.fatigue=clamp(c2.fatigue+25,0,100);
             INV.eva_kits.count++;
             slog(`EVA завершён: ${purpose}`,'ok');
+            addMissionLog('eva',`EVA завершён: ${purpose}.`);
         },4000/speed);
     },evaTime*1000/speed);
 }
@@ -1691,7 +1850,7 @@ function cmdSendReport(){
 function cmdRestCrew(){
     let rested=0;
     for(const c of CREW){
-        if(c.status==='free'){c.fatigue=clamp(c.fatigue-25,0,100);c.health=clamp(c.health+3,0,100);rested++;}
+        if(c.status==='free'){c.fatigue=clamp(c.fatigue-25,0,100);c.health=clamp(c.health+3,0,100);c.stress=clamp(c.stress-15,0,100);c.morale=clamp(c.morale+5,0,100);rested++;}
     }
     if(rested>0){
         radioMsg('Диспетчер','dispatch',`Свободный состав — отдых по расписанию. ${rested} чел.`);
@@ -1736,6 +1895,425 @@ function cmdInvestigate(){
          {text:'Отмена',cls:'',action:closeModal}]);
 }
 
+// ---- FEATURE: SHIP DOCKING ----
+function updateDocking(sdt){
+    if(evacState.active) return;
+    dockingCD -= sdt;
+    if(dockingCD <= 0 && !dockingState.active){
+        dockingCD = rng(300,500);
+        startDockingApproach();
+    }
+    if(dockingState.active){
+        dockingState.eta -= sdt;
+        // Move ship on radar
+        if(dockingState.dsObj){
+            dockingState.dsObj.dist = Math.max(0.02, dockingState.dsObj.dist - 0.002*sdt);
+        }
+        if(dockingState.eta <= 0){
+            if(dockingState.approved){
+                completeDocking();
+            } else {
+                abortDocking();
+            }
+        }
+    }
+}
+function startDockingApproach(){
+    dockingState.shipNum++;
+    const num = rngI(80,99);
+    dockingState.shipId = 'Прогресс-Л'+num;
+    dockingState.eta = rng(60,120);
+    dockingState.approved = false;
+    dockingState.active = true;
+    // Add to deep space radar
+    const dsObj = {id:'DOCK-'+num,label:dockingState.shipId,dist:0.4,angle:rng(0,Math.PI*2),size:2,color:'#00ff88',type:'ship'};
+    dockingState.dsObj = dsObj;
+    DS_OBJECTS.push(dsObj);
+    const etaMin = Math.ceil(dockingState.eta/60);
+    radioMsg('Хьюстон','earth','Грузовой «'+dockingState.shipId+'» на подходе. ETA '+etaMin+' минут. Подготовьте шлюз.');
+    elog('from','Грузовой «'+dockingState.shipId+'» приближается. ETA '+etaMin+' мин.');
+    slog('Грузовой корабль обнаружен на радаре: '+dockingState.shipId,'inf');
+    radioClick();
+}
+function cmdApproveDocking(){
+    if(!dockingState.active||dockingState.approved) return;
+    dockingState.approved = true;
+    radioMsg('Диспетчер','dispatch','Шлюз подготовлен. «'+dockingState.shipId+'», разрешаю стыковку. Причальная ось свободна.');
+    setTimeout(()=>radioMsg(pick(CREW).callsign,'crew','Принял, готовлю стыковочный узел. Давление в шлюзе выравниваю.'),rng(2000,4000)/speed);
+    slog('Стыковка разрешена: '+dockingState.shipId,'ok');
+}
+function completeDocking(){
+    radioMsg('Система','system','Стыковка «'+dockingState.shipId+'» завершена успешно. Начата разгрузка.');
+    setTimeout(()=>radioMsg(pick(CREW).callsign,'crew','Диспетчер, грузовик пристыкован. Начинаем разгрузку. Всё по описи.'),rng(3000,6000)/speed);
+    for(const[,item]of Object.entries(INV)){item.count=Math.min(item.count+Math.ceil(item.count*0.3+3),item.count+15);}
+    for(const c of CREW){c.morale=clamp(c.morale+8,0,100);c.stress=clamp(c.stress-5,0,100);}
+    slog('Грузовой '+dockingState.shipId+' разгружен, запасы пополнены','ok');
+    elog('to','Стыковка и разгрузка '+dockingState.shipId+' завершены.');
+    // Remove from radar
+    const idx=DS_OBJECTS.indexOf(dockingState.dsObj);
+    if(idx>=0) setTimeout(()=>{DS_OBJECTS.splice(DS_OBJECTS.indexOf(dockingState.dsObj),1);},10000/speed);
+    dockingState.active=false; dockingState.dsObj=null;
+}
+function abortDocking(){
+    radioMsg('Хьюстон','earth','Резонанс-9, стыковка «'+dockingState.shipId+'» не санкционирована. Корабль уходит на запасную орбиту. Грузы не доставлены.');
+    elog('from','Стыковка '+dockingState.shipId+' отменена — нет разрешения.');
+    for(const c of CREW) c.morale=clamp(c.morale-5,0,100);
+    slog('Грузовой '+dockingState.shipId+' ушёл: стыковка не разрешена','err');
+    const idx=DS_OBJECTS.indexOf(dockingState.dsObj);
+    if(idx>=0) DS_OBJECTS.splice(idx,1);
+    dockingState.active=false; dockingState.dsObj=null;
+}
+
+// ---- FEATURE: EVACUATION ----
+function cmdEvacuation(){
+    showModal('ПРОТОКОЛ ЭВАКУАЦИИ',
+        '<p style="color:var(--red2);font-weight:bold">ВНИМАНИЕ: Протокол эвакуации необратим!</p><p>Экипаж покинет станцию в спасательной капсуле. Все системы будут законсервированы. Миссия завершена.</p><p>Продолжить?</p>',
+        [{text:'ПОДТВЕРДИТЬ ЭВАКУАЦИЮ',cls:'m-danger',action:()=>{closeModal();startEvacuation();}},
+         {text:'Отмена',cls:'',action:closeModal}]);
+}
+function startEvacuation(){
+    evacState.active = true;
+    evacState.countdown = 60;
+    evacState.phase = 0;
+    document.getElementById('evac-overlay').classList.add('show');
+    radioMsg('Диспетчер','alert','ВСЕМ ПОСТАМ! ПРОТОКОЛ ЭВАКУАЦИИ АКТИВИРОВАН! Всему экипажу — немедленно к спасательной капсуле!');
+    alarmTone();
+    for(const c of CREW){c.status='busy';c.task='ЭВАКУАЦИЯ';}
+    slog('ПРОТОКОЛ ЭВАКУАЦИИ АКТИВИРОВАН','err');
+}
+function updateEvacuation(sdt){
+    if(!evacState.active) return;
+    evacState.countdown -= sdt;
+    const t = Math.max(0,Math.ceil(evacState.countdown));
+    document.getElementById('evac-timer').textContent = t;
+    // Phase messages
+    if(evacState.countdown<55 && evacState.phase===0){
+        evacState.phase=1;
+        radioMsg(CREW[0].callsign,'alert','Экипаж в движении! Берём аварийные комплекты! Бросаем всё!');
+    }
+    if(evacState.countdown<40 && evacState.phase===1){
+        evacState.phase=2;
+        radioMsg(CREW[1].callsign,'alert','Отключаю энергосистему! Реактор в безопасный режим!');
+        SYS.PWR.integrity = clamp(SYS.PWR.integrity-20,0,100);
+        document.getElementById('evac-status').textContent='Экипаж в переходе к спасательному модулю...';
+    }
+    if(evacState.countdown<25 && evacState.phase===2){
+        evacState.phase=3;
+        radioMsg(CREW[2].callsign,'alert','СЖО переведена в режим консервации! Герметизирую отсеки!');
+        SYS.LSS.integrity = clamp(SYS.LSS.integrity-30,0,100);
+        document.getElementById('evac-status').textContent='Консервация систем...';
+    }
+    if(evacState.countdown<10 && evacState.phase===3){
+        evacState.phase=4;
+        radioMsg(CREW[0].callsign,'alert','Все в капсуле! Задраиваю люк! Отстыковка через 10 секунд!');
+        document.getElementById('evac-status').textContent='Экипаж в спасательной капсуле!';
+    }
+    // Gradual system shutdown
+    for(const s of Object.values(SYS)) s.integrity = clamp(s.integrity - 0.3*sdt, 0, 100);
+    if(evacState.countdown <= 0){
+        evacState.active = false;
+        paused = true;
+        document.getElementById('evac-overlay').classList.remove('show');
+        document.getElementById('crit-title').textContent = 'СТАНЦИЯ ЗАКОНСЕРВИРОВАНА';
+        document.getElementById('crit-reason').textContent = 'Экипаж эвакуирован. Станция законсервирована.';
+        document.getElementById('crit-stats').innerHTML = 'MET: '+formatMET(gt)+'<br>День миссии: '+(Math.floor(gt/LUNAR_DAY)+1)+'<br>Экипаж: эвакуирован (все живы)';
+        document.getElementById('critical-overlay').classList.add('show');
+        radioMsg('Система','alert','Экипаж эвакуирован. Станция законсервирована. Конец миссии.');
+    }
+}
+
+// ---- FEATURE: DRILL CONTROL ----
+function cmdDrillControl(){
+    const rockTypes = [{name:'реголит',depth:0},{name:'базальт',depth:15},{name:'ильменит',depth:35},{name:'лёд?',depth:60}];
+    const currentRock = drillState.rockType;
+    const speedLabels = {1:'НИЗКАЯ',2:'СРЕДНЯЯ',3:'ВЫСОКАЯ'};
+    const body = `
+        <div class="drill-rock">Глубина: <b>${drillState.depth.toFixed(1)} м</b></div>
+        <div class="drill-rock">Порода: <b>${currentRock}</b></div>
+        <div class="drill-rock">Статус: <b style="color:${drillState.active?'var(--green)':'var(--dim)'}">
+            ${drillState.active?'РАБОТАЕТ':'ОСТАНОВЛЕН'}</b></div>
+        <p style="margin-top:8px">Скорость бурения:</p>
+        <div class="drill-speed-btns">
+            <button class="drill-speed-btn ${drillState.speed===1?'active':''}" onclick="drillState.speed=1;cmdDrillControl()">НИЗКАЯ</button>
+            <button class="drill-speed-btn ${drillState.speed===2?'active':''}" onclick="drillState.speed=2;cmdDrillControl()">СРЕДНЯЯ</button>
+            <button class="drill-speed-btn ${drillState.speed===3?'active':''}" onclick="drillState.speed=3;cmdDrillControl()">ВЫСОКАЯ</button>
+        </div>
+        <p style="font-size:10px;color:var(--dim)">Высокая скорость = быстрая добыча, но риск заклинивания/поломки</p>
+    `;
+    const btns = [];
+    if(drillState.active){
+        btns.push({text:'Остановить бур',cls:'m-danger',action:()=>{drillState.active=false;radioMsg('Диспетчер','dispatch','Остановить буровую установку.');setTimeout(()=>radioMsg(CREW[3].callsign,'crew','Бур остановлен. Глубина '+drillState.depth.toFixed(1)+' м.'),rng(1500,3000)/speed);slog('Бур остановлен на глубине '+drillState.depth.toFixed(1)+' м','inf');closeModal();}});
+    } else {
+        btns.push({text:'Запустить бур',cls:'m-primary',action:()=>{drillState.active=true;radioMsg('Диспетчер','dispatch',CREW[3].callsign+', запускайте буровую установку. Скорость: '+speedLabels[drillState.speed]+'.');setTimeout(()=>radioMsg(CREW[3].callsign,'crew','Принял, бур запущен. Скорость '+speedLabels[drillState.speed]+'.'),rng(1500,3000)/speed);slog('Бур запущен, скорость: '+speedLabels[drillState.speed],'ok');closeModal();}});
+    }
+    btns.push({text:'Закрыть',cls:'',action:closeModal});
+    showModal('Управление буром',body,btns);
+}
+function updateDrill(sdt){
+    if(!drillState.active || SYS.MIN.integrity <= 20) return;
+    const speedMult = [0, 0.008, 0.02, 0.04][drillState.speed];
+    drillState.depth += speedMult * sdt;
+    // Rock type changes
+    if(drillState.depth >= 60 && drillState.rockType !== 'лёд?'){
+        drillState.rockType = 'лёд?';
+        radioMsg(CREW[3].callsign,'crew','ДИСПЕТЧЕР! Бур встретил лёд на глубине '+drillState.depth.toFixed(1)+' м! Подповерхностный водяной лёд! Это открытие!');
+        radioMsg(CREW[0].callsign,'crew','Невероятно! Лёд на южном полюсе подтверждён бурением! Фиксируем данные!');
+        SYS.LAB.params.exp.val=clamp(SYS.LAB.params.exp.val+15,0,100);
+        for(const c of CREW){c.morale=clamp(c.morale+15,0,100);c.stress=clamp(c.stress-10,0,100);}
+        slog('ОТКРЫТИЕ: Подповерхностный лёд на глубине '+drillState.depth.toFixed(1)+' м!','ok');
+        setTimeout(()=>{radioMsg('Хьюстон','earth','ФАНТАСТИКА, Резонанс! Подтверждение водяного льда бурением — это прорыв! Научный комитет аплодирует!');elog('from','Подтверждение водяного льда. Научная сенсация!');},rng(5000,10000)/speed);
+    } else if(drillState.depth >= 35 && drillState.rockType !== 'ильменит' && drillState.rockType !== 'лёд?'){
+        drillState.rockType = 'ильменит';
+        radioMsg(CREW[3].callsign,'crew','Порода сменилась — ильменит. Содержание титана повышенное. Глубина '+drillState.depth.toFixed(1)+' м.');
+        slog('Бур: переход в ильменитовый слой','inf');
+    } else if(drillState.depth >= 15 && drillState.rockType === 'реголит'){
+        drillState.rockType = 'базальт';
+        radioMsg(CREW[3].callsign,'crew','Прошли реголит, пошёл базальт. Глубина '+drillState.depth.toFixed(1)+' м. Тяжелее идёт.');
+        slog('Бур: переход в базальтовый слой','inf');
+    }
+    // Mining output
+    SYS.MIN.params.regolith.val = clamp(SYS.MIN.params.regolith.val + 0.005*drillState.speed*sdt, 0, 100);
+    SYS.MIN.params.he3.val = clamp(SYS.MIN.params.he3.val + 0.001*drillState.speed*sdt, 0, 100);
+    // Jam/break risk at high speed
+    drillState.jamCD -= sdt;
+    if(drillState.jamCD <= 0){
+        drillState.jamCD = rng(10,30);
+        const jamChance = drillState.speed === 3 ? 0.04 : drillState.speed === 2 ? 0.01 : 0.002;
+        if(Math.random() < jamChance){
+            drillState.active = false;
+            const dmg = rng(8,20);
+            SYS.MIN.integrity = clamp(SYS.MIN.integrity - dmg, 0, 100);
+            radioMsg(CREW[3].callsign,'alert','Бур заклинило! Ток на моторе зашкаливает! Аварийная остановка! Глубина '+drillState.depth.toFixed(1)+' м.');
+            slog('Заклинивание бура на глубине '+drillState.depth.toFixed(1)+' м','err');
+            alarmTone();
+            createWO('Разблокировка бура','Заклинивание буровой установки на глубине '+drillState.depth.toFixed(1)+' м. Требуется ручная разблокировка.','MIN',2);
+        }
+    }
+}
+
+// ---- FEATURE: CASCADE FAILURES ----
+function checkCascades(sdt){
+    cascadeLastMsgCD -= sdt;
+    // PWR below 20% -> LSS starts failing
+    if(SYS.PWR.integrity < 20){
+        SYS.LSS.params.o2.val = clamp(SYS.LSS.params.o2.val - 0.02*sdt, 0, 23);
+        SYS.LSS.params.co2.val = clamp(SYS.LSS.params.co2.val + 0.01*sdt, 0, 5);
+        if(cascadeLastMsgCD <= 0 && Math.random()<0.01*sdt){
+            cascadeLastMsgCD = 15;
+            radioMsg(pick(CREW).callsign,'alert','Энергосистема на минимуме! СЖО теряет мощность! O₂ падает!');
+        }
+    }
+    // THM coolant below 30% -> PWR battery overheats -> more THM damage
+    if(SYS.THM.params.coolant.val < 30){
+        SYS.PWR.params.batt.val = clamp(SYS.PWR.params.batt.val - 0.015*sdt, 0, 100);
+        SYS.THM.integrity = clamp(SYS.THM.integrity - 0.005*sdt, 0, 100);
+        if(cascadeLastMsgCD <= 0 && Math.random()<0.008*sdt){
+            cascadeLastMsgCD = 20;
+            radioMsg(pick(CREW).callsign,'alert','Хладагент критически низок! Батареи перегреваются! Порочный круг!');
+        }
+    }
+    // LSS pressure below 90 -> seal sections
+    if(SYS.LSS.params.press.val < 90){
+        if(cascadeLastMsgCD <= 0 && Math.random()<0.012*sdt){
+            cascadeLastMsgCD = 25;
+            radioMsg(pick(CREW).callsign,'alert','Давление ниже 90 кПа! Автоматическая герметизация секций! Переборки закрыты!');
+            slog('Автогерметизация: давление '+SYS.LSS.params.press.val.toFixed(1)+' кПа','err');
+        }
+    }
+    // COM below 30% -> lose Earth contact
+    if(SYS.COM.integrity < 30){
+        if(cascadeLastMsgCD <= 0 && Math.random()<0.01*sdt){
+            cascadeLastMsgCD = 30;
+            radioMsg('Система','alert','Связь с Землёй потеряна! Только статический шум! Работаем автономно!');
+            slog('Потеря связи с Землёй','err');
+        }
+    }
+    // Multiple critical systems -> crew panic
+    const critCount = Object.values(SYS).filter(s=>s.integrity<30).length;
+    if(critCount >= 2){
+        for(const c of CREW){
+            c.stress = clamp(c.stress + 0.03*sdt*critCount, 0, 100);
+            c.fatigue = clamp(c.fatigue + 0.005*sdt*critCount, 0, 100);
+        }
+        if(cascadeLastMsgCD <= 0 && Math.random()<0.008*sdt){
+            cascadeLastMsgCD = 20;
+            const panicMsgs = [
+                'Сколько систем ещё может упасть?! Мы теряем станцию!',
+                'Диспетчер, ситуация выходит из-под контроля! Нужна помощь!',
+                'Не справляемся! Слишком много отказов одновременно!',
+                'Может, пора думать об эвакуации?!',
+            ];
+            radioMsg(pick(CREW).callsign,'alert',pick(panicMsgs));
+        }
+    }
+}
+
+// ---- FEATURE: ASTEROID THREAT ----
+function updateAsteroid(sdt){
+    if(evacState.active) return;
+    asteroidCD -= sdt;
+    if(asteroidCD <= 0 && !asteroidThreat.active){
+        asteroidCD = rng(800,1200);
+        startAsteroidThreat();
+    }
+    if(asteroidThreat.active){
+        asteroidThreat.eta -= sdt;
+        asteroidThreat.distance = Math.max(0, asteroidThreat.distance * (1 - 0.005*sdt));
+        if(asteroidThreat.dsObj){
+            asteroidThreat.dsObj.dist = Math.max(0.03, asteroidThreat.dsObj.dist - 0.003*sdt);
+        }
+        if(asteroidThreat.eta <= 0){
+            resolveAsteroidNoAction();
+        }
+    }
+}
+function startAsteroidThreat(){
+    const yr = 2020 + rngI(0,10);
+    const id = yr+'-'+String.fromCharCode(65+rngI(0,25))+String.fromCharCode(65+rngI(0,25))+rngI(1,99);
+    const dist = rngI(50,500);
+    asteroidThreat = {active:true, id:id, distance:dist, eta:rng(40,80), dsObj:null};
+    const dsObj = {id:'AST-'+id,label:id,dist:0.5,angle:rng(0,Math.PI*2),size:3,color:'#ff8844',type:'asteroid'};
+    asteroidThreat.dsObj = dsObj;
+    DS_OBJECTS.push(dsObj);
+    radioMsg('Система','alert','ПРЕДУПРЕЖДЕНИЕ: Объект '+id+' на сближающейся траектории! Расчётное расстояние: '+dist+' км');
+    slog('АСТЕРОИДНАЯ УГРОЗА: '+id+', дистанция '+dist+' км','err');
+    alarmTone();
+    for(const c of CREW) c.stress = clamp(c.stress + 15, 0, 100);
+    // Show modal
+    setTimeout(()=>{
+        if(!asteroidThreat.active) return;
+        showModal('АСТЕРОИДНАЯ УГРОЗА',
+            '<div class="asteroid-warning">Объект '+id+' на сближающейся траектории!</div><p>Расчётное расстояние: '+dist+' км</p><p>ETA: '+Math.ceil(asteroidThreat.eta)+' сек</p><p>Выберите действие:</p>',
+            [{text:'Укрытие (безопасно, простой 60с)',cls:'m-primary',action:()=>{closeModal();asteroidShelter();}},
+             {text:'Игнорировать (30% шанс удара)',cls:'m-danger',action:()=>{closeModal();asteroidIgnore();}}]);
+    },2000/speed);
+}
+function asteroidShelter(){
+    if(!asteroidThreat.active) return;
+    radioMsg('Диспетчер','alert','ВСЕМ ПОСТАМ! В УКРЫТИЕ! Переход в защищённый модуль! Немедленно!');
+    for(const c of CREW){c.status='busy';c.task='В укрытии';c.stress=clamp(c.stress+5,0,100);}
+    setTimeout(()=>radioMsg(CREW[0].callsign,'crew','Все в защищённом модуле! Переборки задраены!'),rng(2000,4000)/speed);
+    const shelterTime = rng(50,70);
+    setTimeout(()=>{
+        // Minimal damage
+        const dmg = rng(2,8);
+        for(const s of Object.values(SYS)) s.integrity = clamp(s.integrity - dmg*0.3, 0, 100);
+        radioMsg('Система','system','Объект '+asteroidThreat.id+' прошёл мимо. Минимальные повреждения от обломков.');
+        radioMsg(CREW[0].callsign,'crew','Всё чисто. Выходим из укрытия. Лёгкая тряска, но все целы.');
+        for(const c of CREW){if(c.task==='В укрытии'){c.status='free';c.task=null;}c.stress=clamp(c.stress-5,0,100);}
+        slog('Астероид '+asteroidThreat.id+' — прошёл мимо, минимальный урон','ok');
+        cleanupAsteroid();
+    },shelterTime*1000/speed);
+}
+function asteroidIgnore(){
+    if(!asteroidThreat.active) return;
+    radioMsg('Диспетчер','dispatch','Игнорируем угрозу. Продолжаем работу.');
+    const waitTime = Math.max(5, asteroidThreat.eta);
+    setTimeout(()=>{
+        if(Math.random() < 0.3){
+            // HIT!
+            radioMsg('Система','alert','УДАР! Объект '+asteroidThreat.id+' столкнулся со станцией! Множественные повреждения!');
+            alarmTone();
+            const systems = Object.keys(SYS);
+            const hitCount = rngI(2,4);
+            for(let i=0;i<hitCount;i++){
+                const sId = pick(systems);
+                SYS[sId].integrity = clamp(SYS[sId].integrity - rng(15,30), 0, 100);
+            }
+            for(const c of CREW){c.health=clamp(c.health-rng(5,15),0,100);c.stress=clamp(c.stress+25,0,100);}
+            radioMsg(CREW[0].callsign,'alert','Повреждения по всей станции! Проверяем герметичность! Все живы?!');
+            setTimeout(()=>radioMsg(CREW[1].callsign,'alert','Энергосистема повреждена! Искры в секции Гамма!'),rng(2000,4000)/speed);
+            slog('УДАР АСТЕРОИДА '+asteroidThreat.id+'! Множественные повреждения!','err');
+        } else {
+            radioMsg('Система','system','Объект '+asteroidThreat.id+' прошёл мимо станции. Расстояние: '+rngI(5,30)+' км. Повезло.');
+            radioMsg(pick(CREW).callsign,'crew','Пронесло... В следующий раз лучше в укрытие.');
+            slog('Астероид '+asteroidThreat.id+' промахнулся','ok');
+        }
+        cleanupAsteroid();
+    },waitTime*1000/speed);
+}
+function resolveAsteroidNoAction(){
+    // If player did nothing
+    if(!asteroidThreat.active) return;
+    if(Math.random()<0.3){
+        const systems=Object.keys(SYS);
+        for(let i=0;i<rngI(1,3);i++) SYS[pick(systems)].integrity=clamp(SYS[pick(systems)].integrity-rng(10,25),0,100);
+        for(const c of CREW){c.health=clamp(c.health-rng(3,10),0,100);c.stress=clamp(c.stress+20,0,100);}
+        radioMsg('Система','alert','УДАР АСТЕРОИДА! Множественные повреждения! Действий не было предпринято!');
+        alarmTone();
+        slog('УДАР АСТЕРОИДА — никаких мер не принято!','err');
+    } else {
+        radioMsg('Система','system','Объект '+asteroidThreat.id+' прошёл мимо. Повезло.');
+        slog('Астероид '+asteroidThreat.id+' промахнулся','ok');
+    }
+    cleanupAsteroid();
+}
+function cleanupAsteroid(){
+    if(asteroidThreat.dsObj){
+        const idx=DS_OBJECTS.indexOf(asteroidThreat.dsObj);
+        if(idx>=0) DS_OBJECTS.splice(idx,1);
+    }
+    asteroidThreat={active:false,id:'',distance:0,eta:0,dsObj:null};
+}
+
+// ---- FEATURE: CREW PSYCHOLOGY ----
+function updateCrewPsychology(sdt){
+    const o2=SYS.LSS.params.o2.val;
+    const co2=SYS.LSS.params.co2.val;
+    const critCount=Object.values(SYS).filter(s=>s.integrity<40).length;
+    for(const c of CREW){
+        // Stress increases
+        c.stress=clamp(c.stress+0.001*sdt,0,100); // isolation/time
+        if(critCount>0) c.stress=clamp(c.stress+0.005*critCount*sdt,0,100);
+        if(o2<18) c.stress=clamp(c.stress+0.01*sdt,0,100);
+        if(co2>0.8) c.stress=clamp(c.stress+0.008*sdt,0,100);
+        if(c.status==='eva') c.stress=clamp(c.stress+0.004*sdt,0,100);
+        // Stress decreases
+        if(c.status==='rest'||c.status==='free') c.stress=clamp(c.stress-0.003*sdt,0,100);
+        // Morale
+        const timeSinceEarth=(gt-lastEarthContactTime);
+        c.morale=clamp(c.morale-(timeSinceEarth>300?0.002:0)*sdt,0,100);
+        c.morale=clamp(c.morale-(c.stress>50?0.002:0)*sdt,0,100);
+        c.morale=clamp(c.morale-(gt>3600?0.0005:0)*sdt,0,100); // monotony
+        // Stress > 90 -> snap
+        if(c.stress>90 && c.status==='busy' && Math.random()<0.001*sdt){
+            c.status='rest';c.task=null;
+            radioMsg(c.callsign,'crew','Я... я не могу больше. Мне нужно лечь. Простите.');
+            slog(c.name+' — нервный срыв, принудительный отдых','err');
+            c.stress=clamp(c.stress-20,0,100);
+        }
+    }
+    // Stress chatter
+    stressChatterCD-=sdt;
+    if(stressChatterCD<=0){
+        stressChatterCD=rng(20,40);
+        const stressed=CREW.filter(c=>c.stress>70);
+        if(stressed.length>0){
+            const c=pick(stressed);
+            const c2=pick(CREW.filter(cr=>cr.id!==c.id));
+            if(c.stress>90){
+                const conflicts=[
+                    [c.callsign+': Хватит! Я больше не могу это слушать!',c2.callsign+': Успокойся! Мы все на пределе!'],
+                    [c.callsign+': Ты опять не закрыл люк! Сколько раз повторять?!',c2.callsign+': Не кричи на меня! Я тоже устал!'],
+                    [c.callsign+': Никто здесь меня не слушает! Я один всё делаю!',c2.callsign+': Это неправда и ты это знаешь. Возьми перерыв.'],
+                ];
+                const conflict=pick(conflicts);
+                radioMsg(c.callsign,'crew',conflict[0]);
+                setTimeout(()=>radioMsg(c2.callsign,'crew',conflict[1]),rng(2000,4000)/speed);
+            } else {
+                const stressMsgs=[
+                    'Я не могу сейчас. Мне нужен перерыв.',
+                    'Руки трясутся. Столько стресса...',
+                    'Голова раскалывается. Когда это закончится?',
+                    'Не уверен, что выдержу ещё одну аварию.',
+                    'Хочу домой. Просто хочу домой.',
+                ];
+                radioMsg(c.callsign,'crew',pick(stressMsgs));
+            }
+        }
+    }
+}
+
 // ---- RENDER: CREW STRIP ----
 // ECG — simple scrolling buffer
 const ecgBuffers = {};
@@ -1747,6 +2325,7 @@ function getHeartRate(c) {
     let hr = 68 + c.fatigue * 0.3 + (100 - c.health) * 0.4;
     if (c.status === 'eva') hr += 15;
     if (c.status === 'busy') hr += 8;
+    if (c.stress > 50) hr += (c.stress - 50) * 0.3; // stress raises heart rate
     hr += Math.sin(gt * 0.1 + CREW.indexOf(c)) * 3;
     return clamp(hr, 45, 160);
 }
@@ -1815,6 +2394,10 @@ function renderCrewStrip(){
                     <span class="cs-hr" id="hr-${c.id}">♥ --</span>
                     <span class="cs-spo2" id="spo2-${c.id}">SpO₂ --</span>
                 </div>
+                <div class="cs-psych">
+                    <span id="stress-${c.id}">S:0</span>
+                    <span id="morale-${c.id}">M:80</span>
+                </div>
                 <div class="cs-status" id="st-${c.id}"></div>
             </div>`;
         }).join('');
@@ -1851,6 +2434,20 @@ function renderCrewStrip(){
         }
         const stEl = document.getElementById('st-' + c.id);
         if (stEl) { stEl.textContent = stText; stEl.className = 'cs-status ' + stClass; }
+
+        // Stress/morale
+        const stressEl = document.getElementById('stress-' + c.id);
+        if (stressEl) {
+            const s = Math.round(c.stress);
+            stressEl.textContent = 'S:' + s;
+            stressEl.className = s > 70 ? 'cs-stress-crit' : s > 40 ? 'cs-stress-warn' : 'cs-stress-ok';
+        }
+        const moraleEl = document.getElementById('morale-' + c.id);
+        if (moraleEl) {
+            const m = Math.round(c.morale);
+            moraleEl.textContent = 'M:' + m;
+            moraleEl.className = m < 30 ? 'cs-morale-crit' : m < 50 ? 'cs-morale-warn' : 'cs-morale-ok';
+        }
     }
 }
 
@@ -2567,6 +3164,7 @@ function update(dt){
                 if(c){c.status='free';c.task=null;}
                 radioMsg(c?c.callsign:'Экипаж','crew',`Диспетчер, наряд WO-${String(wo.id).padStart(4,'0')} выполнен. ${sys.name} — целостность ${sys.integrity.toFixed(0)}%. Всё собрано, проверено.`);
                 slog(`WO-${String(wo.id).padStart(4,'0')} завершён: ${sys.name} +${boost.toFixed(0)}%`,'ok');
+                addMissionLog('repair',`Ремонт ${sys.name} завершён. Целостность: ${sys.integrity.toFixed(0)}%. Наряд WO-${String(wo.id).padStart(4,'0')}.`);
                 if(INV.mech_parts.count>0)INV.mech_parts.count--;
                 if(INV.elec_modules.count>0)INV.elec_modules.count--;
                 activeRepairs.splice(i,1);
@@ -2639,6 +3237,14 @@ function update(dt){
     // ---- INVESTIGATIONS ----
     updateInvestigations(sdt);
 
+    // ---- NEW FEATURES ----
+    updateDocking(sdt);
+    updateEvacuation(sdt);
+    updateDrill(sdt);
+    checkCascades(sdt);
+    updateAsteroid(sdt);
+    updateCrewPsychology(sdt);
+
     // ---- INTERPLANETARY COMMS ----
     ipChatterCD-=sdt;
     if(ipChatterCD<=0){
@@ -2670,6 +3276,7 @@ function update(dt){
     }else strip.classList.remove('show');
 
     // ---- CRITICAL FAILURE ----
+    if(evacState.active) return; // Skip during evacuation
     const o2v=SYS.LSS.params.o2.val;
     const pv=SYS.LSS.params.press.val;
     const alive=CREW.filter(c=>c.health>0).length;
@@ -2694,6 +3301,16 @@ function tryEvent(){
 function spawnEvent(evt){
     const dmg=rng(evt.dmg[0],evt.dmg[1]);
     for(const sId of evt.sys){if(SYS[sId])SYS[sId].integrity=clamp(SYS[sId].integrity-dmg,0,100);}
+    // Crew stress from events
+    const stressAmt = evt.sev==='crit' ? rng(8,18) : rng(3,8);
+    for(const c of CREW){c.stress=clamp(c.stress+stressAmt,0,100);c.morale=clamp(c.morale-stressAmt*0.3,0,100);}
+
+    // Mission log entry
+    addMissionLog(evt.mystery?'invest':'event',
+        `${evt.name}. ${evt.sys.length?'Системы: '+evt.sys.join(', ')+'.':''} ${dmg>0?'Урон: '+dmg.toFixed(0)+'%':'Без урона.'}`);
+
+    // Warning buzzer for critical events
+    if(evt.sev==='crit') playWarningBuzzer();
 
     // Crew radio response
     const c1=pick(CREW),c2=pick(CREW.filter(cr=>cr.id!==c1.id));
@@ -3180,6 +3797,678 @@ function getDSDescription(obj){
     return descs[obj.id]||'Данные отсутствуют.';
 }
 
+// ================================================================
+//  FEATURE 1: SURVEILLANCE CAMERAS
+// ================================================================
+const CAMERAS = [
+    {id:'CAM-1',name:'Шлюзовая камера',type:'internal',sys:'LSS'},
+    {id:'CAM-2',name:'Реакторный зал',type:'internal',sys:'PWR'},
+    {id:'CAM-3',name:'Лаборатория',type:'internal',sys:'LAB'},
+    {id:'CAM-4',name:'Жилой модуль',type:'internal',sys:'LSS'},
+    {id:'CAM-5',name:'Внешняя камера Север',type:'external',sys:null},
+    {id:'CAM-6',name:'Внешняя камера Юг',type:'external',sys:null},
+];
+let currentCam=0;
+let camOpen=false;
+let camAnimFrame=null;
+
+function openCameras(){
+    camOpen=true;
+    currentCam=0;
+    document.getElementById('camera-overlay').classList.add('show');
+    initAudio();
+    renderCameraLoop();
+}
+function closeCameras(){
+    camOpen=false;
+    document.getElementById('camera-overlay').classList.remove('show');
+    if(camAnimFrame)cancelAnimationFrame(camAnimFrame);
+}
+function camPrev(){currentCam=(currentCam-1+CAMERAS.length)%CAMERAS.length;}
+function camNext(){currentCam=(currentCam+1)%CAMERAS.length;}
+
+function renderCameraLoop(){
+    if(!camOpen)return;
+    renderCameraFeed();
+    camAnimFrame=requestAnimationFrame(renderCameraLoop);
+}
+
+function renderCameraFeed(){
+    const cam=CAMERAS[currentCam];
+    document.getElementById('camera-label').textContent=`${cam.id}: ${cam.name}`;
+    document.getElementById('cam-idx').textContent=`${currentCam+1}/${CAMERAS.length}`;
+    const canvas=document.getElementById('camera-canvas');
+    const ctx=canvas.getContext('2d');
+    const W=canvas.width,H=canvas.height;
+
+    const isExt=cam.type==='external';
+    const tintR=isExt?0:0, tintG=isExt?40:60, tintB=isExt?60:20;
+
+    // Background
+    ctx.fillStyle=isExt?'#020810':'#040a04';
+    ctx.fillRect(0,0,W,H);
+
+    // Check damage for glitch
+    let damaged=false;
+    if(cam.sys && SYS[cam.sys] && SYS[cam.sys].integrity<50) damaged=true;
+
+    const now=performance.now()/1000;
+
+    // Draw scene based on camera
+    ctx.save();
+    if(damaged){
+        // Glitch offset
+        const gx=Math.sin(now*17)*8;
+        const gy=Math.cos(now*13)*4;
+        ctx.translate(gx,gy);
+    }
+
+    switch(currentCam){
+        case 0: drawAirlock(ctx,W,H,now); break;
+        case 1: drawReactor(ctx,W,H,now); break;
+        case 2: drawLab(ctx,W,H,now); break;
+        case 3: drawHabitat(ctx,W,H,now); break;
+        case 4: drawExteriorN(ctx,W,H,now); break;
+        case 5: drawExteriorS(ctx,W,H,now); break;
+    }
+    ctx.restore();
+
+    // Tint overlay
+    ctx.fillStyle=`rgba(${tintR},${tintG},${tintB},0.08)`;
+    ctx.fillRect(0,0,W,H);
+
+    // Scan lines
+    ctx.fillStyle='rgba(0,0,0,0.15)';
+    for(let y=0;y<H;y+=3){ctx.fillRect(0,y,W,1);}
+
+    // Static noise
+    const noiseLevel=damaged?0.12:0.03;
+    const imgData=ctx.getImageData(0,0,W,H);
+    const d=imgData.data;
+    for(let i=0;i<d.length;i+=4){
+        if(Math.random()<noiseLevel){
+            const n=Math.floor(Math.random()*60);
+            d[i]+=n;d[i+1]+=n;d[i+2]+=n;
+        }
+    }
+    ctx.putImageData(imgData,0,0);
+
+    // Glitch bars if damaged
+    if(damaged){
+        for(let i=0;i<rngI(1,4);i++){
+            const gy=Math.floor(Math.random()*H);
+            const gh=rngI(2,8);
+            ctx.fillStyle='rgba(255,0,80,0.15)';
+            ctx.fillRect(0,gy,W,gh);
+            // Shift
+            const shift=rngI(-20,20);
+            const strip=ctx.getImageData(0,gy,W,gh);
+            ctx.putImageData(strip,shift,gy);
+        }
+    }
+
+    // REC indicator
+    ctx.font='bold 14px Share Tech Mono, monospace';
+    const blinkOn=Math.sin(now*3)>0;
+    if(blinkOn){
+        ctx.fillStyle='#ff2244';
+        ctx.beginPath();ctx.arc(25,25,5,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#ff4466';
+        ctx.fillText('REC',36,30);
+    }
+
+    // Camera ID
+    ctx.fillStyle='rgba(200,220,240,0.7)';
+    ctx.font='11px Share Tech Mono, monospace';
+    ctx.fillText(cam.id+' | '+cam.name, 15, H-15);
+
+    // Timestamp
+    const ts=formatMET(gt);
+    ctx.fillText('MET '+ts, W-160, H-15);
+    ctx.fillText(new Date().toISOString().substr(11,8)+' UTC', W-160, H-30);
+}
+
+function drawAirlock(ctx,W,H,t){
+    ctx.strokeStyle='#1a3a2a';ctx.lineWidth=2;
+    // Door outline
+    ctx.strokeRect(W*0.3,H*0.15,W*0.4,H*0.7);
+    // Inner door
+    ctx.strokeStyle='#0d2a1a';
+    ctx.strokeRect(W*0.35,H*0.2,W*0.3,H*0.6);
+    // Handle
+    ctx.strokeStyle='#2a5a3a';
+    ctx.beginPath();ctx.moveTo(W*0.62,H*0.45);ctx.lineTo(W*0.62,H*0.55);ctx.stroke();
+    // Pressure gauge
+    ctx.fillStyle='#0a2010';ctx.fillRect(W*0.1,H*0.3,60,40);
+    ctx.fillStyle='#00cc66';ctx.font='10px Share Tech Mono';
+    ctx.fillText('101.3 kPa',W*0.1+4,H*0.3+25);
+    // Status light
+    const blink=Math.sin(t*2)>0;
+    ctx.fillStyle=blink?'#00ff66':'#003310';
+    ctx.beginPath();ctx.arc(W*0.75,H*0.25,6,0,Math.PI*2);ctx.fill();
+    // Floor lines
+    ctx.strokeStyle='#0a2014';
+    for(let x=W*0.3;x<W*0.7;x+=20){ctx.beginPath();ctx.moveTo(x,H*0.85);ctx.lineTo(x+10,H*0.85);ctx.stroke();}
+}
+
+function drawReactor(ctx,W,H,t){
+    // RTG symbol - circle with radiation trefoil
+    const cx=W*0.5,cy=H*0.45,r=60;
+    ctx.strokeStyle='#2a4a1a';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.arc(cx,cy,r*0.3,0,Math.PI*2);ctx.stroke();
+    // Trefoil blades
+    for(let i=0;i<3;i++){
+        const a=i*Math.PI*2/3-Math.PI/2;
+        ctx.beginPath();
+        ctx.arc(cx,cy,r*0.7,a-0.4,a+0.4);
+        ctx.lineTo(cx+Math.cos(a)*r*0.35,cy+Math.sin(a)*r*0.35);
+        ctx.closePath();
+        ctx.fillStyle='rgba(0,180,60,0.2)';ctx.fill();
+        ctx.strokeStyle='#1a3a1a';ctx.stroke();
+    }
+    // Temperature readout
+    const rtgT=(SYS.PWR.params.rtg.val*2.5+40).toFixed(1);
+    ctx.fillStyle='#0a1a08';ctx.fillRect(W*0.1,H*0.75,140,35);
+    ctx.strokeStyle='#1a3a1a';ctx.strokeRect(W*0.1,H*0.75,140,35);
+    ctx.fillStyle='#00cc44';ctx.font='12px Share Tech Mono';
+    ctx.fillText('RTG TEMP: '+rtgT+'C',W*0.1+6,H*0.75+22);
+    // Power bar
+    ctx.fillStyle='#0a1a08';ctx.fillRect(W*0.6,H*0.75,160,35);
+    ctx.strokeStyle='#1a3a1a';ctx.strokeRect(W*0.6,H*0.75,160,35);
+    ctx.fillStyle='#00aa44';
+    ctx.fillText('PWR: '+SYS.PWR.params.rtg.val.toFixed(0)+'%',W*0.6+6,H*0.75+22);
+    // Pipes
+    ctx.strokeStyle='#0d2a14';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(30,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+r,cy);ctx.lineTo(W-30,cy);ctx.stroke();
+}
+
+function drawLab(ctx,W,H,t){
+    // Workbench
+    ctx.fillStyle='#0a1a14';ctx.fillRect(W*0.1,H*0.55,W*0.8,8);
+    // Legs
+    ctx.fillStyle='#0d2a1a';
+    ctx.fillRect(W*0.12,H*0.56,6,H*0.3);
+    ctx.fillRect(W*0.88,H*0.56,6,H*0.3);
+    // Sample containers
+    for(let i=0;i<4;i++){
+        const x=W*0.2+i*W*0.17;
+        ctx.strokeStyle='#1a4a3a';ctx.lineWidth=1;
+        ctx.strokeRect(x,H*0.4,30,H*0.15);
+        ctx.fillStyle=`rgba(0,${100+i*30},${60+i*20},0.15)`;
+        ctx.fillRect(x+2,H*0.4+2,26,H*0.15-4);
+        ctx.fillStyle='#1a5a3a';ctx.font='8px Share Tech Mono';
+        ctx.fillText('LR-'+(i+22),x+2,H*0.4-3);
+    }
+    // Microscope shape
+    ctx.strokeStyle='#1a3a2a';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(W*0.75,H*0.2);ctx.lineTo(W*0.75,H*0.54);ctx.stroke();
+    ctx.beginPath();ctx.arc(W*0.75,H*0.18,8,0,Math.PI*2);ctx.stroke();
+    // Monitor
+    ctx.fillStyle='#040a08';ctx.fillRect(W*0.15,H*0.15,100,60);
+    ctx.strokeStyle='#1a3a2a';ctx.strokeRect(W*0.15,H*0.15,100,60);
+    ctx.fillStyle='#00aa44';ctx.font='9px Share Tech Mono';
+    ctx.fillText('SPECTRUM',W*0.15+8,H*0.15+15);
+    // Waveform
+    ctx.strokeStyle='#00cc66';ctx.lineWidth=1;ctx.beginPath();
+    for(let x=0;x<90;x++){
+        const y=H*0.15+40+Math.sin(x*0.2+t*3)*10;
+        if(x===0)ctx.moveTo(W*0.15+5+x,y);else ctx.lineTo(W*0.15+5+x,y);
+    }
+    ctx.stroke();
+}
+
+function drawHabitat(ctx,W,H,t){
+    // Bunks - two tier
+    for(let i=0;i<2;i++){
+        const x=W*0.1+i*W*0.45;
+        // Lower bunk
+        ctx.strokeStyle='#1a2a3a';ctx.lineWidth=1;
+        ctx.strokeRect(x,H*0.5,W*0.35,H*0.15);
+        ctx.fillStyle='rgba(20,40,60,0.3)';ctx.fillRect(x+2,H*0.5+2,W*0.35-4,H*0.15-4);
+        // Upper bunk
+        ctx.strokeRect(x,H*0.3,W*0.35,H*0.15);
+        ctx.fillStyle='rgba(20,40,60,0.2)';ctx.fillRect(x+2,H*0.3+2,W*0.35-4,H*0.15-4);
+        // Posts
+        ctx.strokeStyle='#0d1a2a';ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(x,H*0.3);ctx.lineTo(x,H*0.65);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(x+W*0.35,H*0.3);ctx.lineTo(x+W*0.35,H*0.65);ctx.stroke();
+    }
+    // Table
+    ctx.fillStyle='#0a1a22';ctx.fillRect(W*0.35,H*0.75,W*0.3,6);
+    ctx.fillStyle='#0d1a2a';
+    ctx.fillRect(W*0.38,H*0.756,4,H*0.15);
+    ctx.fillRect(W*0.62,H*0.756,4,H*0.15);
+    // Light
+    const lightOn=SYS.PWR.integrity>30;
+    ctx.fillStyle=lightOn?'rgba(60,80,100,0.08)':'rgba(0,0,0,0)';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=lightOn?'#334455':'#111';
+    ctx.fillRect(W*0.4,H*0.05,W*0.2,4);
+}
+
+function drawExteriorN(ctx,W,H,t){
+    // Lunar surface
+    ctx.fillStyle='#0a0c10';ctx.fillRect(0,H*0.6,W,H*0.4);
+    // Surface texture - craters
+    ctx.strokeStyle='#141820';ctx.lineWidth=1;
+    ctx.beginPath();ctx.ellipse(W*0.3,H*0.72,40,12,0,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.ellipse(W*0.7,H*0.8,25,8,0,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.ellipse(W*0.15,H*0.85,15,5,0,0,Math.PI*2);ctx.stroke();
+    // Stars
+    const starSeed=42;
+    for(let i=0;i<80;i++){
+        const sx=((i*137+starSeed)%W);
+        const sy=((i*97+starSeed*3)%Math.floor(H*0.58));
+        const bright=40+((i*73)%60);
+        ctx.fillStyle=`rgba(${160+bright},${180+bright},255,${0.3+((i*31)%70)/100})`;
+        ctx.fillRect(sx,sy,1,1);
+    }
+    // Earth in sky
+    const earthY=H*0.2;
+    const earthR=18;
+    ctx.fillStyle='#1a3a6a';
+    ctx.beginPath();ctx.arc(W*0.7,earthY,earthR,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#2a5a8a';
+    ctx.beginPath();ctx.arc(W*0.7-3,earthY-2,earthR*0.8,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#4488bb';
+    ctx.beginPath();ctx.arc(W*0.7+2,earthY+3,earthR*0.3,0,Math.PI*2);ctx.fill();
+    // Horizon glow
+    const hGrad=ctx.createLinearGradient(0,H*0.55,0,H*0.65);
+    hGrad.addColorStop(0,'rgba(20,30,50,0)');
+    hGrad.addColorStop(1,'rgba(10,15,25,0.5)');
+    ctx.fillStyle=hGrad;ctx.fillRect(0,H*0.55,W,H*0.1);
+}
+
+function drawExteriorS(ctx,W,H,t){
+    // Crater rim - dark scene
+    ctx.fillStyle='#060810';ctx.fillRect(0,H*0.5,W,H*0.5);
+    // Rim profile
+    ctx.strokeStyle='#141a24';ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(0,H*0.55);
+    ctx.quadraticCurveTo(W*0.15,H*0.4,W*0.3,H*0.5);
+    ctx.quadraticCurveTo(W*0.5,H*0.58,W*0.7,H*0.45);
+    ctx.quadraticCurveTo(W*0.85,H*0.38,W,H*0.5);
+    ctx.stroke();
+    // Deep shadow in crater
+    ctx.fillStyle='#020406';
+    ctx.beginPath();
+    ctx.moveTo(0,H*0.55);
+    ctx.quadraticCurveTo(W*0.15,H*0.4,W*0.3,H*0.5);
+    ctx.quadraticCurveTo(W*0.5,H*0.58,W*0.7,H*0.45);
+    ctx.quadraticCurveTo(W*0.85,H*0.38,W,H*0.5);
+    ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+    // Stars
+    for(let i=0;i<60;i++){
+        const sx=((i*151+7)%W);
+        const sy=((i*89+13)%(H*0.45));
+        ctx.fillStyle=`rgba(180,200,255,${0.2+((i*41)%60)/100})`;
+        ctx.fillRect(sx,sy,1,1);
+    }
+    // Shadow edge highlight
+    ctx.strokeStyle='rgba(30,50,80,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(W*0.2,H*0.6);ctx.lineTo(W*0.8,H*0.7);
+    ctx.stroke();
+}
+
+document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&camOpen)closeCameras();
+    if(camOpen&&e.key==='ArrowLeft')camPrev();
+    if(camOpen&&e.key==='ArrowRight')camNext();
+});
+document.getElementById('camera-overlay').addEventListener('click',e=>{
+    if(e.target.id==='camera-overlay')closeCameras();
+});
+
+// ================================================================
+//  FEATURE 2: SURFACE TOPOGRAPHIC MAP
+// ================================================================
+let topoOpen=false;
+
+function openTopoMap(){
+    topoOpen=true;
+    document.getElementById('topo-overlay').classList.add('show');
+    renderTopoMap();
+}
+function closeTopoMap(){
+    topoOpen=false;
+    document.getElementById('topo-overlay').classList.remove('show');
+}
+document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&topoOpen)closeTopoMap();
+});
+document.getElementById('topo-overlay').addEventListener('click',e=>{
+    if(e.target.id==='topo-overlay')closeTopoMap();
+});
+
+function renderTopoMap(){
+    const canvas=document.getElementById('topo-canvas');
+    const ctx=canvas.getContext('2d');
+    const W=canvas.width,H=canvas.height;
+    const cx=W/2,cy=H/2;
+    const maxR=Math.min(W,H)*0.45;
+
+    ctx.fillStyle='#030810';ctx.fillRect(0,0,W,H);
+
+    // Grid
+    ctx.strokeStyle='rgba(20,40,60,0.2)';ctx.lineWidth=0.5;
+    for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+    // Contour lines
+    const contourColors=['#0a2a40','#0a3050','#0a3860','#0a4070','#0a4a80','#0a5090','#0a5aa0','#0a64b0'];
+    for(let i=1;i<=12;i++){
+        const r=maxR*i/12;
+        ctx.strokeStyle=contourColors[i%contourColors.length];
+        ctx.lineWidth=i%3===0?1.5:0.7;
+        ctx.beginPath();
+        // Slightly irregular contours
+        for(let a=0;a<Math.PI*2;a+=0.05){
+            const wobble=Math.sin(a*3+i*1.7)*r*0.06+Math.cos(a*5+i*0.9)*r*0.03;
+            const px=cx+Math.cos(a)*(r+wobble);
+            const py=cy+Math.sin(a)*(r+wobble);
+            if(a===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+        }
+        ctx.closePath();ctx.stroke();
+        // Elevation label
+        if(i%3===0){
+            const elev=-2400+i*200;
+            ctx.fillStyle='rgba(40,80,120,0.5)';ctx.font='8px Share Tech Mono';
+            ctx.fillText(elev+'m',cx+r*0.7+5,cy-3);
+        }
+    }
+
+    // Crater rims
+    const craters=[
+        {x:cx-maxR*0.35,y:cy-maxR*0.4,r:maxR*0.15,name:'Шеклтон'},
+        {x:cx+maxR*0.5,y:cy+maxR*0.2,r:maxR*0.1,name:'де Герлах'},
+        {x:cx-maxR*0.6,y:cy+maxR*0.5,r:maxR*0.08,name:'Свердруп'},
+    ];
+    for(const cr of craters){
+        ctx.strokeStyle='#1a4a6a';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.arc(cr.x,cr.y,cr.r,0,Math.PI*2);ctx.stroke();
+        ctx.fillStyle='#2a6a8a';ctx.font='9px Share Tech Mono';
+        ctx.fillText(cr.name,cr.x-cr.r*0.5,cr.y-cr.r-5);
+    }
+
+    // Base marker at center
+    ctx.fillStyle='#00ff66';
+    ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);ctx.fill();
+    ctx.shadowColor='#00ff66';ctx.shadowBlur=10;
+    ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#00ff88';ctx.font='bold 11px Share Tech Mono';
+    ctx.fillText('РЕЗОНАНС-9',cx+10,cy+4);
+
+    // Landing pads
+    const pads=[{x:cx+25,y:cy+20,name:'LP-1'},{x:cx-30,y:cy+35,name:'LP-2 (Дельта)'}];
+    for(const pad of pads){
+        ctx.strokeStyle='#44aa66';ctx.lineWidth=1;
+        ctx.beginPath();ctx.rect(pad.x-6,pad.y-6,12,12);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(pad.x,pad.y-8);ctx.lineTo(pad.x,pad.y+8);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(pad.x-8,pad.y);ctx.lineTo(pad.x+8,pad.y);ctx.stroke();
+        ctx.fillStyle='#44aa66';ctx.font='8px Share Tech Mono';
+        ctx.fillText(pad.name,pad.x+10,pad.y+3);
+    }
+
+    // Expedition "Dawn" route (dotted line going north)
+    ctx.setLineDash([6,4]);ctx.strokeStyle='#ccaa44';ctx.lineWidth=1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy-10);
+    ctx.lineTo(cx+15,cy-maxR*0.2);
+    ctx.lineTo(cx+5,cy-maxR*0.45);
+    ctx.lineTo(cx-10,cy-maxR*0.65);
+    ctx.lineTo(cx-20,cy-maxR*0.85);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#ccaa44';ctx.font='9px Share Tech Mono';
+    ctx.fillText('Эксп. "Рассвет"',cx-55,cy-maxR*0.87);
+
+    // Drill sites
+    const drills=[
+        {x:cx+maxR*0.15,y:cy+maxR*0.12,name:'Бур. точка А'},
+        {x:cx-maxR*0.2,y:cy+maxR*0.18,name:'Бур. точка Б'},
+        {x:cx+maxR*0.3,y:cy-maxR*0.1,name:'Бур. точка В'},
+    ];
+    for(const dr of drills){
+        ctx.fillStyle='#cc8844';
+        ctx.beginPath();ctx.arc(dr.x,dr.y,3,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#cc8844';ctx.font='8px Share Tech Mono';
+        ctx.fillText(dr.name,dr.x+6,dr.y+3);
+    }
+
+    // Anomaly markers (if mystery events happened)
+    if(mysteryWOCount>0){
+        const anomalies=[
+            {x:cx+maxR*0.25,y:cy-maxR*0.3},
+            {x:cx-maxR*0.4,y:cy+maxR*0.25},
+            {x:cx+maxR*0.55,y:cy-maxR*0.15},
+        ];
+        const showCount=Math.min(anomalies.length,mysteryWOCount);
+        for(let i=0;i<showCount;i++){
+            const an=anomalies[i];
+            ctx.fillStyle='#aa44ff';ctx.font='bold 14px Share Tech Mono';
+            ctx.fillText('?',an.x-4,an.y+5);
+            ctx.strokeStyle='rgba(170,68,255,0.4)';ctx.lineWidth=1;
+            ctx.beginPath();ctx.arc(an.x,an.y,10,0,Math.PI*2);ctx.stroke();
+        }
+    }
+
+    // Scale
+    ctx.fillStyle='#4a6a8a';ctx.font='10px Share Tech Mono';
+    ctx.fillText('0',cx-3,H-20);
+    ctx.fillText('25km',cx+maxR*0.5-10,H-20);
+    ctx.fillText('50km',cx+maxR-10,H-20);
+    ctx.strokeStyle='#4a6a8a';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(cx,H-28);ctx.lineTo(cx+maxR,H-28);ctx.stroke();
+    for(let i=0;i<=4;i++){
+        const sx=cx+maxR*i/4;
+        ctx.beginPath();ctx.moveTo(sx,H-32);ctx.lineTo(sx,H-24);ctx.stroke();
+    }
+
+    // Title
+    ctx.fillStyle='#6a8aaa';ctx.font='12px Share Tech Mono';
+    ctx.fillText('КАРТА МЕСТНОСТИ -- Южный полюс Луны, кр. Шеклтон -- R=50km',15,20);
+    ctx.fillText('MET: '+formatMET(gt),15,36);
+
+    // Compass
+    ctx.fillStyle='#4a6a8a';ctx.font='10px Share Tech Mono';
+    ctx.fillText('N',cx-3,25);
+    ctx.fillText('S',cx-3,H-8);
+    ctx.fillText('W',8,cy+4);
+    ctx.fillText('E',W-15,cy+4);
+}
+
+// ================================================================
+//  FEATURE 3: MISSION LOG
+// ================================================================
+let missionLog=[];
+
+function addMissionLog(cat,text){
+    missionLog.push({t:metShort(),met:formatMET(gt),cat:cat,text:text});
+    if(missionLog.length>500)missionLog.shift();
+}
+
+function openMissionLog(){
+    document.getElementById('mlog-overlay').classList.add('show');
+    renderMissionLog();
+}
+function closeMissionLog(){
+    document.getElementById('mlog-overlay').classList.remove('show');
+}
+document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&document.getElementById('mlog-overlay').classList.contains('show'))closeMissionLog();
+});
+document.getElementById('mlog-overlay').addEventListener('click',e=>{
+    if(e.target.id==='mlog-overlay')closeMissionLog();
+});
+
+function renderMissionLog(){
+    const el=document.getElementById('mlog-entries');
+    const icons={event:'\u26A0',repair:'\u2692',eva:'\u2B50',crew:'\u263A',supply:'\u2709',comm:'\uD83D\uDCE1',invest:'\uD83D\uDD0D'};
+    const catLabels={event:'СОБЫТИЕ',repair:'РЕМОНТ',eva:'EVA',crew:'ЭКИПАЖ',supply:'СНАБЖЕНИЕ',comm:'СВЯЗЬ',invest:'РАССЛЕД.'};
+    el.innerHTML=missionLog.slice().reverse().map(e=>{
+        return `<div class="mlog-entry">
+            <span class="mlog-time">${e.t}</span>
+            <span class="mlog-cat mlog-cat-${e.cat}">${catLabels[e.cat]||e.cat}</span>
+            <span class="mlog-text">${e.text}</span>
+        </div>`;
+    }).join('');
+}
+
+// ================================================================
+//  FEATURE 4: AMBIENT SOUND SYSTEM
+// ================================================================
+let ambientInitialized=false;
+let ambientMuted=false;
+let ventOsc=null;
+let ventGain=null;
+let ambientBeepTimer=null;
+let heartbeatTimer=null;
+
+function initAmbientSounds(){
+    if(ambientInitialized)return;
+    ambientInitialized=true;
+    initAudio();
+    if(!audioCtx)return;
+
+    // Ventilation hum - continuous ~80Hz
+    ventOsc=audioCtx.createOscillator();
+    ventGain=audioCtx.createGain();
+    ventOsc.type='sine';
+    ventOsc.frequency.value=80;
+    ventGain.gain.value=ambientMuted?0:0.012;
+    ventOsc.connect(ventGain);
+    ventGain.connect(audioCtx.destination);
+    ventOsc.start();
+
+    // Add second harmonic for richness
+    const ventOsc2=audioCtx.createOscillator();
+    const ventGain2=audioCtx.createGain();
+    ventOsc2.type='sine';
+    ventOsc2.frequency.value=120;
+    ventGain2.gain.value=ambientMuted?0:0.005;
+    ventOsc2.connect(ventGain2);
+    ventGain2.connect(audioCtx.destination);
+    ventOsc2.start();
+
+    // Random beeps
+    scheduleRandomBeep();
+}
+
+function scheduleRandomBeep(){
+    const delay=rng(5000,15000);
+    ambientBeepTimer=setTimeout(()=>{
+        if(!ambientMuted&&audioCtx){
+            const freq=pick([440,660,880,1100,523,784]);
+            beep(freq,0.06,0.03);
+        }
+        scheduleRandomBeep();
+    },delay);
+}
+
+function playRadioStatic(){
+    if(ambientMuted||!audioCtx)return;
+    try{
+        const bufSize=audioCtx.sampleRate*0.15;
+        const buf=audioCtx.createBuffer(1,bufSize,audioCtx.sampleRate);
+        const data=buf.getChannelData(0);
+        for(let i=0;i<bufSize;i++) data[i]=(Math.random()*2-1)*0.08;
+        const src=audioCtx.createBufferSource();
+        src.buffer=buf;
+        const g=audioCtx.createGain();
+        g.gain.value=0.06;
+        g.gain.setValueAtTime(0.06,audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.15);
+        src.connect(g);
+        g.connect(audioCtx.destination);
+        src.start();
+    }catch(e){}
+}
+
+function playHeartbeat(){
+    if(ambientMuted||!audioCtx)return;
+    try{
+        const o=audioCtx.createOscillator();
+        const g=audioCtx.createGain();
+        o.type='sine';o.frequency.value=55;
+        g.gain.value=0.04;
+        g.gain.setValueAtTime(0.04,audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.12);
+        o.connect(g);g.connect(audioCtx.destination);
+        o.start();o.stop(audioCtx.currentTime+0.12);
+        // Second thump
+        setTimeout(()=>{
+            if(ambientMuted||!audioCtx)return;
+            try{
+                const o2=audioCtx.createOscillator();
+                const g2=audioCtx.createGain();
+                o2.type='sine';o2.frequency.value=45;
+                g2.gain.value=0.03;
+                g2.gain.setValueAtTime(0.03,audioCtx.currentTime);
+                g2.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);
+                o2.connect(g2);g2.connect(audioCtx.destination);
+                o2.start();o2.stop(audioCtx.currentTime+0.1);
+            }catch(e){}
+        },120);
+    }catch(e){}
+}
+
+function playWarningBuzzer(){
+    if(ambientMuted||!audioCtx)return;
+    try{
+        const o=audioCtx.createOscillator();
+        const g=audioCtx.createGain();
+        o.type='sawtooth';o.frequency.value=220;
+        g.gain.value=0.08;
+        o.connect(g);g.connect(audioCtx.destination);
+        o.start();
+        o.frequency.setValueAtTime(220,audioCtx.currentTime);
+        o.frequency.linearRampToValueAtTime(440,audioCtx.currentTime+0.3);
+        g.gain.setValueAtTime(0.08,audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);
+        o.stop(audioCtx.currentTime+0.4);
+    }catch(e){}
+}
+
+function toggleMute(){
+    ambientMuted=!ambientMuted;
+    const btn=document.getElementById('mute-btn');
+    if(ambientMuted){
+        btn.classList.add('muted');
+        btn.textContent='\u266B MUTE';
+        if(ventGain)ventGain.gain.value=0;
+    }else{
+        btn.classList.remove('muted');
+        btn.textContent='\u266B SND';
+        if(ventGain)ventGain.gain.value=0.012;
+        if(!ambientInitialized)initAmbientSounds();
+    }
+}
+
+// Init ambient on first user interaction
+document.addEventListener('click',function _initAmb(){
+    if(!ambientInitialized&&!ambientMuted)initAmbientSounds();
+    document.removeEventListener('click',_initAmb);
+},{once:false});
+
+// Heartbeat timer - plays subtle heartbeat every ~1.1s when not muted
+let heartbeatInterval=null;
+function startHeartbeat(){
+    if(heartbeatInterval)return;
+    heartbeatInterval=setInterval(()=>{
+        if(!ambientMuted&&audioCtx)playHeartbeat();
+    },1100);
+}
+function stopHeartbeat(){
+    if(heartbeatInterval){clearInterval(heartbeatInterval);heartbeatInterval=null;}
+}
+// Start heartbeat on load (very subtle)
+setTimeout(startHeartbeat,5000);
+
 // ---- MAIN LOOP ----
 let renderTick=0;
 function loop(now){
@@ -3205,6 +4494,21 @@ function loop(now){
 // ---- INIT ----
 slog('Система инициализирована. ИДП РЕЗОНАНС-9 онлайн.','ok');
 slog('Лунная база «Резонанс-9», южный полюс Луны, кратер Шеклтон.','inf');
+addMissionLog('comm','Система инициализирована. ИДП РЕЗОНАНС-9 онлайн.');
+addMissionLog('crew','Экипаж на местах. Все системы проверены.');
+
+// Periodic crew health logging
+let lastHealthLogGT=0;
+setInterval(()=>{
+    if(paused||gt-lastHealthLogGT<60)return;
+    for(const c of CREW){
+        if(c.health<60&&c.health>0){
+            addMissionLog('crew',`${c.full}: здоровье снижено до ${c.health.toFixed(0)}%.`);
+            lastHealthLogGT=gt;
+            break;
+        }
+    }
+},30000);
 radioMsg('Система','system','Инженерный диспетчерский пульт активирован. Все каналы на приёме.');
 radioMsg('Хьюстон','earth','Резонанс-9, Хьюстон. Подтверждаем связь. Телеметрия поступает номинально. Добро пожаловать на вахту.');
 elog('from','Хьюстон: связь установлена. Телеметрия номинальна. Ждём первый рапорт.');
@@ -3217,6 +4521,7 @@ setTimeout(()=>radioMsg(CREW[3].callsign,'crew',CREW[3].callsign+' на связ
 // Periodic Earth comms
 setInterval(()=>{
     if(paused)return;
+    if(SYS.COM.integrity < 30) return; // No Earth contact when comms are down
     if(Math.random()<0.12){
         const pings=[
             'Хьюстон: плановая проверка канала. Резонанс, как приём?',
@@ -3229,6 +4534,7 @@ setInterval(()=>{
         const p=pick(pings);
         radioMsg('Хьюстон','earth',p);
         elog('from',p);
+        addMissionLog('comm',p);
     }
 },45000);
 
@@ -3241,6 +4547,7 @@ setInterval(()=>{
         for(const [,item] of Object.entries(INV)){item.count=Math.min(item.count+Math.ceil(item.count*0.4+2),item.count+20);}
         setTimeout(()=>radioMsg(CREW[0].callsign,'crew','Диспетчер, разгрузка завершена. Склад пополнен. Всё по описи.'),rng(5000,10000)/speed);
         slog('Грузовой модуль разгружен, запасы пополнены','ok');
+        addMissionLog('supply','Грузовой модуль доставлен и разгружен. Запасы пополнены.');
     }
 },120000);
 
