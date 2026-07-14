@@ -986,11 +986,11 @@ const CREW = [
         expertise:['life support','water systems','CO2 scrubbers','pressure systems'],
         greetings:['Мюллер здесь.','Три-четыре-восемь-девять на связи.','Мюллер, докладываю.'],
       }},
-    { id:'GEO-08812', name:'Танака', full:'Танака Ю.', role:'Геолог-оператор', callsign:'GEO-08812', status:'free', task:null, health:100, fatigue:0, loc:'LAB', stress:0, morale:80,
+    { id:'GEO-08812', name:'Миронова', full:'Миронова Е.В.', role:'Геолог-оператор', callsign:'GEO-08812', status:'free', task:null, health:100, fatigue:0, loc:'LAB', stress:0, morale:80,
       personality:{ style:'enthusiastic', humor:0.4, worry:0.2, curiosity:0.9, talkativeness:0.7,
-        quirks:['gets excited about rocks','takes too many photos','references Japanese proverbs'],
+        quirks:['восторгается минералами','фотографирует каждый камень','цитирует Вернадского'],
         expertise:['geology','mineralogy','drilling','sample analysis','biology'],
-        greetings:['Танака!','Геолог на связи.','Танака, слышу вас.'],
+        greetings:['Миронова на связи!','Геолог на связи.','Миронова, слышу вас.'],
       }},
 ];
 
@@ -1705,7 +1705,7 @@ const DialogEngine = {
                 ])],
             ]};
         },
-        // 23. Drill discussion (Танака specialty)
+        // 23. Drill discussion (Миронова specialty)
         function G_drillDiscuss(){
             const DE=DialogEngine; const tanaka=DE._tanaka(); const other=pick(CREW.filter(c=>c.id!==tanaka.id));
             if(!drillState.active&&drillState.depth===0) return null;
@@ -1878,12 +1878,12 @@ const DialogEngine = {
                 ])],
             ]};
         },
-        // 32. Танака — excited about discoveries
+        // 32. Миронова — excited about discoveries
         function G_tanakaExcitement(){
             const DE=DialogEngine; const tanaka=DE._tanaka(); const other=pick(CREW.filter(c=>c.id!==tanaka.id));
             return {topic:'tanaka_excitement',weight:1,lines:[
                 [tanaka.callsign,'crew',pick([
-                    `Танака! Посмотрите на этот образец! Кристаллы оливина необычного зелёного оттенка! Невероятно!`,
+                    `Миронова! Посмотрите на этот образец! Кристаллы оливина необычного зелёного оттенка! Невероятно!`,
                     `Как говорят у нас: 石の上にも三年 — даже на камне просидишь три года, и он станет тёплым. Как эти образцы!`,
                     `Я сделал ${rngI(40,120)} фотографий за эту смену. Каждый камень здесь — учебник геологии!`,
                     `Земля! Смотрите! Магнитная аномалия в районе скважины! Локальная, но чёткая!`,
@@ -1892,7 +1892,7 @@ const DialogEngine = {
                     `Содержание KREEP-элементов в этом образце аномально высокое! Это важно!`,
                 ])],
                 [other.callsign,'crew',pick([
-                    `Танака, ты опять сфотографировал каждый камень?`,
+                    `Миронова, ты опять сфотографировал каждый камень?`,
                     `Успокойся, геолог. Камни никуда не денутся.`,
                     `Отправляй данные на Землю. Пусть подтвердят.`,
                     `Энтузиазм похвален, но тебе пора обедать.`,
@@ -2330,7 +2330,7 @@ const DialogEngine = {
                 ])],
             ]};
         },
-        // 54. Танака asks for help
+        // 54. Миронова asks for help
         function G_tanakaAskHelp(){
             const DE=DialogEngine; const tanaka=DE._tanaka(); const helper=pick(CREW.filter(c=>c.id!==tanaka.id));
             return {topic:'tanaka_ask_help',weight:1,lines:[
@@ -2920,10 +2920,55 @@ function updateInvestigations(sdt){
                 }
             },(2600+rng(5000,12000))/speed);
 
+            // Remove topo anomaly if linked, spawn new one elsewhere later
+            if(wo.topoAnomaly){
+                const idx=TOPO_OBJECTS.findIndex(o=>o.id===wo.topoAnomaly);
+                if(idx!==-1){
+                    TOPO_OBJECTS.splice(idx,1);
+                    slog(`Аномалия ${wo.topoAnomaly} исследована и снята с карты`,'inf');
+                }
+                // Schedule new anomaly at random location after 60-180 seconds
+                setTimeout(()=>spawnTopoAnomaly(),rng(60,180)*1000/speed);
+            }
+
             activeInvestigations.splice(i,1);
             setTimeout(()=>{workOrders=workOrders.filter(w=>w.id!==wo.id);},20000/speed);
         }
     }
+}
+
+// Spawn new anomalies at random locations on topo map
+let topoAnomalyCounter = 3; // start after existing Α-1, Α-2
+function spawnTopoAnomaly(){
+    topoAnomalyCounter++;
+    const anomTypes=[
+        {name:'Термическая аномалия',info:'Горячее пятно в грунте. Температура на '+rngI(20,60)+'°C выше нормы.'},
+        {name:'Сейсмическая аномалия',info:'Ритмичные импульсы, период '+rng(5,30).toFixed(1)+' сек. Природа неясна.'},
+        {name:'Магнитная аномалия',info:'Локальное магнитное поле в '+rngI(3,15)+' раз выше фонового.'},
+        {name:'Радиационная аномалия',info:'Точечный источник '+rng(1,8).toFixed(1)+' мЗв/ч. Не совпадает с известными изотопами.'},
+        {name:'Акустическая аномалия',info:'Низкочастотный гул '+rngI(5,40)+' Гц через грунт. Без видимого источника.'},
+        {name:'Оптическая аномалия',info:'Периодические вспышки на поверхности. Длительность '+rngI(100,800)+' мс.'},
+        {name:'Гравитационная аномалия',info:'Отклонение g на '+rng(0.1,0.5).toFixed(2)+'%. Не соответствует известным масконам.'},
+        {name:'Электростатическая аномалия',info:'Аномальный заряд реголита. Пылинки левитируют на '+rngI(5,50)+' см.'},
+    ];
+    const t=pick(anomTypes);
+    const id='anom'+topoAnomalyCounter;
+    const x=rng(-30,30);
+    const y=rng(-30,30);
+    // Don't spawn too close to base
+    if(Math.sqrt(x*x+y*y)<5) { x+=10; }
+
+    TOPO_OBJECTS.push({
+        id, type:'anomaly', name:'Аномалия Α-'+topoAnomalyCounter,
+        x, y, info:t.info, color:'#aa44ff', icon:'?'
+    });
+
+    radioMsg('Система','system',`Новая аномалия обнаружена! ${t.name} в координатах ${x.toFixed(1)}, ${y.toFixed(1)} км. Проверьте карту.`);
+    slog(`Аномалия Α-${topoAnomalyCounter}: ${t.name} [${x.toFixed(1)}, ${y.toFixed(1)}]`,'wrn');
+
+    // Flash radar tab
+    const tab=document.getElementById('mob-tab-radar');
+    if(tab&&!tab.classList.contains('active'))tab.classList.add('tab-alert');
 }
 
 let chatterCD = 4;
@@ -5081,6 +5126,16 @@ function update(dt){
     if(chatterCD<=0){
         chatterCD=rng(3,10);
         generateChatter();
+    }
+
+    // ---- TOPO ANOMALY SPAWNING ----
+    // Spawn new anomaly if fewer than 2 on map, every 200-400 seconds
+    if(!window._anomSpawnCD) window._anomSpawnCD=rng(200,400);
+    window._anomSpawnCD-=sdt;
+    if(window._anomSpawnCD<=0){
+        window._anomSpawnCD=rng(200,400);
+        const anomCount=TOPO_OBJECTS.filter(o=>o.type==='anomaly').length;
+        if(anomCount<3) spawnTopoAnomaly();
     }
 
     // ---- INVESTIGATIONS ----
