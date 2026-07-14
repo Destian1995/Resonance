@@ -110,6 +110,16 @@ body{
 .rm-text{color:var(--text2);word-wrap:break-word;overflow-wrap:break-word}
 .rm-channel{font-size:9px;padding:0 4px;border-radius:2px;display:inline-block}
 
+/* Crew reply to dispatcher — highlighted callsign */
+.rm-reply .rm-callsign{
+    background:rgba(0,255,136,0.12);
+    padding:1px 6px;border-radius:3px;
+    color:#00ffaa!important;
+    text-shadow:0 0 8px rgba(0,255,170,0.5);
+    border:1px solid rgba(0,255,136,0.2);
+}
+.rm-reply{border-left-color:#00cc88!important}
+
 /* Channel colors */
 .ch-crew{border-left-color:#2288aa}
 .ch-crew .rm-callsign{color:#44bbdd}
@@ -1294,7 +1304,10 @@ function elog(dir,msg){
 
 // ---- RADIO ----
 function radioMsg(callsign, channel, text){
-    radioMessages.push({t:metShort(),cs:callsign,ch:channel,text});
+    // Mark if this is a crew reply to dispatcher
+    const prev = radioMessages.length > 0 ? radioMessages[radioMessages.length-1] : null;
+    const isReply = prev && prev.ch === 'dispatch' && channel === 'crew';
+    radioMessages.push({t:metShort(),cs:callsign,ch:channel,text,reply:isReply});
     if(radioMessages.length>150)radioMessages.shift();
     renderRadio();
     radioClick();
@@ -1342,7 +1355,8 @@ function renderRadio(){
     el.innerHTML = last40.map(m=>{
         const chClass = 'ch-'+m.ch;
         const chLabel = {crew:'ЭКИПАЖ',dispatch:'ДИСПЕТЧЕР',earth:'ЗЕМЛЯ',alert:'ТРЕВОГА',system:'СИСТЕМА',eva:'EVA'}[m.ch]||m.ch;
-        return `<div class="radio-msg ${chClass}">
+        const replyClass = m.reply ? ' rm-reply' : '';
+        return `<div class="radio-msg ${chClass}${replyClass}">
             <div class="rm-header">
                 <span><span class="rm-callsign">${m.cs}</span> <span class="rm-channel">${chLabel}</span></span>
                 <span class="rm-time">${m.t}</span>
