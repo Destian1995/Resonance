@@ -739,16 +739,16 @@ body{
     </div>
     <div class="tb-section tb-hide-mobile">
         <span class="led led-blue blink-slow" id="uplink-led"></span>
-        <span class="tb-label">UPLINK</span>
-        <span class="tb-val ok" id="uplink-val">NOMINAL</span>
+        <span class="tb-label">КАНАЛ</span>
+        <span class="tb-val ok" id="uplink-val">НОРМА</span>
     </div>
     <div class="tb-section tb-hide-mobile">
         <span class="led led-green blink-slow" id="telem-led"></span>
-        <span class="tb-label">TELEM</span>
+        <span class="tb-label">ТЕЛЕМ</span>
         <span class="led led-green" id="rx-led" style="margin-left:4px"></span>
-        <span class="tb-label" style="font-size:8px">RX</span>
+        <span class="tb-label" style="font-size:8px">ПР</span>
         <span class="led led-off" id="tx-led-top" style="margin-left:2px"></span>
-        <span class="tb-label" style="font-size:8px">TX</span>
+        <span class="tb-label" style="font-size:8px">ПД</span>
     </div>
     <div class="tb-section" style="border:none">
         <button id="mute-btn" onclick="toggleMute()">&#9835; SND</button>
@@ -776,7 +776,7 @@ body{
 <div id="col-left">
     <div class="panel-header">
         <span class="ph-title">ТЕЛЕМЕТРИЯ СИСТЕМ</span>
-        <span id="sys-summary" style="color:var(--green)">6/6 NOM</span>
+        <span id="sys-summary" style="color:var(--green)">6/6 НОРМ</span>
     </div>
     <div id="telemetry"></div>
 </div>
@@ -785,7 +785,7 @@ body{
 <div id="col-center">
     <div class="panel-header">
         <span class="ph-title">РАДИОЭФИР — ВНУТРЕННЯЯ СВЯЗЬ / ЗЕМЛЯ</span>
-        <span style="color:var(--dim)"><span class="tx-indicator" id="tx-ind"></span> PTT</span>
+        <span style="color:var(--dim)"><span class="tx-indicator" id="tx-ind"></span> ЭФИР</span>
     </div>
     <div id="radio-tabs">
         <button class="rt-btn active" onclick="switchRadioTab('local',this)">СТАНЦИЯ</button>
@@ -803,7 +803,7 @@ body{
             <button class="rf-btn" onclick="setRadioFilter('eva',this)">EVA</button>
             <span style="flex:1"></span>
             <span class="tx-indicator" id="tx-light"></span>
-            <span style="color:var(--dim);font-size:8px;margin-left:4px">RX</span>
+            <span style="color:var(--dim);font-size:8px;margin-left:4px">ПРИЁМ</span>
         </div>
     </div>
     <div id="radio-panel-ip" style="display:none">
@@ -826,7 +826,7 @@ body{
     </div>
 </div>
 
-<!-- RIGHT: WORK ORDERS + ACTIONS -->
+<!-- RIGHT: WORK ORDERS + АКТIONS -->
 <div id="col-right">
     <div class="panel-header">
         <span class="ph-title">НАРЯДЫ / ИНЦИДЕНТЫ</span>
@@ -1065,13 +1065,13 @@ const INV = {
 
 // ---- SATELLITES ----
 const SATS = [
-    { id:'LCRS-1', name:'Lunar Comm Relay 1', type:'Ретранслятор', orbit:'Гало L2', health:100, signal:98, fuel:88, temp:22, degradeRate:0.001, angle:0, orbitR:0.75, speed:0.4 },
-    { id:'LCRS-2', name:'Lunar Comm Relay 2', type:'Ретранслятор', orbit:'Гало L2', health:97, signal:95, fuel:82, temp:21, degradeRate:0.0012, angle:Math.PI*0.66, orbitR:0.8, speed:0.38 },
-    { id:'LNAV-1', name:'Lunar Nav Sat 1', type:'Навигация', orbit:'Полярная 200км', health:95, signal:92, fuel:76, temp:18, degradeRate:0.0015, angle:Math.PI*0.33, orbitR:0.55, speed:0.65 },
-    { id:'LNAV-2', name:'Lunar Nav Sat 2', type:'Навигация', orbit:'Полярная 200км', health:98, signal:96, fuel:80, temp:20, degradeRate:0.001, angle:Math.PI, orbitR:0.5, speed:0.7 },
-    { id:'LRO-X', name:'Lunar Recon Orbiter', type:'Разведка', orbit:'Полярная 50км', health:89, signal:88, fuel:45, temp:25, degradeRate:0.002, angle:Math.PI*1.5, orbitR:0.4, speed:0.9 },
-    { id:'LMET-1', name:'Lunar Meteo Sat', type:'Метеорология', orbit:'Экват. 100км', health:92, signal:90, fuel:70, temp:19, degradeRate:0.0013, angle:Math.PI*0.8, orbitR:0.6, speed:0.55 },
-    { id:'LGPS-3', name:'Lunar GPS Sat 3', type:'Навигация', orbit:'Средняя 500км', health:100, signal:99, fuel:91, temp:21, degradeRate:0.0008, angle:Math.PI*1.2, orbitR:0.7, speed:0.45 },
+    { id:'LCRS-1', name:'Ретранслятор связи 1', type:'Ретранслятор', orbit:'Гало L2', health:100, signal:98, fuel:88, temp:22, degradeRate:0.001, angle:0, orbitR:0.75, speed:0.4 },
+    { id:'LCRS-2', name:'Ретранслятор связи 2', type:'Ретранслятор', orbit:'Гало L2', health:97, signal:95, fuel:82, temp:21, degradeRate:0.0012, angle:Math.PI*0.66, orbitR:0.8, speed:0.38 },
+    { id:'LNAV-1', name:'Навигац. спутник 1', type:'Навигация', orbit:'Полярная 200км', health:95, signal:92, fuel:76, temp:18, degradeRate:0.0015, angle:Math.PI*0.33, orbitR:0.55, speed:0.65 },
+    { id:'LNAV-2', name:'Навигац. спутник 2', type:'Навигация', orbit:'Полярная 200км', health:98, signal:96, fuel:80, temp:20, degradeRate:0.001, angle:Math.PI, orbitR:0.5, speed:0.7 },
+    { id:'LRO-X', name:'Разведорбитер', type:'Разведка', orbit:'Полярная 50км', health:89, signal:88, fuel:45, temp:25, degradeRate:0.002, angle:Math.PI*1.5, orbitR:0.4, speed:0.9 },
+    { id:'LMET-1', name:'Метеоспутник', type:'Метеорология', orbit:'Экват. 100км', health:92, signal:90, fuel:70, temp:19, degradeRate:0.0013, angle:Math.PI*0.8, orbitR:0.6, speed:0.55 },
+    { id:'LGPS-3', name:'Навигац. спутник 3', type:'Навигация', orbit:'Средняя 500км', health:100, signal:99, fuel:91, temp:21, degradeRate:0.0008, angle:Math.PI*1.2, orbitR:0.7, speed:0.45 },
 ];
 let satChatterCD = 20;
 
@@ -3110,7 +3110,7 @@ function renderTelemetry(){
     html+=`<div class="telem-block" style="border-color:#1a1a30">
         <div class="telem-title">
             <span class="telem-name" style="color:#7788cc">SAT — Орбитальная группировка</span>
-            <span class="telem-status" style="background:#0a0a1a;color:#7788cc">${SATS.filter(s=>s.health>50).length}/${SATS.length} ACT</span>
+            <span class="telem-status" style="background:#0a0a1a;color:#7788cc">${SATS.filter(s=>s.health>50).length}/${SATS.length} АКТ</span>
         </div>
         <div style="font-size:10px">`;
     for(const sat of SATS){
@@ -3134,12 +3134,12 @@ function renderTelemetry(){
             <span class="telem-led-label">CMD</span><span class="led led-green blink-slow"></span>
             <span class="telem-led-label">RNG</span><span class="led led-green ${SATS.some(s=>s.health<60)?'blink-med':''}"></span>
             <span style="flex:1"></span>
-            <span class="telem-led-label" style="color:#5566aa">CONSTELLATION</span>
+            <span class="telem-led-label" style="color:#5566aa">ГРУППИРОВКА</span>
         </div>
     </div>`;
 
     el.innerHTML=html;
-    document.getElementById('sys-summary').textContent=`${nomCount}/${total} NOM`;
+    document.getElementById('sys-summary').textContent=`${nomCount}/${total} НОРМ`;
     document.getElementById('sys-summary').style.color = nomCount===total?'var(--green)':nomCount>=4?'var(--yellow)':'var(--red2)';
 }
 
@@ -3231,7 +3231,7 @@ function assignWO(wo){
     },rng(1500,3000)/speed);
 }
 
-// ---- RENDER: QUICK ACTIONS ----
+// ---- RENDER: QUICK АКТIONS ----
 function renderActions(){
     const avail=freeCrew().length;
     const hasMysteryWO=workOrders.some(w=>w.mystery&&w.status==='ОЖИДАНИЕ');
@@ -4078,7 +4078,7 @@ function renderRadar(){
     rctx.fillStyle='rgba(0,255,136,0.1)';
     rctx.beginPath();rctx.arc(cx,cy,8,0,Math.PI*2);rctx.fill();
     rctx.fillStyle='#00cc66';rctx.font='bold 8px monospace';rctx.textAlign='center';
-    rctx.fillText('BASE',cx,cy+14);
+    rctx.fillText('БАЗА',cx,cy+14);
 
     // Satellites on radar
     for(const sat of SATS){
@@ -4118,20 +4118,20 @@ function renderRadar(){
 
     // Title
     rctx.fillStyle='#1a2a3a';rctx.font='8px monospace';rctx.textAlign='left';
-    rctx.fillText('ORBITAL RADAR — SATELLITE TRACKING',6,12);
+    rctx.fillText('ОРБИТАЛЬНЫЙ РАДАР — СПУТНИКИ',6,12);
 
     // Blinking RX indicator
     const rxOn = Math.sin(Date.now()/200)>0.3;
     rctx.fillStyle=rxOn?'#00cc66':'#0a1a10';
     rctx.beginPath();rctx.arc(W-12,10,3,0,Math.PI*2);rctx.fill();
     rctx.fillStyle='#1a2a3a';rctx.textAlign='right';
-    rctx.fillText('LIVE',W-18,13);
+    rctx.fillText('ПРИЕМ',W-18,13);
 
     // Legend bottom-right
     rctx.textAlign='right';rctx.font='7px monospace';
-    rctx.fillStyle='#6688cc';rctx.fillText('● RELAY',W-8,H-28);
-    rctx.fillStyle='#66cc88';rctx.fillText('● NAV',W-8,H-18);
-    rctx.fillStyle='#cc8866';rctx.fillText('● RECON/MET',W-8,H-8);
+    rctx.fillStyle='#6688cc';rctx.fillText('● РЕТРАНСЛ.',W-8,H-28);
+    rctx.fillStyle='#66cc88';rctx.fillText('● НАВИГ.',W-8,H-18);
+    rctx.fillStyle='#cc8866';rctx.fillText('● РАЗВЕД./МЕТЕО',W-8,H-8);
 }
 
 // ---- RADIATION / SOLAR PANEL ----
@@ -4282,12 +4282,12 @@ function renderDeepSpace(){
 
     // Title
     dsCtx.fillStyle='#1a1528';dsCtx.font='8px monospace';dsCtx.textAlign='left';
-    dsCtx.fillText('DEEP SPACE SCAN — CISLUNAR',4,12);
+    dsCtx.fillText('ДАЛЬНИЙ КОСМОС — ОКОЛОЛУННОЕ',4,12);
     // Live indicator
     const liveOn=Math.sin(Date.now()/400)>0;
     dsCtx.fillStyle=liveOn?'#8844cc':'#1a1020';
     dsCtx.beginPath();dsCtx.arc(W-12,10,3,0,Math.PI*2);dsCtx.fill();
-    dsCtx.fillStyle='#2a1838';dsCtx.textAlign='right';dsCtx.fillText('SCAN',W-18,13);
+    dsCtx.fillStyle='#2a1838';dsCtx.textAlign='right';dsCtx.fillText('СКАН',W-18,13);
 }
 
 // ---- INTERPLANETARY COMMS ----
@@ -4791,7 +4791,7 @@ function update(dt){
 
     // Uplink status
     const comOK=SYS.COM.integrity>50;
-    document.getElementById('uplink-val').textContent=comOK?'NOMINAL':'DEGRADED';
+    document.getElementById('uplink-val').textContent=comOK?'НОРМА':'ДЕГРАД.';
     document.getElementById('uplink-val').className='tb-val '+(comOK?'ok':'warn');
     const uplinkLed=document.getElementById('uplink-led');
     if(uplinkLed)uplinkLed.className='led '+(comOK?'led-blue blink-slow':'led-yellow blink-fast');
@@ -4848,7 +4848,7 @@ function update(dt){
         if(rad>3)c.health=clamp(c.health-0.015*sdt,0,100);
     }
 
-    // ---- SOLAR ACTIVITY ----
+    // ---- SOLAR АКТIVITY ----
     updateSolarActivity(sdt);
 
     // ---- SATELLITES ----
@@ -5142,7 +5142,7 @@ function openRadarZoom(mode){
     radarZoomMode=mode;
     radarZoomHovered=null;
     document.getElementById('radar-zoom-overlay').classList.add('show');
-    document.getElementById('rzd-title').textContent=mode==='orbital'?'ORBITAL RADAR — ZOOM':'DEEP SPACE SCAN — ZOOM';
+    document.getElementById('rzd-title').textContent=mode==='orbital'?'ОРБИТАЛЬНЫЙ РАДАР — УВЕЛИЧЕНИЕ':'ДАЛЬНИЙ КОСМОС — УВЕЛИЧЕНИЕ';
     document.getElementById('rzd-body').innerHTML='<div style="color:var(--dim);padding:20px">Наведите курсор на объект для отображения деталей</div>';
 }
 function closeRadarZoom(){
@@ -5275,12 +5275,12 @@ function renderZoomedOrbital(ctx,W,H){
 
     // Title
     ctx.fillStyle='#1a3050';ctx.font='11px monospace';ctx.textAlign='left';
-    ctx.fillText('ORBITAL RADAR — SATELLITE TRACKING [ZOOM]',10,20);
+    ctx.fillText('ОРБИТАЛЬНЫЙ РАДАР — СПУТНИКИ [УВЕЛИЧЕНИЕ]',10,20);
     // Live
     const rxOn=Math.sin(Date.now()/200)>0.3;
     ctx.fillStyle=rxOn?'#00cc66':'#0a1a10';
     ctx.beginPath();ctx.arc(W-16,16,4,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#1a3040';ctx.textAlign='right';ctx.fillText('LIVE',W-24,19);
+    ctx.fillStyle='#1a3040';ctx.textAlign='right';ctx.fillText('ПРИЕМ',W-24,19);
 
     // Update detail panel
     if(closest&&closestDist<40){
@@ -5362,11 +5362,11 @@ function renderZoomedDeepSpace(ctx,W,H){
 
     // Title
     ctx.fillStyle='#1a1830';ctx.font='11px monospace';ctx.textAlign='left';
-    ctx.fillText('DEEP SPACE SCAN — CISLUNAR [ZOOM]',10,20);
+    ctx.fillText('ДАЛЬНИЙ КОСМОС — ОКОЛОЛУННОЕ [УВЕЛИЧЕНИЕ]',10,20);
     const liveOn=Math.sin(Date.now()/400)>0;
     ctx.fillStyle=liveOn?'#8844cc':'#1a1020';
     ctx.beginPath();ctx.arc(W-16,16,4,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#2a1838';ctx.textAlign='right';ctx.fillText('SCAN',W-24,19);
+    ctx.fillStyle='#2a1838';ctx.textAlign='right';ctx.fillText('СКАН',W-24,19);
 
     if(closest&&closestDist<40){
         if(radarZoomHovered!==closest.id){
