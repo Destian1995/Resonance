@@ -430,16 +430,14 @@ body{
 }
 
 @media(max-width:768px){
-    /* Complete mobile layout */
     body{font-size:11px}
 
-    /* Topbar: compact 2-row */
+    /* Topbar compact */
     #topbar{
-        flex-wrap:wrap;height:auto;padding:4px 6px;gap:1px;
-        justify-content:center;
+        flex-wrap:wrap;height:auto;padding:3px 6px;gap:1px;
+        justify-content:center;overflow-x:auto;
     }
-    .tb-section{padding:2px 5px;border-right:none;font-size:9px}
-    /* Hide less important topbar items on mobile */
+    .tb-section{padding:2px 5px;border-right:none;font-size:9px;flex-shrink:0}
     .tb-hide-mobile{display:none!important}
 
     /* Mobile tab bar */
@@ -455,81 +453,111 @@ body{
         white-space:nowrap;
     }
     .mob-tab.active{color:var(--accent2);border-bottom-color:var(--accent2);background:#060a12}
-    .mob-tab:hover{color:var(--text)}
 
-    /* Main: stack vertically, show one panel at a time */
+    /* Main: one panel at a time */
     #main{flex-direction:column;overflow:hidden}
     #col-left,#col-center,#col-right{
         width:100%!important;flex-shrink:0;
-        border:none!important;
-        display:none; /* hidden by default, JS shows active */
+        border:none!important;display:none;
     }
     #col-left.mob-active,#col-center.mob-active,#col-right.mob-active{
-        display:flex!important;flex:1;overflow:hidden;
+        display:flex!important;flex:1;overflow:hidden;min-height:0;
     }
 
-    /* Telemetry scrollable */
+    /* Telemetry */
     #telemetry{overflow-y:auto;-webkit-overflow-scrolling:touch}
     .telem-block{margin:3px}
     .telem-grid{grid-template-columns:1fr 1fr}
 
-    /* Radio panel full height */
-    #radio-panel{flex:1;min-height:0}
-    #radio-feed{-webkit-overflow-scrolling:touch}
-    .radio-msg{font-size:11px;padding:4px 6px;margin-bottom:4px}
-    .rm-callsign{font-size:10px}
-    #radio-filter-bar{flex-wrap:wrap;gap:3px}
-    .rf-btn{padding:4px 8px;font-size:10px}
+    /* Radio - all elements must fit in col-center flex column */
+    #col-center{flex-direction:column!important}
+    #col-center>.panel-header{flex-shrink:0}
+    #radio-tabs{flex-shrink:0}
+    .rt-btn{padding:8px 6px;font-size:11px}
 
-    /* Bottom panels stack vertically */
-    #bottom-panels{flex-direction:column;height:auto;flex:1}
-    #radar-section{height:200px;flex-shrink:0;border-right:none!important;border-bottom:1px solid var(--border)}
-    #deepspace-section{height:200px;flex-shrink:0;border-right:none!important;border-bottom:1px solid var(--border)}
-    #radiation-section{width:100%!important;height:auto;flex:1;min-height:150px}
-    #interplanet-bar{height:auto;min-height:60px}
-
-    /* Work orders */
-    #workorders{-webkit-overflow-scrolling:touch}
-    .wo-card{padding:8px 10px}
-
-    /* Quick actions: 2 columns, bigger buttons */
-    #quick-actions{
-        grid-template-columns:1fr 1fr;gap:4px;padding:8px;
+    #radio-panel{flex:1;min-height:0;overflow:hidden}
+    #radio-panel-ip{flex:1;min-height:0;overflow:hidden}
+    #radio-feed{
+        flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
+        -webkit-overflow-scrolling:touch;padding:6px 8px;
     }
+    #interplanet-feed-main{
+        flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;
+        -webkit-overflow-scrolling:touch;padding:6px 8px;
+    }
+
+    .radio-msg{font-size:11px;padding:4px 6px;margin-bottom:4px;max-width:100%}
+    .rm-header{flex-wrap:wrap;gap:2px}
+    .rm-callsign{font-size:10px;word-break:break-all}
+    .rm-text{font-size:11px;word-break:break-word}
+    .ch-dispatch .rm-callsign{font-size:11px}
+    .ip-msg-main{font-size:11px;padding:4px 6px;margin-bottom:4px}
+
+    #radio-filter-bar{flex-wrap:wrap;gap:2px;padding:4px 6px}
+    .rf-btn{padding:5px 6px;font-size:9px}
+
+    /* Bottom panels stack */
+    #bottom-panels{
+        flex-direction:column;height:auto;flex:1;
+        overflow-y:auto;-webkit-overflow-scrolling:touch;
+    }
+    #radar-section{height:220px;flex-shrink:0;border-right:none!important;border-bottom:1px solid var(--border);position:relative}
+    #deepspace-section{height:220px;flex-shrink:0;border-right:none!important;border-bottom:1px solid var(--border);position:relative}
+    #radiation-section{width:100%!important;flex-shrink:0;min-height:160px}
+    #rad-canvas{width:100%;min-height:90px}
+
+    /* Work orders & actions */
+    #workorders{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0}
+    .wo-card{padding:8px 10px}
+    #quick-actions{grid-template-columns:1fr 1fr;gap:4px;padding:8px;flex-shrink:0}
     .qa-btn{padding:10px 6px;font-size:11px}
 
-    /* Crew strip: horizontal scroll */
+    /* Crew strip */
     #crew-strip{
         overflow-x:auto;-webkit-overflow-scrolling:touch;
-        flex-wrap:nowrap;
+        flex-wrap:nowrap;flex-shrink:0;
     }
-    .cs-member{min-width:140px;flex:none}
+    .cs-member{min-width:130px;flex:none;padding:4px 5px}
+    .cs-name{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cs-ecg{height:30px}
+    .cs-vitals{font-size:7px}
 
-    /* Log bar: stack */
-    #log-bar{flex-direction:column;height:auto;max-height:150px}
-    #sys-log{min-height:60px}
-    #earth-log{width:100%!important;border-left:none!important;border-top:1px solid var(--border);min-height:60px}
+    /* Log bar */
+    #log-bar{flex-direction:column;height:auto;max-height:200px;overflow:hidden}
+    #sys-log{min-height:60px;flex:1}
+    #earth-log{width:100%!important;border-left:none!important;border-top:1px solid var(--border);min-height:60px;flex:1}
 
-    /* Modal bigger touch targets */
-    #modal{padding:16px;max-width:95%}
+    /* Modal */
+    #modal{padding:14px;max-width:96%;max-height:90vh;overflow-y:auto}
     .m-btn{padding:12px;font-size:13px}
 
-    /* Alert strip */
+    /* Radar zoom overlay */
+    #radar-zoom-overlay .rzo-content{flex-direction:column!important}
+    #radar-zoom-overlay canvas{max-height:50vh!important}
+    #radar-zoom-overlay .rzo-detail{
+        width:100%!important;max-height:40vh;overflow-y:auto;
+    }
+
     #alert-strip{font-size:11px;padding:6px 10px}
 }
 
 @media(max-width:480px){
-    .tb-section{padding:1px 4px;font-size:8px}
-    .tb-label{font-size:8px;letter-spacing:0}
-    .tb-val{font-size:10px}
+    .tb-section{padding:1px 3px;font-size:7px}
+    .tb-label{font-size:7px;letter-spacing:0}
+    .tb-val{font-size:9px}
     .mob-tab{padding:8px 2px;font-size:9px}
     .telem-grid{grid-template-columns:1fr}
     .telem-name{font-size:10px}
-    #quick-actions{grid-template-columns:1fr 1fr}
     .qa-btn{padding:12px 4px;font-size:10px}
-    .cs-member{min-width:120px}
-    .radio-msg{font-size:10px}
+    .cs-member{min-width:110px}
+    .cs-name{font-size:7px}
+    .radio-msg{font-size:10px;padding:3px 5px}
+    .rm-callsign{font-size:9px}
+    .ch-dispatch .rm-callsign{font-size:10px}
     #radar-section{height:180px}
+    #deepspace-section{height:180px}
+    .rt-btn{font-size:10px;padding:7px 4px}
+    .rf-btn{font-size:8px;padding:4px 5px}
 }
 </style>
 </head>
@@ -2852,22 +2880,24 @@ function generateChatter(){
 // ---- MOBILE TABS ----
 function mobTab(tab){
     document.querySelectorAll('.mob-tab').forEach(b=>b.classList.remove('active'));
-    event.target.classList.add('active');
+    if(event&&event.target)event.target.classList.add('active');
 
     const left=document.getElementById('col-left');
     const center=document.getElementById('col-center');
     const right=document.getElementById('col-right');
     const logBar=document.getElementById('log-bar');
     const crewStrip=document.getElementById('crew-strip');
-
-    // Hide all
-    [left,center,right].forEach(el=>el.classList.remove('mob-active'));
-    logBar.style.display='none';
-
-    // On mobile, bottom-panels may need to be shown/hidden inside col-center
     const radioPanel=document.getElementById('radio-panel');
+    const radioPanelIP=document.getElementById('radio-panel-ip');
+    const radioTabs=document.getElementById('radio-tabs');
     const bottomPanels=document.getElementById('bottom-panels');
     const radioHeader=center.querySelector('.panel-header');
+    const filterBar=document.getElementById('radio-filter-bar');
+
+    // Reset all
+    [left,center,right].forEach(el=>el.classList.remove('mob-active'));
+    logBar.style.display='none';
+    logBar.style.flex='';logBar.style.maxHeight='';logBar.style.flexDirection='';
 
     switch(tab){
         case 'telem':
@@ -2876,16 +2906,24 @@ function mobTab(tab){
             break;
         case 'radio':
             center.classList.add('mob-active');
-            if(radioPanel)radioPanel.style.display='flex';
-            if(bottomPanels)bottomPanels.style.display='none';
+            // Show radio elements, hide radar
             if(radioHeader)radioHeader.style.display='flex';
+            if(radioTabs)radioTabs.style.display='flex';
+            if(radioPanel)radioPanel.style.display=radioTab==='local'?'flex':'none';
+            if(radioPanelIP)radioPanelIP.style.display=radioTab==='interplanet'?'flex':'none';
+            if(filterBar)filterBar.style.display=radioTab==='local'?'flex':'none';
+            if(bottomPanels)bottomPanels.style.display='none';
             crewStrip.style.display='flex';
             break;
         case 'radar':
             center.classList.add('mob-active');
-            if(radioPanel)radioPanel.style.display='none';
-            if(bottomPanels)bottomPanels.style.display='flex';
+            // Show radars, hide radio
             if(radioHeader)radioHeader.style.display='none';
+            if(radioTabs)radioTabs.style.display='none';
+            if(radioPanel)radioPanel.style.display='none';
+            if(radioPanelIP)radioPanelIP.style.display='none';
+            if(filterBar)filterBar.style.display='none';
+            if(bottomPanels)bottomPanels.style.display='flex';
             crewStrip.style.display='none';
             break;
         case 'tasks':
@@ -2893,7 +2931,6 @@ function mobTab(tab){
             crewStrip.style.display='flex';
             break;
         case 'log':
-            // Show logs fullscreen
             logBar.style.display='flex';
             logBar.style.flex='1';
             logBar.style.maxHeight='none';
