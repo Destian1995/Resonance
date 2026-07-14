@@ -2640,6 +2640,117 @@ const SCIENTIFIC_REASONS = [
 
 let activeInvestigations = [];
 let mysteryWOCount = 0;
+let investigationReports = []; // saved reports
+
+function buildInvestigationReport(wo, outcomeType, conclusion, investigator) {
+    const sections = ['Альфа','Браво','Гамма','Дельта','Эхо'];
+    const instruments = ['масс-спектрометр','гравиметр','магнитометр','сейсмограф','дозиметр','термосканер','ИК-камера','детектор частиц'];
+    const duration = wo.totalTime ? wo.totalTime.toFixed(0) : '??';
+
+    const report = {
+        id: 'IR-' + String(wo.id).padStart(4,'0'),
+        title: wo.title,
+        date: formatMET(gt),
+        investigator: investigator ? investigator.full : 'Неизвестно',
+        investigatorId: investigator ? investigator.callsign : '???',
+        outcomeType,
+        verdict: outcomeType==='scientific' ? 'Причина установлена' : outcomeType==='inconclusive' ? 'Причина не установлена' : 'НОВОЕ ОТКРЫТИЕ',
+        duration: duration + ' сек',
+        location: 'Секция ' + pick(sections) + ', координаты ' + rng(-20,20).toFixed(2) + ', ' + rng(-20,20).toFixed(2) + ' км',
+        instruments: [pick(instruments), pick(instruments), pick(instruments)].filter((v,i,a)=>a.indexOf(v)===i),
+        envConditions: `T.внеш: ${Math.round(extTemp)}°C | Рад: ${(0.42+rng(0,0.5)).toFixed(2)} мЗв/ч | Фаза: ${isDayPhase()<0.5?'день':'ночь'}`,
+        conclusion,
+    };
+
+    // Cause analysis — depends on outcome
+    if (outcomeType === 'scientific') {
+        const cause = pick(SCIENTIFIC_REASONS);
+        report.cause = cause.charAt(0).toUpperCase() + cause.slice(1);
+        report.details = pick([
+            `При детальном анализе данных с ${pick(instruments)} обнаружена корреляция с ${pick(['термоциклированием обшивки','солнечной активностью','глубинной сейсмикой','электростатикой реголита'])}. Паттерн воспроизводим с вероятностью ${rngI(85,99)}%.`,
+            `Спектральный анализ показал ${pick(['характерные пики на частотах','амплитудную модуляцию','фазовый сдвиг сигнала'])} ${rngI(200,8000)} Гц, что типично для ${pick(['естественных лунных процессов','инструментальных артефактов','термических деформаций'])}. Ложная тревога.`,
+            `Повторные измерения с калиброванным оборудованием показали: явление вызвано ${pick(['взаимодействием солнечного ветра с локальной магнитной аномалией','микросейсмической активностью','деградацией датчика','резонансом в конструкции модуля'])}. Рекомендована замена датчика ${pick(instruments)}.`,
+        ]);
+        report.recommendations = pick([
+            'Обновить калибровочные таблицы. Добавить событие в базу известных явлений. Установить фильтр ложных срабатываний.',
+            'Заменить датчик в точке наблюдения. Провести повторный мониторинг через 48 часов для подтверждения.',
+            'Добавить точку в регулярный мониторинг. Уведомить ЦУП о необходимости обновления моделей.',
+        ]);
+        report.nextSteps = 'Инцидент закрыт. Мониторинг в штатном режиме.';
+    } else if (outcomeType === 'inconclusive') {
+        report.cause = 'НЕ ОПРЕДЕЛЕНА';
+        report.details = pick([
+            `Использовано ${report.instruments.length} инструмента. Данные противоречивы: ${pick(instruments)} показывает аномалию, но ${pick(instruments)} не подтверждает. Возможна интерференция оборудования.`,
+            `Явление зафиксировано ${rngI(2,7)} раз за период наблюдения. Паттерн нерегулярный. Корреляция с известными факторами: ${rngI(5,35)}%. Недостаточно для заключения.`,
+            `Все стандартные гипотезы проверены и отвергнуты. Показания приборов не укладываются ни в одну известную модель. Требуется оборудование, которого нет на станции.`,
+        ]);
+        report.recommendations = pick([
+            'Установить долгосрочный мониторинг (минимум 30 суток). Запросить у ЦУП специализированное оборудование. Ограничить доступ к зоне аномалии.',
+            'Отправить все данные в ИКИ РАН для анализа. Пометить район на карте. При повторении — немедленное расследование с расширенным набором датчиков.',
+            'Рекомендую эвакуационную зону 200м. Камеры направить на точку 24/7. Ждать заключения Земли.',
+        ]);
+        report.nextSteps = pick([
+            'Инцидент не закрыт. Ожидание дополнительного анализа от ЦУП. Статус: активный мониторинг.',
+            'Переведено в категорию «Необъяснённое». Файл остаётся открытым. Повторная проверка через 72 часа.',
+            'Данные архивированы. Ожидаем аналогичных случаев для перекрёстного анализа.',
+        ]);
+    } else {
+        report.cause = 'НОВЫЙ ФЕНОМЕН';
+        report.details = pick([
+            `${pick(instruments)} зафиксировал ${pick(['ранее неизвестную кристаллическую структуру','аномальный изотопный состав','сигнатуру биогенного происхождения','подповерхностную полость с жидкой фазой'])}. Результат подтверждён ${rngI(3,5)} независимыми измерениями. Вероятность ошибки < ${rng(0.01,0.5).toFixed(2)}%.`,
+            `Обнаружен ${pick(['новый минерал','подповерхностный процесс','источник энергии','химический цикл'])}, не описанный в существующей литературе. Образец LR-${rngI(100,999)} законсервирован для доставки на Землю.`,
+            `Данные однозначно указывают на ${pick(['существование подповерхностного водяного горизонта','активный геологический процесс','необычную электромагнитную активность грунта','следы древнего термального источника'])}. Это может изменить понимание эволюции Луны.`,
+        ]);
+        report.recommendations = pick([
+            'ПРИОРИТЕТ 1: Немедленная передача данных на Землю. Образцы — на ближайший грузовик. Расширить зону исследования. Запросить дополнительное финансирование.',
+            'Засекретить данные до подтверждения ЦУП. Не публиковать предварительно. Организовать повторную экспедицию к точке. Привлечь всех доступных специалистов.',
+            'Организовать пресс-конференцию (по согласованию с ЦУП). Подготовить научную публикацию. Запросить расширение миссии на 90 суток для углублённого исследования.',
+        ]);
+        report.nextSteps = pick([
+            'Открыт новый проект исследования «Резонанс-Дискавери-' + rngI(1,50) + '». Ожидаем директивы ЦУП.',
+            'Формируем расширенную научную программу. Экспедиция «Рассвет» перенаправляется к точке открытия.',
+            'Образцы подготовлены к отправке. Координаты внесены в глобальную лунную базу данных.',
+        ]);
+    }
+
+    investigationReports.push(report);
+    return report;
+}
+
+function showInvestigationReport(r) {
+    const verdictColor = r.outcomeType==='scientific'?'var(--green)':r.outcomeType==='inconclusive'?'var(--yellow)':'#aa66ff';
+    const verdictBg = r.outcomeType==='scientific'?'#0a1a10':r.outcomeType==='inconclusive'?'#1a1a08':'#1a0a2a';
+
+    const body = `
+        <div style="border:1px solid ${verdictColor};border-radius:4px;padding:8px 10px;margin-bottom:10px;background:${verdictBg}">
+            <div style="color:${verdictColor};font-size:14px;font-weight:bold;margin-bottom:4px">${r.verdict}</div>
+            <div style="color:var(--dim);font-size:10px">${r.id} | ${r.date} | Исследователь: ${r.investigatorId}</div>
+        </div>
+        <div style="font-size:10px;line-height:1.7;color:var(--text2)">
+            <div style="color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 3px;font-size:9px">■ Объект расследования</div>
+            <div>${r.title}</div>
+            <div style="color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 3px;font-size:9px">■ Локация</div>
+            <div>${r.location}</div>
+            <div style="color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 3px;font-size:9px">■ Условия среды</div>
+            <div>${r.envConditions}</div>
+            <div style="color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 3px;font-size:9px">■ Использованные инструменты</div>
+            <div>${r.instruments.join(', ')}</div>
+            <div style="color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 3px;font-size:9px">■ Установленная причина</div>
+            <div style="color:${verdictColor};font-weight:bold">${r.cause}</div>
+            <div style="color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 3px;font-size:9px">■ Детальный анализ</div>
+            <div>${r.details}</div>
+            <div style="color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 3px;font-size:9px">■ Рекомендации</div>
+            <div>${r.recommendations}</div>
+            <div style="color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 3px;font-size:9px">■ Дальнейшие действия</div>
+            <div style="color:${verdictColor}">${r.nextSteps}</div>
+            <div style="color:var(--dim);font-size:9px;margin-top:10px;border-top:1px solid var(--border);padding-top:6px">
+                Длительность расследования: ${r.duration} | Исследователь: ${r.investigator}
+            </div>
+        </div>
+    `;
+
+    showModal(`ОТЧЁТ О РАССЛЕДОВАНИИ: ${r.id}`, body, [{text:'Принять отчёт',cls:'m-primary',action:closeModal}]);
+}
 
 function startInvestigation(woId){
     const wo = workOrders.find(w=>w.id===woId);
@@ -2709,25 +2820,108 @@ function updateInvestigations(sdt){
             }
 
             wo.status='ЗАВЕРШЁН';
-            radioMsg(c?c.callsign:'Экипаж','crew',conclusionText);
-            addMissionLog('invest',`Расследование "${wo.title}" завершено. Итог: ${outcomeType==='scientific'?'научное объяснение':outcomeType==='inconclusive'?'неопределённый результат':'новое открытие!'}`);
-            slog(`Расследование WO-${String(wo.id).padStart(4,'0')}: ${outcomeType==='scientific'?'научное объяснение':outcomeType==='inconclusive'?'неопределённый результат':'новое открытие!'}`
+
+            // Build structured investigation report
+            const report = buildInvestigationReport(wo, outcomeType, conclusionText, c);
+
+            // Crew announces completion
+            radioMsg(c?c.callsign:'Экипаж','crew',`Диспетчер, расследование по "${wo.title}" завершено. Формирую отчёт.`);
+
+            // Show report after brief delay
+            setTimeout(()=>{
+                showInvestigationReport(report);
+            }, 2500/speed);
+
+            // Crew discusses results
+            setTimeout(()=>{
+                const c2=pick(CREW.filter(cr=>cr.id!==(c?c.id:'')));
+                if(outcomeType==='scientific'){
+                    radioMsg(c?c.callsign:'Экипаж','crew',conclusionText);
+                    setTimeout(()=>radioMsg(c2.callsign,'crew',pick([
+                        'Логично. Я подозревал что-то подобное.',
+                        'Хорошо что разобрались. Можно обновить протоколы.',
+                        'Земля будет довольна — чистое объяснение.',
+                        'Запишу в базу, чтобы в следующий раз не тратили время.',
+                    ])),rng(3000,5000)/speed);
+                } else if(outcomeType==='inconclusive'){
+                    radioMsg(c?c.callsign:'Экипаж','crew',conclusionText);
+                    setTimeout(()=>radioMsg(c2.callsign,'crew',pick([
+                        'Меня это беспокоит. Непонятное — всегда опасное.',
+                        'Может, вернуться к этому позже? С новым оборудованием.',
+                        'Не нравится мне это. Датчики не врут, а объяснения нет.',
+                        'Земля пусть думает, у них суперкомпьютеры.',
+                        'Запомним координаты. Если повторится — будем готовы.',
+                    ])),rng(3000,6000)/speed);
+                    setTimeout(()=>radioMsg(c?c.callsign:'Экипаж','crew',pick([
+                        'Согласен. Оставляю маркер на карте. Камеры направлю на этот участок.',
+                        'Я сохранил все записи. Три терабайта данных. Пусть ИИ на Земле анализирует.',
+                        'Странно всё это... Но работать надо. Закрываю наряд.',
+                    ])),rng(7000,12000)/speed);
+                } else {
+                    radioMsg(c?c.callsign:'Экипаж','crew',conclusionText);
+                    setTimeout(()=>radioMsg(c2.callsign,'crew',pick([
+                        'Серьёзно?! Это же... это невероятно!',
+                        'Подожди, это значит... Земля должна знать немедленно!',
+                        'Если подтвердится — это войдёт в учебники.',
+                        'Я знал! Я ЗНАЛ что здесь что-то есть!',
+                    ])),rng(2000,4000)/speed);
+                    setTimeout(()=>{
+                        const c3=pick(CREW.filter(cr=>cr.id!==(c?c.id:'')&&cr.id!==c2.id));
+                        radioMsg(c3.callsign,'crew',pick([
+                            'Спокойно, коллеги. Нужна независимая проверка. Но... да, выглядит мощно.',
+                            'Предлагаю назвать это «Аномалия Резонанс-'+rngI(1,99)+'». Наша находка.',
+                            'Сфотографируйте всё, возьмите образцы в тройном экземпляре!',
+                        ]));
+                    },rng(6000,10000)/speed);
+                }
+            }, 4000/speed);
+
+            addMissionLog('invest',`Расследование "${wo.title}" завершено. Итог: ${report.verdict}`);
+            slog(`Расследование WO-${String(wo.id).padStart(4,'0')}: ${report.verdict}`
                 ,outcomeType==='discovery'?'ok':outcomeType==='inconclusive'?'wrn':'inf');
 
-            // Earth reaction
+            // ЦУП reaction with detailed response
             setTimeout(()=>{
-                const reactions={
-                    scientific:['ЦУП: данные расследования получены. Подтверждаем — естественное явление. Хорошая работа.'],
-                    inconclusive:['ЦУП: ...интересно. Отправьте все записи, мы подключим дополнительные специалистов. Пока воздержитесь от выводов.'],
-                    discovery:['ЦУП: ОТЛИЧНО! Научный комитет в восторге. Это может быть прорыв. Запрашиваем дополнительные образцы!'],
+                const cupReactions={
+                    scientific:[
+                        'ЦУП: данные расследования получены. Подтверждаем — явление имеет естественную природу. Обновите бортовую базу знаний. Хорошая работа, Резонанс.',
+                        'ЦУП: отчёт принят. Наши специалисты согласны с выводами. Рекомендуем добавить точку в мониторинг на 30 суток.',
+                    ],
+                    inconclusive:[
+                        'ЦУП: ...принято. Создаём рабочую группу по вашей аномалии. Институт космических исследований подключается. Пока — наблюдайте и фиксируйте всё.',
+                        'ЦУП: отчёт изучен. Честно — у нас тоже нет объяснения. Ставим высокий приоритет. Дополнительное оборудование будет в следующем грузовике.',
+                        'ЦУП: понятно. Пока классифицируем как аномалию класса «Необъяснённое-3». Будьте осторожны в том районе. Радиус безопасности — 200 метров.',
+                    ],
+                    discovery:[
+                        'ЦУП: ВНИМАНИЕ ВСЕМ СТАНЦИЯМ! Резонанс-9 сообщает о потенциальном открытии! Научный комитет экстренно собирается. Пресса уже звонит. Ждите директив!',
+                        'ЦУП: Это... Если подтвердится, это одно из крупнейших открытий в истории лунных миссий. Запрашиваем ВСЕ данные. Приоритет — абсолютный.',
+                        'ЦУП: Поздравляем, Резонанс-9! Директор программы лично благодарит экипаж. Дополнительное финансирование экспедиции одобрено. Образцы — на Землю с ближайшим грузовиком!',
+                    ],
                 };
-                const r=pick(reactions[outcomeType]);
+                const r=pick(cupReactions[outcomeType]);
                 radioMsg('ЦУП','earth',r);
                 elog('from',r);
+
+                // Follow-up from other stations if discovery
+                if(outcomeType==='discovery'){
+                    setTimeout(()=>{
+                        radioMsg('MARS-AURORA','earth',pick([
+                            'Марс-Аврора — Резонансу: Слышали новость! У нас были похожие показания в районе Элизиум. Отправляем данные для сравнения!',
+                            'Марс-Аврора: Поздравляем! Если нужна помощь с анализом — наша лаборатория в распоряжении. Передавайте параметры.',
+                        ]));
+                    },rng(15000,25000)/speed);
+                }
+                if(outcomeType==='inconclusive'){
+                    setTimeout(()=>{
+                        radioMsg('TITAN-HUYGENS','earth',pick([
+                            'Титан-Гюйгенс — Резонансу: Интересно. У нас на Титане фиксировали нечто подобное 40 солов назад. Необъяснённое. Совпадение?',
+                        ]));
+                    },rng(20000,35000)/speed);
+                }
             },(2600+rng(5000,12000))/speed);
 
             activeInvestigations.splice(i,1);
-            setTimeout(()=>{workOrders=workOrders.filter(w=>w.id!==wo.id);},12000/speed);
+            setTimeout(()=>{workOrders=workOrders.filter(w=>w.id!==wo.id);},20000/speed);
         }
     }
 }
