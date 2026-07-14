@@ -115,9 +115,9 @@ body{
 .ch-crew .rm-callsign{color:#44bbdd}
 .ch-crew .rm-channel{background:#0a1a22;color:#44bbdd}
 
-.ch-dispatch{border-left-color:var(--green)}
-.ch-dispatch .rm-callsign{color:var(--green2)}
-.ch-dispatch .rm-channel{background:#0a1a10;color:var(--green2)}
+.ch-dispatch{border-left-color:#00ff88;border-left-width:4px;background:rgba(0,255,136,0.04)}
+.ch-dispatch .rm-callsign{color:#00ff88;font-size:13px;text-transform:uppercase;text-shadow:0 0 6px rgba(0,255,136,0.4)}
+.ch-dispatch .rm-channel{background:#0a2a10;color:#00ff88;font-size:10px;font-weight:bold}
 
 .ch-earth{border-left-color:#6666cc}
 .ch-earth .rm-callsign{color:#8888ee}
@@ -1048,7 +1048,7 @@ function renderRadio(){
     const last40 = filtered.slice(-40);
     el.innerHTML = last40.map(m=>{
         const chClass = 'ch-'+m.ch;
-        const chLabel = {crew:'ЭКИПАЖ',dispatch:'ДИСПЕТЧ',earth:'ЗЕМЛЯ',alert:'ТРЕВОГА',system:'СИСТЕМА',eva:'EVA'}[m.ch]||m.ch;
+        const chLabel = {crew:'ЭКИПАЖ',dispatch:'ДИСПЕТЧЕР',earth:'ЗЕМЛЯ',alert:'ТРЕВОГА',system:'СИСТЕМА',eva:'EVA'}[m.ch]||m.ch;
         return `<div class="radio-msg ${chClass}">
             <div class="rm-header">
                 <span><span class="rm-callsign">${m.cs}</span> <span class="rm-channel">${chLabel}</span></span>
