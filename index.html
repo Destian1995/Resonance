@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
 <title>РЕЗОНАНС-9 — Лунная Диспетчерская</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
@@ -16,7 +16,7 @@
 body{
     background:var(--bg);color:var(--text);
     font-family:'Share Tech Mono','Courier New',monospace;
-    height:100vh;width:100vw;display:flex;flex-direction:column;overflow:hidden;font-size:12px;
+    height:100vh;height:100dvh;width:100vw;display:flex;flex-direction:column;overflow:hidden;font-size:12px;
 }
 
 /* === TOP STATUS BAR === */
@@ -555,26 +555,28 @@ body{
 }
 
 @media(max-width:768px){
-    body{font-size:11px}
+    body{font-size:11px;padding-bottom:env(safe-area-inset-bottom,0px)}
 
-    /* Topbar compact */
+    /* Topbar: single compact row */
     #topbar{
-        flex-wrap:wrap;height:auto;padding:3px 6px;gap:1px;
-        justify-content:center;overflow-x:auto;
+        flex-wrap:nowrap;height:28px;padding:2px 4px;gap:0;
+        overflow-x:auto;-webkit-overflow-scrolling:touch;
     }
-    .tb-section{padding:2px 5px;border-right:none;font-size:9px;flex-shrink:0}
+    .tb-section{padding:2px 4px;border-right:none;font-size:8px;flex-shrink:0;white-space:nowrap}
+    .tb-label{font-size:7px}
+    .tb-val{font-size:9px}
     .tb-hide-mobile{display:none!important}
 
-    /* Mobile tab bar */
+    /* Mobile tab bar — compact */
     #mobile-tabs{
         display:flex;flex-shrink:0;
         border-bottom:1px solid var(--border);background:#030508;
         overflow-x:auto;-webkit-overflow-scrolling:touch;
     }
     .mob-tab{
-        flex:1;min-width:0;padding:10px 4px;text-align:center;
+        flex:1;min-width:0;padding:7px 3px;text-align:center;
         background:transparent;border:none;border-bottom:2px solid transparent;
-        color:var(--dim);font-family:inherit;font-size:10px;cursor:pointer;
+        color:var(--dim);font-family:inherit;font-size:9px;cursor:pointer;
         white-space:nowrap;
     }
     .mob-tab.active{color:var(--accent2);border-bottom-color:var(--accent2);background:#060a12}
@@ -637,20 +639,23 @@ body{
     #quick-actions{grid-template-columns:1fr 1fr;gap:4px;padding:8px;flex-shrink:0}
     .qa-btn{padding:10px 6px;font-size:11px}
 
-    /* Crew strip */
+    /* Crew strip — very compact */
     #crew-strip{
         overflow-x:auto;-webkit-overflow-scrolling:touch;
-        flex-wrap:nowrap;flex-shrink:0;
+        flex-wrap:nowrap;flex-shrink:0;height:60px;
     }
-    .cs-member{min-width:130px;flex:none;padding:4px 5px}
-    .cs-name{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .cs-ecg{height:30px}
+    .cs-member{min-width:110px;flex:none;padding:3px 4px}
+    .cs-name{font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cs-role{display:none}
+    .cs-ecg{height:20px}
+    .cs-ecg canvas{width:100%;height:100%}
     .cs-vitals{font-size:7px}
+    .cs-status{font-size:8px}
 
-    /* Log bar */
-    #log-bar{flex-direction:column;height:auto;max-height:200px;overflow:hidden}
-    #sys-log{min-height:60px;flex:1}
-    #earth-log{width:100%!important;border-left:none!important;border-top:1px solid var(--border);min-height:60px;flex:1}
+    /* Log bar — hidden by default on mobile, shown via ЖУРНАЛ tab */
+    #log-bar{flex-direction:column;height:auto;max-height:none;overflow:hidden;display:none}
+    #sys-log{min-height:80px;flex:1}
+    #earth-log{width:100%!important;border-left:none!important;border-top:1px solid var(--border);min-height:80px;flex:1}
 
     /* Modal */
     #modal{padding:14px;max-width:96%;max-height:90vh;overflow-y:auto}
@@ -669,7 +674,7 @@ body{
     #rzd-body{font-size:11px}
     .rzd-row{padding:2px 0}
 
-    #alert-strip{font-size:11px;padding:6px 10px}
+    #alert-strip{font-size:10px;padding:4px 8px;position:relative;top:0}
 }
 
 @media(max-width:480px){
