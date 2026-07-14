@@ -254,7 +254,7 @@ body{
 .cs-busy{color:var(--yellow)}
 .cs-eva{color:#cc88ff}
 .cs-rest{color:#6688aa}
-.cs-ecg{height:32px;margin:2px 0;position:relative;overflow:hidden;border-radius:2px}
+.cs-ecg{height:36px;margin:2px 0;position:relative;overflow:hidden;border-radius:3px;background:#010204}
 .cs-ecg canvas{width:100%;height:100%;display:block}
 .cs-vitals{display:flex;justify-content:space-around;font-size:8px;color:var(--dim)}
 .cs-hr{font-weight:bold}
@@ -1689,18 +1689,21 @@ function cmdInvestigate(){
 }
 
 // ---- RENDER: CREW STRIP ----
-// ECG data — circular buffer with write head
-const ECG_LEN = 160;
+// ECG data — circular buffer with sweeping write head + particle system
+const ECG_LEN = 200;
 const ecgBuffers = {};
-const ecgHeads = {};   // write position (0..ECG_LEN-1)
-const ecgAges = {};    // age of each sample (for fade)
+const ecgHeads = {};
+const ecgAges = {};
+const ecgParticles = {}; // spark particles per crew
 CREW.forEach(c => {
     ecgBuffers[c.id] = new Float32Array(ECG_LEN).fill(0);
     ecgHeads[c.id] = 0;
-    ecgAges[c.id] = new Float32Array(ECG_LEN).fill(ECG_LEN); // all fully faded initially
+    ecgAges[c.id] = new Float32Array(ECG_LEN).fill(ECG_LEN);
+    ecgParticles[c.id] = [];
 });
 let ecgPhase = {};
-CREW.forEach(c => { ecgPhase[c.id] = Math.random() * Math.PI * 2; });
+let ecgPeakFlash = {}; // intensity flash on R-peak
+CREW.forEach(c => { ecgPhase[c.id] = Math.random() * Math.PI * 2; ecgPeakFlash[c.id] = 0; });
 
 function getHeartRate(c) {
     let hr = 68 + c.fatigue * 0.3 + (100 - c.health) * 0.4;
@@ -1722,126 +1725,188 @@ function generateECG(crewId, hr) {
     const ages = ecgAges[crewId];
     let head = ecgHeads[crewId];
 
-    // Advance phase based on heart rate (slower overall)
-    ecgPhase[crewId] += (hr / 60) * 0.18;
+    ecgPhase[crewId] += (hr / 60) * 0.15;
     const phase = ecgPhase[crewId] % (Math.PI * 2);
 
-    // Generate ECG value
+    // Sharp, dramatic ECG waveform
     let val = 0;
-    if (phase < 0.12) val = Math.sin(phase / 0.12 * Math.PI) * 0.25;       // P wave
-    else if (phase < 0.20) val = -0.08;                                       // PR segment
-    else if (phase < 0.30) val = Math.sin((phase - 0.20) / 0.10 * Math.PI) * 1.0;  // R peak
-    else if (phase < 0.38) val = -Math.sin((phase - 0.30) / 0.08 * Math.PI) * 0.3;  // S wave
-    else if (phase < 0.60) val = 0;                                            // ST segment
-    else if (phase < 0.80) val = Math.sin((phase - 0.60) / 0.20 * Math.PI) * 0.15;  // T wave
-    else val = 0;                                                              // baseline
-    val += rng(-0.015, 0.015);
+    if (phase < 0.08) val = Math.sin(phase / 0.08 * Math.PI) * 0.18;            // P wave - gentle bump
+    else if (phase < 0.14) val = 0;                                                // PR flat
+    else if (phase < 0.17) val = -0.12;                                            // Q dip
+    else if (phase < 0.22) {                                                       // R peak - SHARP spike
+        const t = (phase - 0.17) / 0.05;
+        val = t < 0.5 ? t * 2 * 1.3 : (1 - t) * 2 * 1.3;
+        // Fire particles and flash on peak
+        if (t > 0.3 && t < 0.7) ecgPeakFlash[crewId] = 1.0;
+    }
+    else if (phase < 0.27) val = -Math.sin((phase - 0.22) / 0.05 * Math.PI) * 0.35; // S wave - deep dip
+    else if (phase < 0.50) val = 0;                                                 // ST segment
+    else if (phase < 0.65) val = Math.sin((phase - 0.50) / 0.15 * Math.PI) * 0.12;  // T wave
+    else if (phase < 0.72) val = -0.03;                                              // small U
+    else val = 0;
+    val += rng(-0.01, 0.01);
 
-    // Write to circular buffer
     buf[head] = val;
-    ages[head] = 0; // fresh
+    ages[head] = 0;
 
-    // Age all samples
-    for (let i = 0; i < ECG_LEN; i++) {
-        ages[i] += 0.6; // fade speed
+    // Spawn particles on R-peak
+    if (Math.abs(val) > 0.6) {
+        const parts = ecgParticles[crewId];
+        for (let p = 0; p < 3; p++) {
+            parts.push({
+                x: head / ECG_LEN,
+                y: 0.5 - val * 0.42,
+                vx: rng(-0.008, 0.008),
+                vy: rng(-0.015, 0.005),
+                life: 1.0,
+                size: rng(1, 2.5),
+            });
+        }
+        if (parts.length > 30) parts.splice(0, parts.length - 30);
     }
 
-    // Advance head (wraps around)
-    head = (head + 1) % ECG_LEN;
-    ecgHeads[crewId] = head;
+    // Age samples
+    for (let i = 0; i < ECG_LEN; i++) ages[i] += 0.45;
+
+    // Decay peak flash
+    ecgPeakFlash[crewId] *= 0.88;
+
+    // Update particles
+    const parts = ecgParticles[crewId];
+    for (let i = parts.length - 1; i >= 0; i--) {
+        parts[i].x += parts[i].vx;
+        parts[i].y += parts[i].vy;
+        parts[i].vy += 0.0005; // gravity
+        parts[i].life -= 0.03;
+        if (parts[i].life <= 0) parts.splice(i, 1);
+    }
+
+    ecgHeads[crewId] = (head + 1) % ECG_LEN;
 }
 
 function drawECGCanvas(canvas, crewId, health) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
 
-    // Dark background
-    ctx.fillStyle = '#020408';
+    // Dark bg
+    ctx.fillStyle = '#010204';
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle grid
-    ctx.strokeStyle = '#060c14';
+    // Grid — very subtle
+    ctx.strokeStyle = '#050a10';
     ctx.lineWidth = 0.5;
-    for (let y = 0; y < h; y += h / 5) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
-    for (let x = 0; x < w; x += w / 8) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (let y = 0; y <= h; y += h / 4) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    for (let x = 0; x <= w; x += w / 8) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
 
     const buf = ecgBuffers[crewId];
     const ages = ecgAges[crewId];
     const head = ecgHeads[crewId];
+    const flash = ecgPeakFlash[crewId];
 
-    const color = health > 60 ? [0, 136, 255] : health > 35 ? [204, 136, 0] : [255, 34, 68];
-    const whiteColor = health > 60 ? [136, 204, 255] : health > 35 ? [255, 204, 102] : [255, 136, 136];
+    // Color based on health
+    const cr = health > 60 ? [0, 140, 255] : health > 35 ? [220, 140, 0] : [255, 40, 70];
+    const wc = health > 60 ? [160, 220, 255] : health > 35 ? [255, 220, 120] : [255, 150, 150];
 
-    // Draw each segment with individual alpha based on age
-    const fadeMax = ECG_LEN * 1.2; // samples until fully invisible
-    const gapBefore = 8; // blank gap ahead of the write head
+    // R-peak flash — background pulse
+    if (flash > 0.05) {
+        ctx.fillStyle = `rgba(${cr[0]},${cr[1]},${cr[2]},${flash * 0.06})`;
+        ctx.fillRect(0, 0, w, h);
+    }
 
+    const fadeMax = ECG_LEN * 1.5;
+    const gapSize = 12;
+
+    // === COMET TAIL: draw segments with per-sample brightness ===
     for (let i = 0; i < ECG_LEN - 1; i++) {
-        const idx = i;
-        const idx2 = i + 1;
+        const distFromHead = ((i - head) % ECG_LEN + ECG_LEN) % ECG_LEN;
+        if (distFromHead > 0 && distFromHead < gapSize) continue;
 
-        // Distance ahead of head (in the "future" = erased zone)
-        const distFromHead = ((idx - head) % ECG_LEN + ECG_LEN) % ECG_LEN;
+        const age = ages[i];
+        let alpha = clamp(1 - age / fadeMax, 0, 1);
+        if (alpha < 0.01) continue;
 
-        // Skip the gap zone right ahead of the cursor
-        if (distFromHead < gapBefore && distFromHead > 0) continue;
+        // Extra brightness boost near head (comet effect)
+        const nearHead = ECG_LEN - distFromHead;
+        const cometBoost = distFromHead === 0 ? 1 : clamp(nearHead / 25, 0, 1);
+        alpha = clamp(alpha * (0.5 + cometBoost * 0.5), 0, 1);
 
-        const age = ages[idx];
-        const alpha = clamp(1 - age / fadeMax, 0, 1);
-        if (alpha <= 0.01) continue;
+        const x1 = (i / ECG_LEN) * w;
+        const x2 = ((i + 1) / ECG_LEN) * w;
+        const y1 = h / 2 - buf[i] * h * 0.42;
+        const y2 = h / 2 - buf[(i + 1) % ECG_LEN] * h * 0.42;
 
-        const x1 = (idx / ECG_LEN) * w;
-        const x2 = (idx2 / ECG_LEN) * w;
-        const y1 = h / 2 - buf[idx] * h * 0.42;
-        const y2 = h / 2 - buf[idx2] * h * 0.42;
+        if (Math.abs(x2 - x1) > w / ECG_LEN * 3) continue;
 
-        // Skip wrap-around line
-        if (Math.abs(x2 - x1) > w / ECG_LEN * 2) continue;
+        // Signal intensity — thicker on peaks
+        const intensity = Math.abs(buf[i]);
+        const extraWidth = intensity * 3;
 
-        // Outer glow
-        ctx.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},${alpha * 0.12})`;
-        ctx.lineWidth = 6;
+        // Layer 1: wide soft glow
+        ctx.strokeStyle = `rgba(${cr[0]},${cr[1]},${cr[2]},${alpha * 0.08})`;
+        ctx.lineWidth = 10 + extraWidth * 2;
         ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
 
-        // Core line
-        ctx.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},${alpha * 0.9})`;
-        ctx.lineWidth = 2.5;
-        ctx.shadowColor = `rgba(${color[0]},${color[1]},${color[2]},${alpha})`;
-        ctx.shadowBlur = alpha * 10;
+        // Layer 2: mid glow
+        ctx.strokeStyle = `rgba(${cr[0]},${cr[1]},${cr[2]},${alpha * 0.2})`;
+        ctx.lineWidth = 5 + extraWidth;
         ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
 
-        // Bright inner
-        ctx.strokeStyle = `rgba(${whiteColor[0]},${whiteColor[1]},${whiteColor[2]},${alpha * 0.7})`;
-        ctx.lineWidth = 1;
-        ctx.shadowBlur = alpha * 4;
+        // Layer 3: core
+        ctx.strokeStyle = `rgba(${cr[0]},${cr[1]},${cr[2]},${alpha * 0.95})`;
+        ctx.lineWidth = 2.5 + extraWidth * 0.5;
+        ctx.shadowColor = `rgba(${cr[0]},${cr[1]},${cr[2]},${alpha})`;
+        ctx.shadowBlur = (8 + intensity * 12) * alpha;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+
+        // Layer 4: white-hot inner
+        ctx.strokeStyle = `rgba(${wc[0]},${wc[1]},${wc[2]},${alpha * 0.8})`;
+        ctx.lineWidth = 1 + extraWidth * 0.3;
+        ctx.shadowBlur = 4 * alpha;
         ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
 
         ctx.shadowBlur = 0;
     }
 
-    // Glowing cursor dot at the write head position
+    // === PARTICLES (sparks from R-peak) ===
+    const parts = ecgParticles[crewId];
+    for (const p of parts) {
+        const px = p.x * w, py = p.y * h;
+        const pa = p.life;
+        ctx.fillStyle = `rgba(${wc[0]},${wc[1]},${wc[2]},${pa})`;
+        ctx.shadowColor = `rgba(${cr[0]},${cr[1]},${cr[2]},${pa})`;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(px, py, p.size * pa, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+
+    // === CURSOR DOT with halo ===
     const headIdx = (head - 1 + ECG_LEN) % ECG_LEN;
     const dotX = (headIdx / ECG_LEN) * w;
     const dotY = h / 2 - buf[headIdx] * h * 0.42;
+    const cursorPulse = 1 + flash * 0.5; // bigger on R-peak
 
-    // Glow layers
-    const grad = ctx.createRadialGradient(dotX, dotY, 0, dotX, dotY, 14);
-    grad.addColorStop(0, `rgba(${whiteColor[0]},${whiteColor[1]},${whiteColor[2]},1)`);
-    grad.addColorStop(0.2, `rgba(${color[0]},${color[1]},${color[2]},0.8)`);
-    grad.addColorStop(0.5, `rgba(${color[0]},${color[1]},${color[2]},0.2)`);
-    grad.addColorStop(1, 'transparent');
-    ctx.fillStyle = grad;
-    ctx.shadowColor = `rgb(${color[0]},${color[1]},${color[2]})`;
-    ctx.shadowBlur = 15;
+    // Outer halo
+    const haloR = 18 * cursorPulse;
+    const g1 = ctx.createRadialGradient(dotX, dotY, 0, dotX, dotY, haloR);
+    g1.addColorStop(0, `rgba(${wc[0]},${wc[1]},${wc[2]},0.9)`);
+    g1.addColorStop(0.15, `rgba(${cr[0]},${cr[1]},${cr[2]},0.6)`);
+    g1.addColorStop(0.4, `rgba(${cr[0]},${cr[1]},${cr[2]},0.15)`);
+    g1.addColorStop(1, 'transparent');
+    ctx.fillStyle = g1;
+    ctx.shadowColor = `rgb(${cr[0]},${cr[1]},${cr[2]})`;
+    ctx.shadowBlur = 20 * cursorPulse;
     ctx.beginPath();
-    ctx.arc(dotX, dotY, 14, 0, Math.PI * 2);
+    ctx.arc(dotX, dotY, haloR, 0, Math.PI * 2);
     ctx.fill();
 
-    // Bright center dot
-    ctx.fillStyle = `rgba(${whiteColor[0]},${whiteColor[1]},${whiteColor[2]},1)`;
-    ctx.shadowBlur = 8;
+    // Core bright dot
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = `rgb(${wc[0]},${wc[1]},${wc[2]})`;
     ctx.beginPath();
-    ctx.arc(dotX, dotY, 2.5, 0, Math.PI * 2);
+    ctx.arc(dotX, dotY, 2.5 * cursorPulse, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.shadowBlur = 0;
@@ -1856,7 +1921,7 @@ function renderCrewStrip(){
             return `<div class="cs-member" id="cs-${c.id}">
                 <div class="cs-name">${c.id} — ${c.name}</div>
                 <div class="cs-role">${c.role}</div>
-                <div class="cs-ecg"><canvas id="ecg-${c.id}" width="160" height="40"></canvas></div>
+                <div class="cs-ecg"><canvas id="ecg-${c.id}" width="200" height="48"></canvas></div>
                 <div class="cs-vitals">
                     <span class="cs-hr" id="hr-${c.id}">♥ --</span>
                     <span class="cs-spo2" id="spo2-${c.id}">SpO₂ --</span>
