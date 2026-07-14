@@ -135,6 +135,39 @@ body{
 .ch-eva .rm-callsign{color:#cc88ff}
 .ch-eva .rm-channel{background:#120a1a;color:#cc88ff}
 
+/* Radio tab switcher */
+#radio-tabs{
+    display:flex;flex-shrink:0;border-bottom:1px solid var(--border);background:#030508;
+}
+.rt-btn{
+    flex:1;padding:6px 8px;text-align:center;cursor:pointer;
+    background:transparent;border:none;border-bottom:2px solid transparent;
+    color:var(--dim);font-family:inherit;font-size:11px;transition:all 0.2s;
+}
+.rt-btn:hover{color:var(--text)}
+.rt-btn.active{color:var(--accent2);border-bottom-color:var(--accent2);background:#060a12}
+.ip-badge{color:#cc88ff;font-size:8px;margin-left:3px;animation:blink-m 1.2s infinite}
+
+/* Interplanetary feed inside radio */
+#radio-panel-ip{
+    flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;
+    background:var(--panel);
+}
+#interplanet-feed-main{
+    flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 12px;
+    -webkit-overflow-scrolling:touch;
+}
+.ip-msg-main{
+    margin-bottom:6px;padding:6px 8px;border-radius:3px;
+    border-left:3px solid #6644aa;font-size:12px;line-height:1.6;
+}
+.ip-msg-main.ip-m-mars{border-left-color:#cc6644;background:rgba(200,100,60,0.04)}
+.ip-msg-main.ip-m-iss{border-left-color:#44aacc;background:rgba(60,160,200,0.04)}
+.ip-msg-main.ip-m-exp{border-left-color:#44cc66;background:rgba(60,200,100,0.04)}
+.ip-msg-main .ip-header{display:flex;justify-content:space-between;margin-bottom:2px}
+.ip-msg-main .ip-src{font-weight:bold;font-size:11px}
+.ip-msg-main .ip-delay{color:var(--dim);font-size:9px}
+
 /* Radio channel filter */
 #radio-filter-bar{
     display:flex;align-items:center;gap:2px;padding:4px 8px;
@@ -221,7 +254,7 @@ body{
 .cs-busy{color:var(--yellow)}
 .cs-eva{color:#cc88ff}
 .cs-rest{color:#6688aa}
-.cs-ecg{height:22px;margin:2px 0;position:relative;overflow:hidden}
+.cs-ecg{height:32px;margin:2px 0;position:relative;overflow:hidden;border-radius:2px}
 .cs-ecg canvas{width:100%;height:100%;display:block}
 .cs-vitals{display:flex;justify-content:space-around;font-size:8px;color:var(--dim)}
 .cs-hr{font-weight:bold}
@@ -357,23 +390,7 @@ body{
 #deepspace-section{flex:1;position:relative;overflow:hidden;min-width:0;border-right:1px solid var(--border)}
 #deepspace-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
 
-/* Interplanetary comms */
-#interplanet-bar{
-    height:80px;flex-shrink:0;border-top:1px solid #1a102a;
-    display:flex;flex-direction:column;overflow:hidden;
-    background:#06040a;
-}
-#interplanet-feed{
-    flex:1;overflow-y:auto;overflow-x:hidden;padding:2px 8px;font-size:10px;line-height:1.4;
-}
-.ip-msg{margin-bottom:2px;padding:2px 4px;border-radius:2px;border-left:2px solid #6644aa}
-.ip-msg.ip-mars{border-left-color:#cc6644}
-.ip-msg.ip-iss{border-left-color:#44aacc}
-.ip-msg.ip-exp{border-left-color:#44cc66}
-.ip-source{font-size:9px;font-weight:bold}
-.ip-mars-c{color:#cc8866}
-.ip-iss-c{color:#66ccee}
-.ip-exp-c{color:#66ee88}
+/* (interplanetary comms moved into radio tabs) */
 
 /* Hint blinking button */
 .qa-hint{
@@ -594,6 +611,10 @@ body{
         <span class="ph-title">РАДИОЭФИР — ВНУТРЕННЯЯ СВЯЗЬ / ЗЕМЛЯ</span>
         <span style="color:var(--dim)"><span class="tx-indicator" id="tx-ind"></span> PTT</span>
     </div>
+    <div id="radio-tabs">
+        <button class="rt-btn active" onclick="switchRadioTab('local',this)">СТАНЦИЯ</button>
+        <button class="rt-btn" onclick="switchRadioTab('interplanet',this)">МЕЖПЛАНЕТНАЯ <span id="ip-badge" class="ip-badge" style="display:none">●</span></button>
+    </div>
     <div id="radio-panel">
         <div id="radio-feed"></div>
         <div id="radio-filter-bar">
@@ -606,8 +627,11 @@ body{
             <button class="rf-btn" onclick="setRadioFilter('eva',this)">EVA</button>
             <span style="flex:1"></span>
             <span class="tx-indicator" id="tx-light"></span>
-            <span style="color:var(--dim);font-size:8px;margin-left:4px">RX ACTIVE</span>
+            <span style="color:var(--dim);font-size:8px;margin-left:4px">RX</span>
         </div>
+    </div>
+    <div id="radio-panel-ip" style="display:none">
+        <div id="interplanet-feed-main"></div>
     </div>
     <div id="bottom-panels">
         <div id="radar-section">
@@ -623,14 +647,6 @@ body{
             <canvas id="rad-canvas"></canvas>
             <div id="rad-data"></div>
         </div>
-    </div>
-    <!-- INTERPLANETARY COMMS PANEL -->
-    <div id="interplanet-bar">
-        <div class="panel-header">
-            <span class="ph-title" style="color:#cc88ff">МЕЖПЛАНЕТНАЯ СВЯЗЬ</span>
-            <span style="color:var(--dim);font-size:9px" id="mars-delay">RTT MARS: 8-24min</span>
-        </div>
-        <div id="interplanet-feed"></div>
     </div>
 </div>
 
@@ -1258,11 +1274,35 @@ function radioMsg(callsign, channel, text){
 
 // Radio filter
 let radioFilter = 'all';
+let radioTab = 'local';
+
 function setRadioFilter(f, btn){
     radioFilter = f;
     document.querySelectorAll('.rf-btn').forEach(b=>b.classList.remove('active'));
     if(btn) btn.classList.add('active');
     renderRadio();
+}
+
+function switchRadioTab(tab, btn){
+    radioTab = tab;
+    document.querySelectorAll('.rt-btn').forEach(b=>b.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+    const localPanel = document.getElementById('radio-panel');
+    const filterBar = document.getElementById('radio-filter-bar');
+    const ipPanel = document.getElementById('radio-panel-ip');
+    if(tab==='local'){
+        localPanel.style.display='flex';
+        if(filterBar)filterBar.style.display='flex';
+        ipPanel.style.display='none';
+    } else {
+        localPanel.style.display='none';
+        if(filterBar)filterBar.style.display='none';
+        ipPanel.style.display='flex';
+        renderIPFeedMain();
+    }
+    // Clear badge
+    const badge=document.getElementById('ip-badge');
+    if(tab==='interplanet'&&badge)badge.style.display='none';
 }
 
 // ---- RENDER: RADIO ----
@@ -1692,28 +1732,86 @@ function generateECG(crewId, hr) {
 function drawECGCanvas(canvas, crewId, health) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
-    ctx.fillStyle = '#040608';
-    ctx.fillRect(0, 0, w, h);
 
-    // Grid
-    ctx.strokeStyle = '#0a1015';
+    // Dark background with subtle grid
+    ctx.fillStyle = '#020408';
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = '#060c14';
     ctx.lineWidth = 0.5;
-    for (let y = 0; y < h; y += h/4) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    for (let y = 0; y < h; y += h/5) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    for (let x = 0; x < w; x += w/10) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
 
     const buf = ecgBuffers[crewId];
-    const color = health > 70 ? '#00ff88' : health > 40 ? '#ccaa00' : '#ff2244';
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 3;
+    // Blue neon color scheme - shifts to red only when critical
+    const color = health > 60 ? '#0088ff' : health > 35 ? '#cc8800' : '#ff2244';
+    const glowColor = health > 60 ? '#0066cc' : health > 35 ? '#aa6600' : '#cc1133';
+
+    // Outer glow layer (wide, dim)
+    ctx.strokeStyle = glowColor;
+    ctx.lineWidth = 6;
+    ctx.globalAlpha = 0.08;
     ctx.beginPath();
     for (let i = 0; i < buf.length; i++) {
         const x = (i / buf.length) * w;
-        const y = h / 2 - buf[i] * h * 0.4;
+        const y = h / 2 - buf[i] * h * 0.42;
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
     ctx.stroke();
+
+    // Mid glow layer
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.globalAlpha = 0.15;
+    ctx.beginPath();
+    for (let i = 0; i < buf.length; i++) {
+        const x = (i / buf.length) * w;
+        const y = h / 2 - buf[i] * h * 0.42;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Core line (bright, thin)
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    for (let i = 0; i < buf.length; i++) {
+        const x = (i / buf.length) * w;
+        const y = h / 2 - buf[i] * h * 0.42;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Bright white core (innermost, very thin)
+    ctx.strokeStyle = health > 60 ? '#88ccff' : health > 35 ? '#ffcc66' : '#ff8888';
+    ctx.lineWidth = 1;
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    for (let i = 0; i < buf.length; i++) {
+        const x = (i / buf.length) * w;
+        const y = h / 2 - buf[i] * h * 0.42;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Glowing dot at the end (leading edge)
+    const lastX = w;
+    const lastY = h / 2 - buf[buf.length - 1] * h * 0.42;
+    const dotGrad = ctx.createRadialGradient(lastX, lastY, 0, lastX, lastY, 10);
+    dotGrad.addColorStop(0, health > 60 ? '#ffffff' : health > 35 ? '#ffee88' : '#ff8888');
+    dotGrad.addColorStop(0.3, color);
+    dotGrad.addColorStop(1, 'transparent');
+    ctx.fillStyle = dotGrad;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = color;
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 10, 0, Math.PI * 2);
+    ctx.fill();
+
     ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
 }
 
 function renderCrewStrip(){
@@ -1724,7 +1822,7 @@ function renderCrewStrip(){
             return `<div class="cs-member" id="cs-${c.id}">
                 <div class="cs-name">${c.id} — ${c.name}</div>
                 <div class="cs-role">${c.role}</div>
-                <div class="cs-ecg"><canvas id="ecg-${c.id}" width="120" height="28"></canvas></div>
+                <div class="cs-ecg"><canvas id="ecg-${c.id}" width="160" height="40"></canvas></div>
                 <div class="cs-vitals">
                     <span class="cs-hr" id="hr-${c.id}">♥ --</span>
                     <span class="cs-spo2" id="spo2-${c.id}">SpO₂ --</span>
@@ -2116,14 +2214,25 @@ function generateIPChatter(){
 }
 
 function renderIPFeed(){
-    const el=document.getElementById('interplanet-feed');
+    // Show badge if not on IP tab
+    if(radioTab!=='interplanet'){
+        const badge=document.getElementById('ip-badge');
+        if(badge)badge.style.display='inline';
+    }
+    renderIPFeedMain();
+}
+
+function renderIPFeedMain(){
+    const el=document.getElementById('interplanet-feed-main');
     if(!el)return;
-    el.innerHTML=ipMessages.slice(-8).map(m=>{
+    el.innerHTML=ipMessages.slice(-20).map(m=>{
         const src=IP_SOURCES[m.src];
-        return `<div class="ip-msg ip-${m.src}">
-            <span class="ip-source ${src.cClass}">[${m.t}] ${src.callsign}</span>
-            <span style="color:var(--dim);font-size:8px;margin-left:4px">RTT:${src.delay}</span><br>
-            <span style="color:var(--text)">${m.text}</span>
+        return `<div class="ip-msg-main ip-m-${m.src}">
+            <div class="ip-header">
+                <span class="ip-src" style="color:${m.src==='mars'?'#cc8866':m.src==='iss'?'#66ccee':'#66ee88'}">${src.callsign}</span>
+                <span class="ip-delay">${m.t} | RTT: ${src.delay}</span>
+            </div>
+            <div style="color:var(--text2)">${m.text}</div>
         </div>`;
     }).join('');
     el.scrollTop=el.scrollHeight;
