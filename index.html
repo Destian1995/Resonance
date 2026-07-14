@@ -1725,7 +1725,7 @@ function generateECG(crewId, hr) {
     const ages = ecgAges[crewId];
     let head = ecgHeads[crewId];
 
-    ecgPhase[crewId] += (hr / 60) * 0.15;
+    ecgPhase[crewId] += (hr / 60) * 0.30;
     const phase = ecgPhase[crewId] % (Math.PI * 2);
 
     // Sharp, dramatic ECG waveform
@@ -1766,7 +1766,7 @@ function generateECG(crewId, hr) {
     }
 
     // Age samples
-    for (let i = 0; i < ECG_LEN; i++) ages[i] += 0.45;
+    for (let i = 0; i < ECG_LEN; i++) ages[i] += 0.90;
 
     // Decay peak flash
     ecgPeakFlash[crewId] *= 0.88;
@@ -2033,7 +2033,7 @@ function renderRadar(){
     rctx.fillText('2000км',cx+maxR+2,cy-3);
 
     // Radar sweep
-    radarSweep+=0.015*speed;
+    radarSweep+=0.030*speed;
     const sweepAngle=radarSweep%(Math.PI*2);
     // Sweep trail
     for(let i=0;i<20;i++){
@@ -2210,7 +2210,7 @@ function renderDeepSpace(){
     dsCtx.beginPath();dsCtx.moveTo(cx,cy-maxR);dsCtx.lineTo(cx,cy+maxR);dsCtx.stroke();
 
     // Sweep
-    dsSweep+=0.008*speed;
+    dsSweep+=0.016*speed;
     const sa=dsSweep%(Math.PI*2);
     for(let i=0;i<15;i++){
         const a=sa-i*0.015;
