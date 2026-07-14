@@ -264,7 +264,7 @@ body{
 .cs-busy{color:var(--yellow)}
 .cs-eva{color:#cc88ff}
 .cs-rest{color:#6688aa}
-.cs-ecg{height:36px;margin:2px 0;position:relative;overflow:hidden;border-radius:3px;background:#010204}
+.cs-ecg{height:22px;margin:2px 0;position:relative;overflow:hidden}
 .cs-ecg canvas{width:100%;height:100%;display:block}
 .cs-vitals{display:flex;justify-content:space-around;font-size:8px;color:var(--dim)}
 .cs-hr{font-weight:bold}
@@ -1737,21 +1737,11 @@ function cmdInvestigate(){
 }
 
 // ---- RENDER: CREW STRIP ----
-// ECG data — circular buffer with sweeping write head + particle system
-const ECG_LEN = 200;
+// ECG — simple scrolling buffer
 const ecgBuffers = {};
-const ecgHeads = {};
-const ecgAges = {};
-const ecgParticles = {}; // spark particles per crew
-CREW.forEach(c => {
-    ecgBuffers[c.id] = new Float32Array(ECG_LEN).fill(0);
-    ecgHeads[c.id] = 0;
-    ecgAges[c.id] = new Float32Array(ECG_LEN).fill(ECG_LEN);
-    ecgParticles[c.id] = [];
-});
+CREW.forEach(c => { ecgBuffers[c.id] = new Float32Array(80).fill(0); });
 let ecgPhase = {};
-let ecgPeakFlash = {}; // intensity flash on R-peak
-CREW.forEach(c => { ecgPhase[c.id] = Math.random() * Math.PI * 2; ecgPeakFlash[c.id] = 0; });
+CREW.forEach(c => { ecgPhase[c.id] = Math.random() * Math.PI * 2; });
 
 function getHeartRate(c) {
     let hr = 68 + c.fatigue * 0.3 + (100 - c.health) * 0.4;
@@ -1770,195 +1760,46 @@ function getSpO2(c) {
 
 function generateECG(crewId, hr) {
     const buf = ecgBuffers[crewId];
-    const ages = ecgAges[crewId];
-    let head = ecgHeads[crewId];
-
-    ecgPhase[crewId] += (hr / 60) * 0.30;
+    buf.copyWithin(0, 1);
+    ecgPhase[crewId] += (hr / 60) * 0.35;
     const phase = ecgPhase[crewId] % (Math.PI * 2);
-
-    // Sharp, dramatic ECG waveform
     let val = 0;
-    if (phase < 0.08) val = Math.sin(phase / 0.08 * Math.PI) * 0.18;            // P wave - gentle bump
-    else if (phase < 0.14) val = 0;                                                // PR flat
-    else if (phase < 0.17) val = -0.12;                                            // Q dip
-    else if (phase < 0.22) {                                                       // R peak - SHARP spike
-        const t = (phase - 0.17) / 0.05;
-        val = t < 0.5 ? t * 2 * 1.3 : (1 - t) * 2 * 1.3;
-        // Fire particles and flash on peak
-        if (t > 0.3 && t < 0.7) ecgPeakFlash[crewId] = 1.0;
-    }
-    else if (phase < 0.27) val = -Math.sin((phase - 0.22) / 0.05 * Math.PI) * 0.35; // S wave - deep dip
-    else if (phase < 0.50) val = 0;                                                 // ST segment
-    else if (phase < 0.65) val = Math.sin((phase - 0.50) / 0.15 * Math.PI) * 0.12;  // T wave
-    else if (phase < 0.72) val = -0.03;                                              // small U
+    if (phase < 0.15) val = Math.sin(phase / 0.15 * Math.PI) * 0.3;
+    else if (phase < 0.25) val = -0.1;
+    else if (phase < 0.35) val = Math.sin((phase - 0.25) / 0.1 * Math.PI) * 1.0;
+    else if (phase < 0.45) val = -Math.sin((phase - 0.35) / 0.1 * Math.PI) * 0.25;
+    else if (phase < 0.7) val = 0;
+    else if (phase < 0.9) val = Math.sin((phase - 0.7) / 0.2 * Math.PI) * 0.15;
     else val = 0;
-    val += rng(-0.01, 0.01);
-
-    buf[head] = val;
-    ages[head] = 0;
-
-    // Spawn particles on R-peak
-    if (Math.abs(val) > 0.6) {
-        const parts = ecgParticles[crewId];
-        for (let p = 0; p < 3; p++) {
-            parts.push({
-                x: head / ECG_LEN,
-                y: 0.5 - val * 0.42,
-                vx: rng(-0.008, 0.008),
-                vy: rng(-0.015, 0.005),
-                life: 1.0,
-                size: rng(1, 2.5),
-            });
-        }
-        if (parts.length > 30) parts.splice(0, parts.length - 30);
-    }
-
-    // Age samples
-    for (let i = 0; i < ECG_LEN; i++) ages[i] += 0.90;
-
-    // Decay peak flash
-    ecgPeakFlash[crewId] *= 0.88;
-
-    // Update particles
-    const parts = ecgParticles[crewId];
-    for (let i = parts.length - 1; i >= 0; i--) {
-        parts[i].x += parts[i].vx;
-        parts[i].y += parts[i].vy;
-        parts[i].vy += 0.0005; // gravity
-        parts[i].life -= 0.03;
-        if (parts[i].life <= 0) parts.splice(i, 1);
-    }
-
-    ecgHeads[crewId] = (head + 1) % ECG_LEN;
+    val += rng(-0.02, 0.02);
+    buf[buf.length - 1] = val;
 }
 
 function drawECGCanvas(canvas, crewId, health) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
-
-    // Dark bg
-    ctx.fillStyle = '#010204';
+    ctx.fillStyle = '#040608';
     ctx.fillRect(0, 0, w, h);
 
-    // Grid — very subtle
-    ctx.strokeStyle = '#050a10';
+    // Grid
+    ctx.strokeStyle = '#0a1015';
     ctx.lineWidth = 0.5;
-    for (let y = 0; y <= h; y += h / 4) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
-    for (let x = 0; x <= w; x += w / 8) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (let y = 0; y < h; y += h/4) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
 
     const buf = ecgBuffers[crewId];
-    const ages = ecgAges[crewId];
-    const head = ecgHeads[crewId];
-    const flash = ecgPeakFlash[crewId];
-
-    // Color based on health
-    const cr = health > 60 ? [0, 140, 255] : health > 35 ? [220, 140, 0] : [255, 40, 70];
-    const wc = health > 60 ? [160, 220, 255] : health > 35 ? [255, 220, 120] : [255, 150, 150];
-
-    // R-peak flash — background pulse
-    if (flash > 0.05) {
-        ctx.fillStyle = `rgba(${cr[0]},${cr[1]},${cr[2]},${flash * 0.06})`;
-        ctx.fillRect(0, 0, w, h);
-    }
-
-    const fadeMax = ECG_LEN * 1.5;
-    const gapSize = 12;
-
-    // === COMET TAIL: draw segments with per-sample brightness ===
-    for (let i = 0; i < ECG_LEN - 1; i++) {
-        const distFromHead = ((i - head) % ECG_LEN + ECG_LEN) % ECG_LEN;
-        if (distFromHead > 0 && distFromHead < gapSize) continue;
-
-        const age = ages[i];
-        let alpha = clamp(1 - age / fadeMax, 0, 1);
-        if (alpha < 0.01) continue;
-
-        // Extra brightness boost near head (comet effect)
-        const nearHead = ECG_LEN - distFromHead;
-        const cometBoost = distFromHead === 0 ? 1 : clamp(nearHead / 25, 0, 1);
-        alpha = clamp(alpha * (0.5 + cometBoost * 0.5), 0, 1);
-
-        const x1 = (i / ECG_LEN) * w;
-        const x2 = ((i + 1) / ECG_LEN) * w;
-        const y1 = h / 2 - buf[i] * h * 0.42;
-        const y2 = h / 2 - buf[(i + 1) % ECG_LEN] * h * 0.42;
-
-        if (Math.abs(x2 - x1) > w / ECG_LEN * 3) continue;
-
-        // Signal intensity — thicker on peaks
-        const intensity = Math.abs(buf[i]);
-        const extraWidth = intensity * 3;
-
-        // Layer 1: wide soft glow
-        ctx.strokeStyle = `rgba(${cr[0]},${cr[1]},${cr[2]},${alpha * 0.08})`;
-        ctx.lineWidth = 10 + extraWidth * 2;
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-
-        // Layer 2: mid glow
-        ctx.strokeStyle = `rgba(${cr[0]},${cr[1]},${cr[2]},${alpha * 0.2})`;
-        ctx.lineWidth = 5 + extraWidth;
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-
-        // Layer 3: core
-        ctx.strokeStyle = `rgba(${cr[0]},${cr[1]},${cr[2]},${alpha * 0.95})`;
-        ctx.lineWidth = 2.5 + extraWidth * 0.5;
-        ctx.shadowColor = `rgba(${cr[0]},${cr[1]},${cr[2]},${alpha})`;
-        ctx.shadowBlur = (8 + intensity * 12) * alpha;
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-
-        // Layer 4: white-hot inner
-        ctx.strokeStyle = `rgba(${wc[0]},${wc[1]},${wc[2]},${alpha * 0.8})`;
-        ctx.lineWidth = 1 + extraWidth * 0.3;
-        ctx.shadowBlur = 4 * alpha;
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-
-        ctx.shadowBlur = 0;
-    }
-
-    // === PARTICLES (sparks from R-peak) ===
-    const parts = ecgParticles[crewId];
-    for (const p of parts) {
-        const px = p.x * w, py = p.y * h;
-        const pa = p.life;
-        ctx.fillStyle = `rgba(${wc[0]},${wc[1]},${wc[2]},${pa})`;
-        ctx.shadowColor = `rgba(${cr[0]},${cr[1]},${cr[2]},${pa})`;
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-        ctx.arc(px, py, p.size * pa, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    ctx.shadowBlur = 0;
-
-    // === CURSOR DOT with halo ===
-    const headIdx = (head - 1 + ECG_LEN) % ECG_LEN;
-    const dotX = (headIdx / ECG_LEN) * w;
-    const dotY = h / 2 - buf[headIdx] * h * 0.42;
-    const cursorPulse = 1 + flash * 0.5; // bigger on R-peak
-
-    // Outer halo
-    const haloR = 18 * cursorPulse;
-    const g1 = ctx.createRadialGradient(dotX, dotY, 0, dotX, dotY, haloR);
-    g1.addColorStop(0, `rgba(${wc[0]},${wc[1]},${wc[2]},0.9)`);
-    g1.addColorStop(0.15, `rgba(${cr[0]},${cr[1]},${cr[2]},0.6)`);
-    g1.addColorStop(0.4, `rgba(${cr[0]},${cr[1]},${cr[2]},0.15)`);
-    g1.addColorStop(1, 'transparent');
-    ctx.fillStyle = g1;
-    ctx.shadowColor = `rgb(${cr[0]},${cr[1]},${cr[2]})`;
-    ctx.shadowBlur = 20 * cursorPulse;
+    const color = health > 70 ? '#00ff88' : health > 40 ? '#ccaa00' : '#ff2244';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 6;
     ctx.beginPath();
-    ctx.arc(dotX, dotY, haloR, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Core bright dot
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowBlur = 12;
-    ctx.shadowColor = `rgb(${wc[0]},${wc[1]},${wc[2]})`;
-    ctx.beginPath();
-    ctx.arc(dotX, dotY, 2.5 * cursorPulse, 0, Math.PI * 2);
-    ctx.fill();
-
+    for (let i = 0; i < buf.length; i++) {
+        const x = (i / buf.length) * w;
+        const y = h / 2 - buf[i] * h * 0.4;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
     ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
 }
 
 function renderCrewStrip(){
@@ -1969,7 +1810,7 @@ function renderCrewStrip(){
             return `<div class="cs-member" id="cs-${c.id}">
                 <div class="cs-name">${c.id} — ${c.name}</div>
                 <div class="cs-role">${c.role}</div>
-                <div class="cs-ecg"><canvas id="ecg-${c.id}" width="200" height="48"></canvas></div>
+                <div class="cs-ecg"><canvas id="ecg-${c.id}" width="120" height="28"></canvas></div>
                 <div class="cs-vitals">
                     <span class="cs-hr" id="hr-${c.id}">♥ --</span>
                     <span class="cs-spo2" id="spo2-${c.id}">SpO₂ --</span>
