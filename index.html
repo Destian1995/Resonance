@@ -764,7 +764,7 @@ body{
 <div id="mobile-tabs">
     <button class="mob-tab active" onclick="mobTab('telem')">ТЕЛЕМEТРИЯ</button>
     <button class="mob-tab" onclick="mobTab('radio')">РАДИО</button>
-    <button class="mob-tab" onclick="mobTab('radar')">РАДАР</button>
+    <button class="mob-tab" id="mob-tab-radar" onclick="mobTab('radar')">РАДАР</button>
     <button class="mob-tab" id="mob-tab-tasks" onclick="mobTab('tasks')">ИНЦИДЕНТЫ</button>
     <button class="mob-tab" onclick="mobTab('log')">ЖУРНАЛ</button>
 </div>
@@ -2948,6 +2948,31 @@ let cascadeLastMsgCD = 0;
 let stressChatterCD = rng(20,40);
 let lastEarthContactTime = 0;
 
+// Satellite management
+let satRebootCD = {}; // per-sat cooldowns for software reboot
+let satFuelWarnSent = {}; // track which sats got low-fuel WOs
+let satDegradeMsgCD = {}; // per-sat radio alert cooldown
+let replacementSatAvailable = null; // satellite from cargo ship
+
+// Deep space interactions
+let debrisAlertActive = {}; // per-debris threat state
+let debrisThreatCD = rng(200,400);
+let beaconCD = rng(1000,2000);
+let beaconActive = null; // current distress beacon event
+let defenseSystemReady = true; // laser defense cooldown
+
+// Topo map gameplay
+let activeDrillSite = 'drill_a'; // which drill site is active
+let expeditionState = {
+    destination: 'exp_camp', recalled: false, recallETA: 0,
+    supplySent: false, lastMsgCD: rng(60,120), discoveryCD: rng(200,400)
+};
+let padPrepared = {}; // which landing pads are prepped
+let discoveredPOIs = []; // dynamically added POIs
+
+// Tab flash system
+let flashingTabs = {}; // {tabId: true}
+
 // ---- HELPERS ----
 function rng(a,b){return Math.random()*(b-a)+a}
 function rngI(a,b){return Math.floor(rng(a,b+1))}
@@ -2968,6 +2993,12 @@ function paramStatus(p){
     if(v>=p.warn[0]&&v<=p.warn[1]) return 'warn';
     return 'crit';
 }
+function flashTab(tabId){
+    const el=document.getElementById(tabId);
+    if(el&&!el.classList.contains('active'))el.classList.add('tab-alert');
+    flashingTabs[tabId]=true;
+}
+
 function sysStatus(sys){
     if(sys.integrity<=0) return 'off';
     if(sys.integrity<30) return 'crt';
@@ -3250,6 +3281,7 @@ function renderActions(){
         ${hasMysteryWO?`<button class="qa-btn" onclick="cmdInvestigate()" ${avail<1?'disabled':''} style="border-color:#6644aa;color:#aa88ff">Начать расследование</button>`:''}
         <button class="qa-btn" onclick="cmdDrillControl()" style="border-color:#1a1a10;color:#aaaa44">Управление буром</button>
         ${dockingState.active&&!dockingState.approved?`<button class="qa-btn qa-dock" onclick="cmdApproveDocking()">Разрешить стыковку</button>`:''}
+        ${Object.keys(debrisAlertActive).length>0?`<button class="qa-btn" onclick="openRadarZoom('deepspace')" style="border-color:#3a1010;color:var(--red2);animation:pulse-ind 0.8s infinite">Система ПРО</button>`:''}
         <button class="qa-btn" onclick="openCameras()" style="border-color:#1a2a1a;color:#44aa66">Камеры базы</button>
         <button class="qa-btn" onclick="openTopoMap()" style="border-color:#0a1a2a;color:#4488cc">Карта местности</button>
         <button class="qa-btn" onclick="openMissionLog()" style="border-color:#1a1a28;color:#8888cc">Бортжурнал</button>
@@ -3463,7 +3495,8 @@ function startDockingApproach(){
     dockingState.shipNum++;
     const num = rngI(80,99);
     dockingState.shipId = 'Прогресс-Л'+num;
-    dockingState.eta = rng(60,120);
+    const hasPreparedPad=Object.values(padPrepared).some(v=>v);
+    dockingState.eta = hasPreparedPad ? rng(40,80) : rng(60,120);
     dockingState.approved = false;
     dockingState.active = true;
     // Add to deep space radar
@@ -3490,6 +3523,23 @@ function completeDocking(){
     for(const c of CREW){c.morale=clamp(c.morale+8,0,100);c.stress=clamp(c.stress-5,0,100);}
     slog('Грузовой '+dockingState.shipId+' разгружен, запасы пополнены','ok');
     elog('to','Стыковка и разгрузка '+dockingState.shipId+' завершены.');
+    // Pad docking effect
+    const preparedPads=Object.keys(padPrepared).filter(k=>padPrepared[k]);
+    if(preparedPads.length>0){
+        slog('Подготовленная площадка ускорила стыковку','ok');
+        padPrepared[preparedPads[0]]=false; // consumed
+    }
+    // Sometimes include replacement satellite (30% chance, only if any sat degraded)
+    const degradedSats=SATS.filter(s=>s.health<60);
+    if(degradedSats.length>0&&Math.random()<0.3&&!replacementSatAvailable){
+        replacementSatAvailable=true;
+        setTimeout(()=>{
+            radioMsg('Система','system','В грузе обнаружен запасной спутник! Доступно развёртывание через орбитальный радар.');
+            slog('Запасной спутник получен в грузе','ok');
+            addMissionLog('supply','Запасной спутник доставлен с грузовым кораблём.');
+            flashTab('mob-tab-radar');
+        },rng(5000,10000)/speed);
+    }
     // Remove from radar
     const idx=DS_OBJECTS.indexOf(dockingState.dsObj);
     if(idx>=0) setTimeout(()=>{DS_OBJECTS.splice(DS_OBJECTS.indexOf(dockingState.dsObj),1);},10000/speed);
@@ -3568,11 +3618,14 @@ function cmdDrillControl(){
     const rockTypes = [{name:'реголит',depth:0},{name:'базальт',depth:15},{name:'ильменит',depth:35},{name:'лёд?',depth:60}];
     const currentRock = drillState.rockType;
     const speedLabels = {1:'НИЗКАЯ',2:'СРЕДНЯЯ',3:'ВЫСОКАЯ'};
+    const activeSite = TOPO_OBJECTS.find(o=>o.id===activeDrillSite);
     const body = `
         <div class="drill-rock">Глубина: <b>${drillState.depth.toFixed(1)} м</b></div>
         <div class="drill-rock">Порода: <b>${currentRock}</b></div>
         <div class="drill-rock">Статус: <b style="color:${drillState.active?'var(--green)':'var(--dim)'}">
             ${drillState.active?'РАБОТАЕТ':'ОСТАНОВЛЕН'}</b></div>
+        ${activeSite?`<div class="drill-rock" style="margin-top:4px;color:var(--accent2)">Участок: <b>${activeSite.name}</b></div>`:''}
+        ${activeSite&&activeSite.resources?`<div class="drill-rock" style="font-size:10px;color:var(--dim)">He3: ${activeSite.he3conc||'?'} | Лёд: ${activeSite.iceProb||'?'} | Макс: ${activeSite.depthMax||'?'}м</div>`:''}
         <p style="margin-top:8px">Скорость бурения:</p>
         <div class="drill-speed-btns">
             <button class="drill-speed-btn ${drillState.speed===1?'active':''}" onclick="drillState.speed=1;cmdDrillControl()">НИЗКАЯ</button>
@@ -4881,6 +4934,141 @@ function update(dt){
         radioMsg('Система','system',pick(msgs));
     }
 
+    // ---- SATELLITE MANAGEMENT (gameplay) ----
+    // Reboot cooldowns
+    for(const sid in satRebootCD){if(satRebootCD[sid]>0)satRebootCD[sid]-=sdt;}
+    // Fuel warnings -> auto WO
+    for(const sat of SATS){
+        if(sat.fuel<20 && !satFuelWarnSent[sat.id]){
+            satFuelWarnSent[sat.id]=true;
+            createWO(`Спутник ${sat.id}: низкий запас топлива`,`Топливо ${sat.id} ниже 20%. Требуется коррекция или замена.`,'COM',2);
+            radioMsg('Система','system',`Спутник ${sat.id} деградирует, проверьте орбитальный радар.`);
+            flashTab('mob-tab-radar');
+        }
+        // Offline when fuel=0 -> COM hit
+        if(sat.fuel<=0){
+            sat.signal=0;
+            sat.health=clamp(sat.health-0.01*sdt,0,100);
+        }
+        // Degradation alert with cooldown
+        if(sat.health<50 && (!satDegradeMsgCD[sat.id]||satDegradeMsgCD[sat.id]<=0)){
+            satDegradeMsgCD[sat.id]=120;
+            radioMsg('Система','system',`Спутник ${sat.id} деградирует, проверьте орбитальный радар.`);
+            flashTab('mob-tab-radar');
+        }
+        if(satDegradeMsgCD[sat.id]>0) satDegradeMsgCD[sat.id]-=sdt;
+    }
+    // LCRS relay impact on COM
+    const lcrsAvg=SATS.filter(s=>s.type==='Ретранслятор').reduce((a,s)=>a+s.health,0)/Math.max(1,SATS.filter(s=>s.type==='Ретранслятор').length);
+    if(lcrsAvg<50) SYS.COM.integrity=clamp(SYS.COM.integrity-0.005*sdt,0,100);
+    // NAV impact on MIN
+    const navAvg=SATS.filter(s=>s.type==='Навигация').reduce((a,s)=>a+s.health,0)/Math.max(1,SATS.filter(s=>s.type==='Навигация').length);
+    if(navAvg<60) SYS.MIN.integrity=clamp(SYS.MIN.integrity-0.003*sdt,0,100);
+
+    // ---- DEBRIS DRIFT (gameplay) ----
+    debrisThreatCD-=sdt;
+    if(debrisThreatCD<=0){
+        debrisThreatCD=rng(200,400);
+        // Spawn new debris approaching
+        const did='DEB-'+rngI(100,999);
+        const dobj={id:did,label:'Обломки',dist:0.35,angle:rng(0,Math.PI*2),size:1,color:'#777',type:'debris'};
+        DS_OBJECTS.push(dobj);
+        dobj._drifting=true;
+    }
+    // Move drifting debris closer
+    for(const obj of DS_OBJECTS){
+        if(obj.type==='debris'&&obj._drifting){
+            obj.dist=Math.max(0.02,obj.dist-0.0008*sdt);
+            // Alert threshold
+            if(obj.dist<0.15&&!debrisAlertActive[obj.id]){
+                debrisAlertActive[obj.id]=true;
+                createWO('Космический мусор на сближающейся траектории','Объект '+obj.id+' приближается к станции. Требуется решение.','COM',1);
+                radioMsg('Система','alert','ПРЕДУПРЕЖДЕНИЕ: проверьте радар дальнего космоса! Объект '+obj.id+' на сближении!');
+                flashTab('mob-tab-radar');
+                alarmTone();
+            }
+            // Auto-resolve if ignored too long and very close
+            if(obj.dist<=0.03&&debrisAlertActive[obj.id]){
+                observeDebris(obj.id);
+            }
+        }
+    }
+
+    // ---- BEACON EVENTS ----
+    beaconCD-=sdt;
+    if(beaconCD<=0&&!beaconActive){
+        beaconCD=rng(1000,2000);
+        spawnBeacon();
+    }
+
+    // ---- EXPEDITION UPDATE ----
+    if(expeditionState.recalled&&expeditionState.recallETA>0){
+        expeditionState.recallETA-=sdt;
+        if(expeditionState.recallETA<=0){
+            expeditionState.recalled=false;
+            radioMsg('EXP-DAWN','crew','Диспетчер, экспедиция «Рассвет» вернулась на базу. Образцы доставлены.');
+            SYS.LAB.params.exp.val=clamp(SYS.LAB.params.exp.val+rng(8,15),0,100);
+            for(const c of CREW) c.morale=clamp(c.morale+5,0,100);
+            slog('Экспедиция «Рассвет» вернулась','ok');
+            addMissionLog('crew','Экспедиция «Рассвет» вернулась с образцами.');
+            // Add discovery
+            addDiscoveryPOI('Образцы экспедиции',rng(-5,5),rng(-5,5),'Геологические образцы, доставленные экспедицией «Рассвет».');
+        }
+    }
+    // Expedition discoveries
+    expeditionState.discoveryCD-=sdt;
+    if(expeditionState.discoveryCD<=0&&!expeditionState.recalled){
+        expeditionState.discoveryCD=rng(200,400);
+        const discoveries=[
+            {name:'Необычная порода',info:'Экспедиция обнаружила минерал с аномальной кристаллической структурой.'},
+            {name:'Древний кратер',info:'Микрократер возрастом ~3.8 млрд лет. Образцы отобраны.'},
+            {name:'Ледяная линза',info:'Подповерхностный лёд обнаружен на глубине 0.5м.'},
+            {name:'Сейсмический источник',info:'Локализован источник ритмичных вибраций.'},
+            {name:'Следы вулканизма',info:'Застывший базальтовый поток, возможно из лавовой трубки.'},
+        ];
+        const disc=pick(discoveries);
+        const wp=TOPO_OBJECTS.find(o=>o.id===expeditionState.destination)||TOPO_OBJECTS.find(o=>o.id==='exp_camp');
+        const dx=wp?wp.x+rng(-8,8):rng(-15,15);
+        const dy=wp?wp.y+rng(-8,8):rng(-20,-5);
+        addDiscoveryPOI(disc.name,dx,dy,disc.info);
+        radioMsg('EXP-DAWN','crew','Диспетчер! '+disc.name+'! '+disc.info+' Отметили на карте.');
+        radioMsg('Система','system','Экспедиция отметила новую точку на карте. Проверьте.');
+        flashTab('mob-tab-radar');
+        addMissionLog('invest','Экспедиция: '+disc.name+'. '+disc.info);
+    }
+    // Expedition periodic messages
+    expeditionState.lastMsgCD-=sdt;
+    if(expeditionState.lastMsgCD<=0&&!expeditionState.recalled){
+        expeditionState.lastMsgCD=rng(60,120);
+        const wp=TOPO_OBJECTS.find(o=>o.id===expeditionState.destination);
+        const locMsgs=[
+            'Продвигаемся по маршруту. Рельеф сложный, но ровер держится.',
+            'Остановка для отбора проб. Реголит здесь необычного цвета.',
+            wp?`Приближаемся к ${wp.name}. Видимость хорошая.`:'Движемся к следующей точке.',
+            'Батареи ровера на 60%. Солнце низко, но достаточно.',
+            'Сделали панораму горизонта. Земля красивая отсюда.',
+        ];
+        radioMsg('EXP-DAWN','crew',pick(locMsgs));
+    }
+
+    // ---- DRILL SITE DEPLETION ----
+    if(drillState.active&&drillState.depth>0){
+        const site=TOPO_OBJECTS.find(o=>o.id===activeDrillSite);
+        if(site&&site.depthMax&&drillState.depth>site.depthMax*0.8){
+            if(!site._depletionWarned){
+                site._depletionWarned=true;
+                radioMsg('Система','system','Ресурсы на буровой точке исчерпываются, проверьте карту для перевода.');
+                flashTab('mob-tab-radar');
+                createWO('Истощение буровой '+site.name,'Глубина приближается к максимуму. Рассмотрите перевод на другую точку.','MIN',2);
+            }
+        }
+        // Apply resource yield from active site
+        if(site&&site.resources){
+            SYS.MIN.params.regolith.val=clamp(SYS.MIN.params.regolith.val+0.002*site.resources.regolith*sdt,0,100);
+            SYS.MIN.params.he3.val=clamp(SYS.MIN.params.he3.val+0.0005*site.resources.he3*sdt,0,100);
+        }
+    }
+
     // ---- EVENTS ----
     eventCD-=sdt;
     if(eventCD<=0){
@@ -5073,6 +5261,9 @@ function mobTab(tab){
             if(filterBar)filterBar.style.display='none';
             if(bottomPanels)bottomPanels.style.display='flex';
             crewStrip.style.display='none';
+            // Clear radar alert blink
+            const radarTab=document.getElementById('mob-tab-radar');
+            if(radarTab)radarTab.classList.remove('tab-alert');
             break;
         case 'tasks':
             right.classList.add('mob-active');
@@ -5161,6 +5352,17 @@ document.getElementById('radar-zoom-canvas').addEventListener('mousemove',(e)=>{
     const rect=e.target.getBoundingClientRect();
     radarZoomMouse.x=e.clientX-rect.left;
     radarZoomMouse.y=e.clientY-rect.top;
+});
+document.getElementById('radar-zoom-canvas').addEventListener('click',(e)=>{
+    if(radarZoomHovered){
+        if(radarZoomMode==='orbital'){
+            const sat=SATS.find(s=>s.id===radarZoomHovered);
+            if(sat) showSatActions(sat);
+        } else {
+            const obj=DS_OBJECTS.find(o=>o.id===radarZoomHovered);
+            if(obj) showDSActions(obj);
+        }
+    }
 });
 
 document.addEventListener('keydown',e=>{
@@ -5384,6 +5586,22 @@ function showSatDetail(sat){
     const hc=sat.health>80?'tp-nom':sat.health>50?'tp-warn':'tp-crit';
     const sc=sat.signal>70?'tp-nom':sat.signal>40?'tp-warn':'tp-crit';
     const fc=sat.fuel>30?'tp-nom':sat.fuel>15?'tp-warn':'tp-crit';
+    const isOffline = sat.fuel<=0;
+    const canCorrect = sat.health<70 && sat.fuel>5 && SYS.COM.integrity>50 && !isOffline;
+    const rebootCD = satRebootCD[sat.id]||0;
+    const canReboot = sat.health<90 && rebootCD<=0 && !isOffline;
+    const canDeploy = replacementSatAvailable && sat.health<60;
+    let actionsHtml='';
+    if(canCorrect||canReboot||canDeploy){
+        actionsHtml+=`<div style="margin-top:10px;border-top:1px solid #0a1420;padding-top:8px">
+            <div style="color:var(--accent);font-size:9px;margin-bottom:6px">УПРАВЛЕНИЕ (нажмите)</div>`;
+        if(canCorrect) actionsHtml+=`<button onclick="satCorrectOrbit('${sat.id}')" style="display:block;width:100%;margin:3px 0;padding:5px 8px;background:#0a1a10;border:1px solid #1a3a20;color:var(--green);font-family:inherit;font-size:10px;cursor:pointer;border-radius:2px">Коррекция орбиты (топливо -5..10%)</button>`;
+        if(canReboot) actionsHtml+=`<button onclick="satReboot('${sat.id}')" style="display:block;width:100%;margin:3px 0;padding:5px 8px;background:#0a0a1a;border:1px solid #1a1a3a;color:var(--accent2);font-family:inherit;font-size:10px;cursor:pointer;border-radius:2px">Перезагрузка бортового ПО</button>`;
+        else if(rebootCD>0) actionsHtml+=`<div style="color:var(--dim);font-size:9px;padding:3px">Перезагрузка: КД ${Math.ceil(rebootCD)}с</div>`;
+        if(canDeploy) actionsHtml+=`<button onclick="satDeployReplacement('${sat.id}')" style="display:block;width:100%;margin:3px 0;padding:5px 8px;background:#1a1a08;border:1px solid #3a3a10;color:var(--yellow);font-family:inherit;font-size:10px;cursor:pointer;border-radius:2px">Развернуть замену (со склада)</button>`;
+        actionsHtml+=`</div>`;
+    }
+    if(isOffline) actionsHtml+=`<div style="margin-top:8px;padding:6px;background:#1a0808;border:1px solid #3a1010;border-radius:2px;color:var(--red2);font-size:10px;text-align:center">ОФФЛАЙН — топливо исчерпано</div>`;
     document.getElementById('rzd-body').innerHTML=`
         <div class="rzd-row"><span class="rzd-label">ID</span><span class="rzd-val">${sat.id}</span></div>
         <div class="rzd-row"><span class="rzd-label">Название</span><span class="rzd-val">${sat.name}</span></div>
@@ -5396,30 +5614,232 @@ function showSatDetail(sat){
         <div class="rzd-row"><span class="rzd-label">Деградация</span><span class="rzd-val">${(sat.degradeRate*1000).toFixed(2)}/ks</span></div>
         <div style="margin-top:12px;padding:8px;background:#060a10;border:1px solid #0a1420;border-radius:2px">
             <div style="color:var(--dim);font-size:9px;margin-bottom:4px">СТАТУС</div>
-            <div style="color:${sat.health>70?'var(--green)':sat.health>40?'var(--yellow)':'var(--red2)'};font-size:12px">
-                ${sat.health>70?'НОМИНАЛЬНЫЙ':sat.health>40?'ДЕГРАДАЦИЯ':'КРИТИЧЕСКИЙ'}
+            <div style="color:${isOffline?'var(--dim)':sat.health>70?'var(--green)':sat.health>40?'var(--yellow)':'var(--red2)'};font-size:12px">
+                ${isOffline?'ОФФЛАЙН':sat.health>70?'НОМИНАЛЬНЫЙ':sat.health>40?'ДЕГРАДАЦИЯ':'КРИТИЧЕСКИЙ'}
             </div>
         </div>
+        ${actionsHtml}
     `;
+}
+
+function showSatActions(sat){ showSatDetail(sat); }
+
+function satCorrectOrbit(satId){
+    const sat=SATS.find(s=>s.id===satId);
+    if(!sat||sat.fuel<=5||SYS.COM.integrity<=50)return;
+    const fuelCost=rng(5,10);
+    const healthGain=rng(15,25);
+    sat.fuel=clamp(sat.fuel-fuelCost,0,100);
+    sat.health=clamp(sat.health+healthGain,0,100);
+    radioMsg('Диспетчер','dispatch',`Диспетчер -> ${sat.id}: команда на коррекцию передана. Ожидаем подтверждение.`);
+    setTimeout(()=>{
+        radioMsg('Система','system',`${sat.id}: коррекция орбиты выполнена. Целостность: ${sat.health.toFixed(0)}%, топливо: ${sat.fuel.toFixed(0)}%.`);
+        slog(`${sat.id}: коррекция орбиты, +${healthGain.toFixed(0)}% целостность, -${fuelCost.toFixed(0)}% топливо`,'ok');
+        addMissionLog('comm',`Коррекция орбиты ${sat.id}. Целостность ${sat.health.toFixed(0)}%.`);
+        showSatDetail(sat);
+    },rng(2000,4000)/speed);
+}
+
+function satReboot(satId){
+    const sat=SATS.find(s=>s.id===satId);
+    if(!sat||(satRebootCD[satId]||0)>0)return;
+    const healthGain=rng(5,10);
+    sat.health=clamp(sat.health+healthGain,0,100);
+    satRebootCD[satId]=60;
+    radioMsg('Система','system',`${sat.id}: перезагрузка бортового ПО... инициализация...`);
+    setTimeout(()=>{
+        radioMsg('Система','system',`${sat.id}: ПО перезагружено. Диагностика OK. Целостность: ${sat.health.toFixed(0)}%.`);
+        slog(`${sat.id}: перезагрузка ПО, +${healthGain.toFixed(0)}% целостность`,'ok');
+        showSatDetail(sat);
+    },rng(3000,5000)/speed);
+}
+
+function satDeployReplacement(satId){
+    const sat=SATS.find(s=>s.id===satId);
+    if(!sat||!replacementSatAvailable)return;
+    showModal('Развёртывание замены',
+        `<p>Заменить деградировавший ${sat.id} (${sat.health.toFixed(0)}%) запасным спутником из грузового корабля?</p><p>Спутник будет сброшен и выведен на орбиту ${sat.orbit}.</p>`,
+        [{text:'Развернуть',cls:'m-primary',action:()=>{
+            sat.health=100;sat.fuel=100;sat.signal=98;sat.temp=21;
+            replacementSatAvailable=null;
+            radioMsg('Система','system',`${sat.id}: замена развёрнута. Все параметры номинальны.`);
+            slog(`${sat.id}: спутник заменён, все параметры 100%`,'ok');
+            addMissionLog('supply',`Спутник ${sat.id} заменён из грузового запаса.`);
+            setTimeout(()=>radioMsg(pick(CREW).callsign,'crew',`Диспетчер, подтверждаю — ${sat.id} на орбите, телеметрия чистая.`),rng(3000,5000)/speed);
+            closeModal();
+        }},{text:'Отмена',cls:'',action:closeModal}]);
 }
 
 function showDSDetail(obj){
     document.getElementById('rzd-title').textContent=`${obj.id} — ${obj.label}`;
-    const typeLabels={planet:'Планета',station:'Орбитальная станция',ship:'Грузовой корабль',expedition:'Экспедиция',debris:'Космический мусор',probe:'Научный зонд',asteroid:'Астероид'};
-    const statusLabels={planet:'Отслеживается',station:'На связи',ship:'В пути',expedition:'Активна',debris:'Отслеживается',probe:'Передаёт данные',asteroid:'На мониторинге'};
+    const typeLabels={planet:'Планета',station:'Орбитальная станция',ship:'Грузовой корабль',expedition:'Экспедиция',debris:'Космический мусор',probe:'Научный зонд',asteroid:'Астероид',beacon:'Аварийный маяк'};
+    const statusLabels={planet:'Отслеживается',station:'На связи',ship:'В пути',expedition:'Активна',debris:'Отслеживается',probe:'Передаёт данные',asteroid:'На мониторинге',beacon:'СИГНАЛ'};
     const distKm=obj.dist<0.3?`${(obj.dist*500).toFixed(0)}K км`:obj.dist<0.6?`${(obj.dist*5).toFixed(1)}M км`:`${(obj.dist*5).toFixed(1)}M км`;
+    let actionsHtml='';
+    // Debris close = threat actions
+    if(obj.type==='debris'&&obj.dist<0.2){
+        actionsHtml+=`<div style="margin-top:10px;border-top:1px solid #0a1420;padding-top:8px">
+            <div style="color:var(--red2);font-size:9px;margin-bottom:6px">УГРОЗА СТОЛКНОВЕНИЯ</div>
+            <button onclick="activateDebrisDefense('${obj.id}')" style="display:block;width:100%;margin:3px 0;padding:5px 8px;background:#1a0a0a;border:1px solid #3a1a1a;color:var(--red2);font-family:inherit;font-size:10px;cursor:pointer;border-radius:2px" ${!defenseSystemReady?'disabled':''}>${defenseSystemReady?'Активировать лазерную защиту':'ПРО перезаряжается...'}</button>
+            <button onclick="observeDebris('${obj.id}')" style="display:block;width:100%;margin:3px 0;padding:5px 8px;background:#0a0a10;border:1px solid #1a1a2a;color:var(--accent2);font-family:inherit;font-size:10px;cursor:pointer;border-radius:2px">Наблюдение</button>
+        </div>`;
+    }
+    // Asteroid = mineral analysis
+    if(obj.type==='asteroid'){
+        const minerals=pick(['Fe-Ni сплав','углеродный хондрит','оливин','платиноиды','водный лёд']);
+        const conc=rng(0.1,15).toFixed(1);
+        actionsHtml+=`<div style="margin-top:10px;border-top:1px solid #0a1420;padding-top:8px">
+            <div style="color:var(--accent);font-size:9px;margin-bottom:6px">СПЕКТРАЛЬНЫЙ АНАЛИЗ</div>
+            <div class="rzd-row"><span class="rzd-label">Состав</span><span class="rzd-val">${minerals}</span></div>
+            <div class="rzd-row"><span class="rzd-label">Концентр.</span><span class="rzd-val">${conc}%</span></div>
+            <button onclick="requestMiningDrone('${obj.id}')" style="display:block;width:100%;margin:6px 0 3px;padding:5px 8px;background:#0a1a10;border:1px solid #1a3a20;color:var(--green);font-family:inherit;font-size:10px;cursor:pointer;border-radius:2px">Запросить добычной дрон у ЦУП</button>
+        </div>`;
+    }
+    // Ship docking info
+    if(obj.type==='ship'&&dockingState.active&&dockingState.dsObj===obj){
+        actionsHtml+=`<div style="margin-top:10px;border-top:1px solid #0a1420;padding-top:8px">
+            <div style="color:var(--green);font-size:9px;margin-bottom:4px">СТЫКОВКА</div>
+            <div class="rzd-row"><span class="rzd-label">ETA</span><span class="rzd-val">${Math.ceil(dockingState.eta)} с</span></div>
+            <div class="rzd-row"><span class="rzd-label">Разрешение</span><span class="rzd-val" style="color:${dockingState.approved?'var(--green)':'var(--yellow)'}"> ${dockingState.approved?'ДАНО':'ОЖИДАЕТ'}</span></div>
+        </div>`;
+    }
     document.getElementById('rzd-body').innerHTML=`
         <div class="rzd-row"><span class="rzd-label">ID</span><span class="rzd-val">${obj.id}</span></div>
         <div class="rzd-row"><span class="rzd-label">Название</span><span class="rzd-val">${obj.label}</span></div>
         <div class="rzd-row"><span class="rzd-label">Тип</span><span class="rzd-val">${typeLabels[obj.type]||obj.type}</span></div>
         <div class="rzd-row"><span class="rzd-label">Дистанция</span><span class="rzd-val">${distKm}</span></div>
-        <div class="rzd-row"><span class="rzd-label">Статус</span><span class="rzd-val" style="color:${obj.type==='debris'?'var(--dim)':'var(--green)'}">${statusLabels[obj.type]||'Неизвестно'}</span></div>
+        <div class="rzd-row"><span class="rzd-label">Статус</span><span class="rzd-val" style="color:${obj.type==='debris'||obj.type==='beacon'?obj.type==='beacon'?'var(--red2)':'var(--dim)':'var(--green)'}">${statusLabels[obj.type]||'Неизвестно'}</span></div>
         <div class="rzd-row"><span class="rzd-label">Размер (усл.)</span><span class="rzd-val">${obj.size}</span></div>
         <div style="margin-top:12px;padding:8px;background:#060a10;border:1px solid #0a1420;border-radius:2px">
             <div style="color:var(--dim);font-size:9px;margin-bottom:4px">ОПИСАНИЕ</div>
             <div style="color:var(--text);font-size:11px;line-height:1.6">${getDSDescription(obj)}</div>
         </div>
+        ${actionsHtml}
     `;
+}
+
+function showDSActions(obj){ showDSDetail(obj); }
+
+// ---- DEEP SPACE INTERACTION FUNCTIONS ----
+function activateDebrisDefense(debrisId){
+    if(!defenseSystemReady)return;
+    const obj=DS_OBJECTS.find(o=>o.id===debrisId);
+    if(!obj)return;
+    defenseSystemReady=false;
+    const pwrCost=rng(5,12);
+    SYS.PWR.integrity=clamp(SYS.PWR.integrity-pwrCost,0,100);
+    SYS.PWR.params.batt.val=clamp(SYS.PWR.params.batt.val-rng(5,10),0,100);
+    radioMsg('Диспетчер','dispatch','Активирую систему ПРО! Лазерный модуль на цель!');
+    setTimeout(()=>{
+        radioMsg('Система','system',`ПРО: захват цели ${debrisId}. Импульс... Попадание! Объект фрагментирован.`);
+        setTimeout(()=>{
+            radioMsg(pick(CREW).callsign,'crew','Вижу вспышку через иллюминатор! Обломки рассеиваются. Красиво, но жутковато.');
+        },rng(1500,3000)/speed);
+        const idx=DS_OBJECTS.indexOf(obj);
+        if(idx>=0) DS_OBJECTS.splice(idx,1);
+        delete debrisAlertActive[debrisId];
+        slog(`ПРО: объект ${debrisId} уничтожен, расход энергии ${pwrCost.toFixed(0)}%`,'ok');
+        addMissionLog('event',`Система ПРО уничтожила космический мусор ${debrisId}.`);
+    },rng(2000,4000)/speed);
+    setTimeout(()=>{defenseSystemReady=true;slog('Система ПРО перезаряжена','inf');},60000/speed);
+}
+
+function observeDebris(debrisId){
+    const obj=DS_OBJECTS.find(o=>o.id===debrisId);
+    if(!obj)return;
+    radioMsg('Диспетчер','dispatch','Продолжаем наблюдение за объектом '+debrisId+'. Расчёт траектории...');
+    setTimeout(()=>{
+        if(Math.random()<0.3){
+            radioMsg('Система','alert','УДАР! Обломки '+debrisId+' задели внешний модуль!');
+            const sysIds=['THM','LSS','PWR'];
+            const hitSys=pick(sysIds);
+            SYS[hitSys].integrity=clamp(SYS[hitSys].integrity-rng(8,18),0,100);
+            for(const c of CREW) c.stress=clamp(c.stress+8,0,100);
+            createWO('Повреждение от обломков '+debrisId,'Космический мусор задел обшивку. Требуется осмотр и ремонт.',hitSys,1);
+            slog('Удар обломков '+debrisId+', повреждена '+SYS[hitSys].name,'err');
+            alarmTone();
+        } else {
+            radioMsg('Система','system','Объект '+debrisId+' прошёл мимо. Минимальная дистанция: '+rngI(2,15)+' км. Станция не задета.');
+            slog('Обломки '+debrisId+' прошли мимо','ok');
+        }
+        const idx=DS_OBJECTS.indexOf(obj);
+        if(idx>=0) DS_OBJECTS.splice(idx,1);
+        delete debrisAlertActive[debrisId];
+    },rng(8000,15000)/speed);
+}
+
+function requestMiningDrone(asteroidId){
+    if(SYS.COM.integrity<30){radioMsg('Система','system','Связь с Землёй нестабильна. Запрос невозможен.');return;}
+    radioMsg('Диспетчер','dispatch','ЦУП, запрашиваем добычной дрон для объекта '+asteroidId+'. Спектральный анализ перспективен.');
+    setTimeout(()=>{
+        radioMsg('ЦУП','earth','Резонанс-9, запрос на добычной дрон принят. Оценка рентабельности займёт 48 часов. Ожидайте.');
+        elog('from','ЦУП: запрос на добычной дрон для '+asteroidId+' принят.');
+        for(const c of CREW) c.morale=clamp(c.morale+3,0,100);
+        addMissionLog('comm','Запрос на добычной дрон для астероида '+asteroidId+' отправлен в ЦУП.');
+        setTimeout(()=>{
+            if(Math.random()<0.5){
+                radioMsg('ЦУП','earth','Резонанс-9, добычной дрон одобрен. Запуск через 72 часа. Ресурсы будут доставлены в следующем грузе.');
+                for(const c of CREW) c.morale=clamp(c.morale+5,0,100);
+                SYS.MIN.params.he3.val=clamp(SYS.MIN.params.he3.val+rng(3,8),0,100);
+                addMissionLog('supply','ЦУП одобрил добычной дрон. Ожидается пополнение ресурсов.');
+            } else {
+                radioMsg('ЦУП','earth','Резонанс-9, добычной дрон отклонён. Объект нерентабелен при текущей орбите.');
+            }
+        },rng(60000,120000)/speed);
+    },rng(4000,8000)/speed);
+}
+
+// ---- EMERGENCY BEACON ----
+function spawnBeacon(){
+    const coords=`${rngI(10,89)}.${rngI(0,9)}N ${rngI(10,179)}.${rngI(0,9)}E`;
+    const sources=pick(['грузовой корабль','исследовательский зонд','спасательная капсула','научная станция','ровер']);
+    beaconActive={coords:coords,source:sources,time:gt};
+    const dsObj={id:'BEACON-'+rngI(100,999),label:'Авар.маяк',dist:rng(0.3,0.8),angle:rng(0,Math.PI*2),size:2,color:'#ff4444',type:'beacon'};
+    DS_OBJECTS.push(dsObj);
+    beaconActive.dsObj=dsObj;
+    radioMsg('Система','alert',`ОБНАРУЖЕН АВАРИЙНЫЙ МАЯК! Координаты: ${coords}. Источник: предположительно ${sources}.`);
+    slog('Аварийный маяк обнаружен: '+coords,'err');
+    alarmTone();
+    for(const c of CREW){c.stress=clamp(c.stress+5,0,100);}
+    setTimeout(()=>{
+        if(!beaconActive)return;
+        showModal('АВАРИЙНЫЙ МАЯК',
+            `<p>Обнаружен аварийный сигнал!</p><p>Координаты: ${coords}</p><p>Предполагаемый источник: ${sources}</p><p>Выберите действие:</p>`,
+            [{text:'Ретранслировать на Землю',cls:'m-primary',action:()=>{
+                closeModal();
+                radioMsg('Диспетчер','dispatch','ЦУП, ретранслируем аварийный маяк. Координаты: '+coords+'.');
+                setTimeout(()=>{
+                    radioMsg('ЦУП','earth','Резонанс-9, маяк принят. Передаём координаты спасательным службам. Благодарим за бдительность.');
+                    for(const c of CREW){c.morale=clamp(c.morale+8,0,100);c.stress=clamp(c.stress-3,0,100);}
+                    slog('Аварийный маяк ретранслирован на Землю','ok');
+                    addMissionLog('comm','Аварийный маяк ретранслирован. Координаты: '+coords+'.');
+                },rng(3000,6000)/speed);
+                setTimeout(()=>{
+                    radioMsg(pick(CREW).callsign,'crew','Надеюсь, помощь дойдёт вовремя. Мы всё-таки не одни здесь...');
+                },rng(5000,10000)/speed);
+                resolveBeacon();
+            }},
+            {text:'Записать и игнорировать',cls:'',action:()=>{
+                closeModal();
+                slog('Аварийный маяк записан, но не ретранслирован','wrn');
+                addMissionLog('comm','Аварийный маяк зафиксирован, решение не принято.');
+                for(const c of CREW){c.morale=clamp(c.morale-3,0,100);c.stress=clamp(c.stress+2,0,100);}
+                setTimeout(()=>{
+                    radioMsg(pick(CREW).callsign,'crew','Диспетчер... мы правда не будем ретранслировать? Там ведь могут быть люди.');
+                },rng(3000,6000)/speed);
+                resolveBeacon();
+            }}]);
+    },3000/speed);
+}
+
+function resolveBeacon(){
+    if(beaconActive&&beaconActive.dsObj){
+        setTimeout(()=>{
+            const idx=DS_OBJECTS.indexOf(beaconActive.dsObj);
+            if(idx>=0)DS_OBJECTS.splice(idx,1);
+            beaconActive=null;
+        },30000/speed);
+    } else beaconActive=null;
 }
 
 function getDSDescription(obj){
@@ -5777,11 +6197,14 @@ let topoAnimFrame=null;
 // Map objects — all POIs on the surface
 const TOPO_OBJECTS=[
     {id:'base',type:'base',name:'База РЕЗОНАНС-9',x:0,y:0,info:'Главный комплекс. 6 модулей, 4 экипажа.',color:'#00ff66',icon:'◆'},
-    {id:'lp1',type:'pad',name:'Площадка LP-1',x:2.5,y:2,info:'Основная посадочная. Грузовые корабли.',color:'#44aa66',icon:'⊞'},
-    {id:'lp2',type:'pad',name:'Площадка LP-2 Дельта',x:-3,y:3.5,info:'Резервная посадочная. EVA выходы.',color:'#44aa66',icon:'⊞'},
-    {id:'drill_a',type:'drill',name:'Буровая точка А',x:7,y:5,info:'Глубина: активная скважина. Реголит/базальт.',color:'#cc8844',icon:'⛏'},
-    {id:'drill_b',type:'drill',name:'Буровая точка Б',x:-10,y:8,info:'Законсервирована. Ильменитовая жила.',color:'#cc8844',icon:'⛏'},
-    {id:'drill_c',type:'drill',name:'Буровая точка В',x:14,y:-5,info:'Разведочная. Перспективна на He³.',color:'#cc8844',icon:'⛏'},
+    {id:'lp1',type:'pad',name:'Площадка LP-1',x:2.5,y:2,info:'Основная посадочная. Грузовые корабли.',color:'#44aa66',icon:'⊞',padStatus:'free'},
+    {id:'lp2',type:'pad',name:'Площадка LP-2 Дельта',x:-3,y:3.5,info:'Резервная посадочная. EVA выходы.',color:'#44aa66',icon:'⊞',padStatus:'free'},
+    {id:'drill_a',type:'drill',name:'Буровая точка А',x:7,y:5,info:'Глубина: активная скважина. Реголит/базальт.',color:'#cc8844',icon:'⛏',
+     resources:{regolith:0.8,he3:0.3,ice:0.1},rockType:'реголит/базальт',depthMax:80,he3conc:'низкая',iceProb:'10%'},
+    {id:'drill_b',type:'drill',name:'Буровая точка Б',x:-10,y:8,info:'Законсервирована. Ильменитовая жила.',color:'#cc8844',icon:'⛏',
+     resources:{regolith:0.5,he3:0.6,ice:0.2},rockType:'ильменит',depthMax:120,he3conc:'средняя',iceProb:'20%'},
+    {id:'drill_c',type:'drill',name:'Буровая точка В',x:14,y:-5,info:'Разведочная. Перспективна на He³.',color:'#cc8844',icon:'⛏',
+     resources:{regolith:0.3,he3:0.9,ice:0.4},rockType:'анортозит',depthMax:60,he3conc:'высокая',iceProb:'40%'},
     {id:'crater_s',type:'crater',name:'Кратер Шеклтон',x:-16,y:-18,r:7,info:'Глубина ~4.2 км. Постоянная тень на дне. Возможные запасы льда.',color:'#1a4a6a'},
     {id:'crater_g',type:'crater',name:'Кратер де Герлах',x:23,y:10,r:5,info:'Диаметр ~33 км. Частично освещён.',color:'#1a4a6a'},
     {id:'crater_v',type:'crater',name:'Кратер Свердруп',x:-28,y:22,r:4,info:'Диаметр ~18 км. Интерес для ISRU.',color:'#1a4a6a'},
@@ -5893,17 +6316,18 @@ function renderTopoSidebar(){
     const body=document.getElementById('topo-sidebar-body');
     if(!body)return;
     let html='';
-    // Selected detail
+    // Selected detail with actions
     if(topoSelected){
         html+=`<div style="margin-bottom:10px;padding:8px;background:rgba(0,136,204,0.06);border:1px solid var(--accent);border-radius:4px">
             <div style="color:${topoSelected.color};font-size:13px;font-weight:bold;margin-bottom:4px">${topoSelected.icon||'●'} ${topoSelected.name}</div>
             <div style="color:var(--text2);font-size:10px;margin-bottom:4px">${topoSelected.info}</div>
             <div style="color:var(--dim);font-size:9px">Координаты: ${topoSelected.x.toFixed(1)}, ${topoSelected.y.toFixed(1)} км</div>
             ${topoSelected.r?`<div style="color:var(--dim);font-size:9px">Радиус: ~${(topoSelected.r*1.5).toFixed(0)} км</div>`:''}
+            ${getTopoActions(topoSelected)}
         </div>`;
     }
     // List all objects by type
-    const types=[['base','БАЗА'],['pad','ПОСАДОЧНЫЕ'],['drill','БУРОВЫЕ'],['expedition','ЭКСПЕДИЦИЯ'],['waypoint','ТОЧКИ МАРШРУТА'],['crater','КРАТЕРЫ'],['anomaly','АНОМАЛИИ'],['poi','ТОЧКИ ИНТЕРЕСА']];
+    const types=[['base','БАЗА'],['pad','ПОСАДОЧНЫЕ'],['drill','БУРОВЫЕ'],['expedition','ЭКСПЕДИЦИЯ'],['waypoint','ТОЧКИ МАРШРУТА'],['crater','КРАТЕРЫ'],['anomaly','АНОМАЛИИ'],['poi','ТОЧКИ ИНТЕРЕСА'],['discovery','ОТКРЫТИЯ']];
     for(const [t,label] of types){
         const items=TOPO_OBJECTS.filter(o=>o.type===t);
         if(items.length===0)continue;
@@ -5917,6 +6341,192 @@ function renderTopoSidebar(){
         }
     }
     body.innerHTML=html;
+}
+
+function getTopoActions(obj){
+    let html='';
+    const btnStyle='display:block;width:100%;margin:3px 0;padding:5px 8px;font-family:inherit;font-size:10px;cursor:pointer;border-radius:2px;';
+
+    // Drill site actions
+    if(obj.type==='drill'){
+        const isActive=activeDrillSite===obj.id;
+        html+=`<div style="margin-top:8px;border-top:1px solid rgba(0,136,204,0.2);padding-top:6px">`;
+        if(obj.resources){
+            html+=`<div style="color:var(--dim);font-size:9px;margin-bottom:4px">РЕСУРСЫ УЧАСТКА</div>`;
+            html+=`<div style="font-size:9px;color:var(--text)">Реголит: ${(obj.resources.regolith*100).toFixed(0)}% | He3: ${(obj.resources.he3*100).toFixed(0)}% | Лёд: ${(obj.resources.ice*100).toFixed(0)}%</div>`;
+            html+=`<div style="font-size:9px;color:var(--dim)">Порода: ${obj.rockType} | Макс.глубина: ${obj.depthMax}м</div>`;
+            html+=`<div style="font-size:9px;color:var(--dim)">He3: ${obj.he3conc} | Вер.льда: ${obj.iceProb}</div>`;
+        }
+        if(isActive){
+            html+=`<div style="color:var(--green);font-size:10px;margin:4px 0;text-align:center">АКТИВНАЯ БУРОВАЯ</div>`;
+        } else {
+            html+=`<button onclick="switchDrillSite('${obj.id}')" style="${btnStyle}background:#1a1a08;border:1px solid #3a3a10;color:var(--yellow)">Перевести бур на эту точку</button>`;
+        }
+        html+=`</div>`;
+    }
+
+    // Expedition actions
+    if(obj.type==='expedition'||obj.id==='exp_camp'){
+        html+=`<div style="margin-top:8px;border-top:1px solid rgba(0,136,204,0.2);padding-top:6px">`;
+        html+=`<div style="color:var(--dim);font-size:9px;margin-bottom:4px">УПРАВЛЕНИЕ ЭКСПЕДИЦИЕЙ</div>`;
+        if(!expeditionState.recalled){
+            html+=`<button onclick="recallExpedition()" style="${btnStyle}background:#1a0a08;border:1px solid #3a1a10;color:var(--orange)">Вызвать экспедицию назад</button>`;
+            html+=`<button onclick="sendSupplies()" style="${btnStyle}background:#0a1a10;border:1px solid #1a3a20;color:var(--green)" ${INV.h2o_reserve.count<20||INV.o2_reserve.count<5?'disabled':''}>Отправить припасы (H2O+O2)</button>`;
+        } else {
+            html+=`<div style="color:var(--orange);font-size:10px">Возвращается... ETA ${Math.ceil(expeditionState.recallETA)}с</div>`;
+        }
+        html+=`</div>`;
+    }
+
+    // Waypoint actions
+    if(obj.type==='waypoint'){
+        html+=`<div style="margin-top:8px;border-top:1px solid rgba(0,136,204,0.2);padding-top:6px">`;
+        html+=`<button onclick="setExpeditionWaypoint('${obj.id}')" style="${btnStyle}background:#0a0a1a;border:1px solid #1a1a3a;color:var(--accent2)">Задать новый маршрут сюда</button>`;
+        html+=`</div>`;
+    }
+
+    // Anomaly actions
+    if(obj.type==='anomaly'){
+        const hasInvestWO=workOrders.some(w=>w.mystery&&w.topoAnomaly===obj.id);
+        const hasActiveInvest=activeInvestigations.length>0;
+        html+=`<div style="margin-top:8px;border-top:1px solid rgba(0,136,204,0.2);padding-top:6px">`;
+        if(!hasInvestWO&&!hasActiveInvest){
+            html+=`<button onclick="startTopoInvestigation('${obj.id}')" style="${btnStyle}background:#1a0a2a;border:1px solid #3a1a4a;color:#aa88ff" ${freeCrew().length<1?'disabled':''}>Начать расследование</button>`;
+        } else {
+            html+=`<div style="color:#aa88ff;font-size:10px">${hasActiveInvest?'Расследование идёт...':'Наряд создан'}</div>`;
+        }
+        html+=`</div>`;
+    }
+
+    // Landing pad actions
+    if(obj.type==='pad'){
+        const prepared=padPrepared[obj.id];
+        const shipExpected=dockingState.active?dockingState.shipId:null;
+        html+=`<div style="margin-top:8px;border-top:1px solid rgba(0,136,204,0.2);padding-top:6px">`;
+        html+=`<div style="color:var(--dim);font-size:9px;margin-bottom:4px">СТАТУС ПЛОЩАДКИ</div>`;
+        html+=`<div style="font-size:9px;color:var(--text)">Статус: ${obj.padStatus==='occupied'?'<span style="color:var(--yellow)">ЗАНЯТА</span>':'<span style="color:var(--green)">СВОБОДНА</span>'}</div>`;
+        if(shipExpected) html+=`<div style="font-size:9px;color:var(--accent2)">Ожидается: ${shipExpected}</div>`;
+        if(prepared){
+            html+=`<div style="color:var(--green);font-size:10px;margin:4px 0">Площадка подготовлена</div>`;
+        } else {
+            html+=`<button onclick="prepareLandingPad('${obj.id}')" style="${btnStyle}background:#0a1a10;border:1px solid #1a3a20;color:var(--green)" ${freeCrew().length<1?'disabled':''}>Подготовить площадку</button>`;
+        }
+        html+=`</div>`;
+    }
+
+    return html;
+}
+
+// ---- TOPO MAP INTERACTION FUNCTIONS ----
+function switchDrillSite(siteId){
+    const site=TOPO_OBJECTS.find(o=>o.id===siteId);
+    if(!site)return;
+    activeDrillSite=siteId;
+    const wasActive=drillState.active;
+    drillState.active=false;
+    drillState.depth=0;
+    drillState.rockType=site.rockType||'реголит';
+    radioMsg('Диспетчер','dispatch',`Экипаж, переводим буровую установку на точку ${site.name}. Координаты: ${site.x.toFixed(1)}, ${site.y.toFixed(1)} км.`);
+    setTimeout(()=>{
+        radioMsg(CREW[3].callsign,'crew',`Принял. Перебазирование бура на ${site.name}. Порода: ${site.rockType||'неизвестна'}. ${site.he3conc?'Концентрация He3: '+site.he3conc+'.':''}`);
+    },rng(2000,4000)/speed);
+    // Apply resource multiplier to MIN system
+    if(site.resources){
+        const bonus=(site.resources.he3-0.3)*5; // bonus/penalty relative to baseline
+        SYS.MIN.degradeRate=clamp(0.006-bonus*0.001,0.002,0.01);
+    }
+    slog(`Буровая переведена на ${site.name}`,'ok');
+    addMissionLog('event',`Буровая переведена на ${site.name}. Глубина сброшена.`);
+    renderTopoSidebar();
+}
+
+function recallExpedition(){
+    if(expeditionState.recalled)return;
+    expeditionState.recalled=true;
+    expeditionState.recallETA=rng(40,80);
+    radioMsg('Диспетчер','dispatch','Экспедиция «Рассвет», приказ: прекратить работу, возвращайтесь на базу. Подтвердите.');
+    setTimeout(()=>{
+        radioMsg('EXP-DAWN','crew','Диспетчер, «Рассвет» принял. Сворачиваем лагерь. Ориентировочное ETA... '+Math.ceil(expeditionState.recallETA)+' минут. Образцы пакуем.');
+    },rng(3000,6000)/speed);
+    slog('Экспедиция «Рассвет» отозвана','inf');
+    addMissionLog('crew','Экспедиция «Рассвет» отозвана на базу.');
+    renderTopoSidebar();
+}
+
+function sendSupplies(){
+    if(INV.h2o_reserve.count<20||INV.o2_reserve.count<5){
+        radioMsg('Система','system','Недостаточно припасов для отправки.');return;
+    }
+    INV.h2o_reserve.count-=20;
+    INV.o2_reserve.count-=5;
+    radioMsg('Диспетчер','dispatch','Экспедиция «Рассвет», отправляем ровер с припасами. H2O: 20л, O2: 5кг.');
+    setTimeout(()=>{
+        radioMsg('EXP-DAWN','crew','Диспетчер, подтверждаем! Припасы очень кстати. Моральный дух поднялся. Спасибо!');
+        for(const c of CREW) c.morale=clamp(c.morale+5,0,100);
+    },rng(5000,10000)/speed);
+    slog('Припасы отправлены экспедиции','ok');
+    addMissionLog('supply','Припасы отправлены экспедиции «Рассвет»: H2O 20л, O2 5кг.');
+    renderTopoSidebar();
+}
+
+function setExpeditionWaypoint(wpId){
+    const wp=TOPO_OBJECTS.find(o=>o.id===wpId);
+    if(!wp)return;
+    expeditionState.destination=wpId;
+    radioMsg('Диспетчер','dispatch',`Экспедиция «Рассвет», новый маршрут: точка ${wp.name}. Координаты: ${wp.x.toFixed(1)}, ${wp.y.toFixed(1)} км.`);
+    setTimeout(()=>{
+        const responses=[
+            'Принял новый маршрут. Корректируем курс. Рельеф сложный, но пройдём.',
+            'Маршрут принят. Интересный участок, давно хотели туда заглянуть.',
+            'Подтверждаю. Перенаправляемся. Оценка: доберёмся за 30-40 минут.',
+        ];
+        radioMsg('EXP-DAWN','crew','Диспетчер, '+pick(responses));
+    },rng(3000,6000)/speed);
+    slog('Экспедиция перенаправлена к '+wp.name,'inf');
+    addMissionLog('crew','Маршрут экспедиции изменён: '+wp.name+'.');
+    renderTopoSidebar();
+}
+
+function startTopoInvestigation(anomalyId){
+    const anomaly=TOPO_OBJECTS.find(o=>o.id===anomalyId);
+    if(!anomaly)return;
+    if(activeInvestigations.length>0){radioMsg('Система','system','Расследование уже идёт.');return;}
+    if(freeCrew().length<1){radioMsg('Система','system','Нет свободного персонала.');return;}
+    // Create a mystery WO linked to this anomaly
+    const wo=createWO(anomaly.name,'Аномалия обнаружена на топографической карте: '+anomaly.info,
+        'LAB',2);
+    wo.mystery=true;
+    wo.topoAnomaly=anomalyId;
+    startInvestigation(wo.id);
+    renderTopoSidebar();
+}
+
+function prepareLandingPad(padId){
+    if(freeCrew().length<1){radioMsg('Система','system','Нет свободного персонала.');return;}
+    const pad=TOPO_OBJECTS.find(o=>o.id===padId);
+    if(!pad)return;
+    const c=freeCrew()[0];
+    padPrepared[padId]=true;
+    c.status='busy';c.task='Подготовка площадки';
+    radioMsg('Диспетчер','dispatch',`${c.callsign}, подготовьте посадочную площадку ${pad.name}. Проверка маяков и расчистка.`);
+    setTimeout(()=>{
+        radioMsg(c.callsign,'crew',`Площадка ${pad.name} подготовлена. Маяки активны, зона расчищена.`);
+        c.status='free';c.task=null;c.fatigue=clamp(c.fatigue+8,0,100);
+        slog(pad.name+' подготовлена','ok');
+        addMissionLog('event','Посадочная площадка '+pad.name+' подготовлена.');
+        renderTopoSidebar();
+    },rng(15000,25000)/speed);
+    renderTopoSidebar();
+}
+
+function addDiscoveryPOI(name,x,y,info){
+    const id='disc_'+Date.now();
+    const poi={id:id,type:'discovery',name:name,x:x,y:y,info:info,color:'#44ffaa',icon:'★'};
+    TOPO_OBJECTS.push(poi);
+    discoveredPOIs.push(poi);
+    radioMsg('Система','system','Новая точка интереса нанесена на карту: '+name);
+    flashTab('mob-tab-radar');
+    return poi;
 }
 
 function renderTopoMap(){
