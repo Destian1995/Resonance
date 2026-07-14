@@ -284,6 +284,40 @@ body{
 .spd-btn.active{color:var(--green);border-color:var(--green)}
 .spd-btn:hover{border-color:var(--accent)}
 
+/* Radar zoom overlay */
+#radar-zoom-overlay{
+    display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(2,4,8,0.95);z-index:150;
+    flex-direction:row;align-items:stretch;
+}
+#radar-zoom-overlay.show{display:flex}
+#radar-zoom-close{
+    position:absolute;top:12px;right:16px;z-index:160;
+    background:none;border:1px solid var(--dim);color:var(--dim);
+    font-size:18px;width:32px;height:32px;cursor:pointer;border-radius:4px;
+    font-family:inherit;
+}
+#radar-zoom-close:hover{border-color:var(--accent);color:var(--accent2)}
+#radar-zoom-container{flex:1;position:relative;overflow:hidden;min-width:0}
+#radar-zoom-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
+#radar-zoom-detail{
+    width:300px;flex-shrink:0;border-left:1px solid var(--border);
+    padding:16px;overflow-y:auto;background:#060a10;
+}
+#radar-zoom-detail h3{color:var(--accent2);font-size:14px;margin-bottom:12px}
+#rzd-body{font-size:11px;line-height:1.8}
+.rzd-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #0a1218}
+.rzd-label{color:var(--dim)}
+.rzd-val{color:var(--text2);text-align:right}
+/* Investigation WO tag */
+.wo-tag-mystery{
+    font-size:8px;padding:1px 4px;border-radius:2px;
+    background:#1a1028;color:#aa66ff;margin-left:4px;
+}
+/* Clickable radar hint */
+#radar-section,#deepspace-section{cursor:pointer}
+#radar-section:hover,#deepspace-section:hover{outline:1px solid rgba(0,136,204,0.3)}
+
 /* Modal */
 #modal-overlay{
     display:none;position:fixed;top:0;left:0;right:0;bottom:0;
@@ -388,7 +422,6 @@ body{
         justify-content:center;
     }
     .tb-section{padding:2px 5px;border-right:none;font-size:9px}
-    .tb-spd-section{width:100%;justify-content:center;margin:2px 0 0}
     /* Hide less important topbar items on mobile */
     .tb-hide-mobile{display:none!important}
 
@@ -525,11 +558,8 @@ body{
         <span class="led led-off" id="tx-led-top" style="margin-left:2px"></span>
         <span class="tb-label" style="font-size:8px">TX</span>
     </div>
-    <div class="tb-section tb-spd-section" style="border:none">
+    <div class="tb-section" style="border:none">
         <div class="spd-controls">
-            <button class="spd-btn active" id="spb-1" onclick="setSpeed(1)">1×</button>
-            <button class="spd-btn" id="spb-5" onclick="setSpeed(5)">5×</button>
-            <button class="spd-btn" id="spb-15" onclick="setSpeed(15)">15×</button>
             <button class="spd-btn" id="spb-0" onclick="togglePause()">▌▌</button>
         </div>
     </div>
@@ -655,6 +685,18 @@ body{
     <p id="crit-reason"></p>
     <p id="crit-stats"></p>
     <button onclick="location.reload()">ПЕРЕЗАПУСК СИМУЛЯЦИИ</button>
+</div>
+
+<!-- RADAR ZOOM OVERLAY -->
+<div id="radar-zoom-overlay">
+    <button id="radar-zoom-close" onclick="closeRadarZoom()">✕</button>
+    <div id="radar-zoom-container">
+        <canvas id="radar-zoom-canvas"></canvas>
+    </div>
+    <div id="radar-zoom-detail">
+        <h3 id="rzd-title">Наведите на объект</h3>
+        <div id="rzd-body"></div>
+    </div>
 </div>
 
 <script>
@@ -850,6 +892,37 @@ const EVENTS = [
      crew_lines:['{c}: Сильные помехи на канале S-band. Похоже на отражение от кратера.','{c}: Переключаюсь на X-band... Лучше, но полоса уже. Земля, как слышите?']},
     {type:'structural_creak',name:'Деформация конструкции',sys:['LSS','THM'],dmg:[6,12],sev:'warn',
      crew_lines:['{c}: Слышу скрежет в переходе Альфа-Браво! Термическая деформация!','{c}: Проверяю... Болт крепления лопнул. Нужна замена и усиление.']},
+    // === MYSTERIOUS EVENTS ===
+    {type:'signal_anomaly',name:'Аномальный сигнал',sys:['COM'],dmg:[2,5],sev:'warn',mystery:true,
+     crew_lines:['{c}: Диспетчер... Фиксирую сигнал на частоте 1420 МГц. Повторяющийся паттерн.','{c}: Это не наши спутники. Источник — за пределами лунной орбиты. Записываю.']},
+    {type:'light_flash',name:'Необъяснимая вспышка',sys:[],dmg:[0,0],sev:'warn',mystery:true,
+     crew_lines:['{c}: Видел вспышку на поверхности, 3 км к югу! Яркая, белая, длительность — полсекунды.','{c}: Камера 7 зафиксировала. Не похоже на удар метеорита — нет выброса.']},
+    {type:'temp_spot',name:'Термическая аномалия грунта',sys:['THM'],dmg:[1,3],sev:'warn',mystery:true,
+     crew_lines:['{c}: Термодатчик T-14 показывает +40°C в грунте. Это невозможно здесь.','{c}: Подтверждаю, инфракрасная камера видит горячее пятно. Диаметр ~2 метра.']},
+    {type:'seismic_pattern',name:'Ритмичные сейсмические импульсы',sys:['MIN'],dmg:[1,4],sev:'warn',mystery:true,
+     crew_lines:['{c}: Сейсмограф... Это странно. Ритмичные импульсы с интервалом ровно 12 секунд.','{c}: Не похоже на естественное лунотрясение. Слишком регулярно.']},
+    {type:'static_charge',name:'Аномальное электростатическое поле',sys:['PWR','COM'],dmg:[3,7],sev:'warn',mystery:true,
+     crew_lines:['{c}: Волосы дыбом встают. Буквально. Статическое поле огромное!','{c}: Все металлические поверхности искрят. Приборы сбоят. Чем это вызвано?']},
+    {type:'shadow_movement',name:'Движение в тени кратера',sys:[],dmg:[0,0],sev:'warn',mystery:true,
+     crew_lines:['{c}: Камера 12... Я вижу движение в тени кратера. Медленное, но определённое.','{c}: Пересматриваю запись... Похоже на смещение реголита. Но что его двигает?']},
+    {type:'radio_voices',name:'Голоса в радиошуме',sys:['COM'],dmg:[1,3],sev:'warn',mystery:true,
+     crew_lines:['{c}: На канале 7... Я слышу... голоса? Нет, скорее модулированный шум.','{c}: Записал. Прогоню через анализатор спектра. Очень похоже на речь, но не наша частота.']},
+    {type:'gravity_anomaly',name:'Гравитационная аномалия',sys:['MIN','LAB'],dmg:[2,5],sev:'warn',mystery:true,
+     crew_lines:['{c}: Гравиметр показывает флуктуацию! +0.3% к норме... и снова норма.','{c}: Масконы? Но мы не над масконом. Запускаю длительное измерение.']},
+    {type:'dust_levitation',name:'Левитация пыли',sys:[],dmg:[0,0],sev:'warn',mystery:true,
+     crew_lines:['{c}: Выхожу к иллюминатору... Пылинки ЛЕТАЮТ. Поднимаются над поверхностью на метр.','{c}: Фонтанирование реголита? Электростатика? Но мы в тени, откуда заряд?']},
+    {type:'equipment_move',name:'Самопроизвольное перемещение оборудования',sys:['LAB'],dmg:[1,3],sev:'warn',mystery:true,
+     crew_lines:['{c}: Контейнер с образцами сместился на 15 см от места. Никто не трогал.','{c}: Проверяю крепления... Всё было затянуто. Вибрация? Но сейсмограф чист.']},
+    {type:'compass_spin',name:'Вращение магнитометра',sys:['COM'],dmg:[2,4],sev:'warn',mystery:true,
+     crew_lines:['{c}: Магнитометр вращается как сумасшедший! Локальное магнитное поле нестабильно!','{c}: Не может быть... На Луне нет глобального магнитного поля. Это что-то локальное.']},
+    {type:'crystal_growth',name:'Аномальный рост кристаллов',sys:['LAB'],dmg:[1,2],sev:'warn',mystery:true,
+     crew_lines:['{c}: Образец LR-22... Кристаллы выросли на 400% за ночь. Это невозможно при таких условиях.','{c}: Структура не совпадает ни с чем в базе данных. Нужна консультация Земли.']},
+    {type:'power_drain',name:'Необъяснимый расход энергии',sys:['PWR'],dmg:[4,8],sev:'warn',mystery:true,
+     crew_lines:['{c}: 800 ватт уходят в никуда! Все потребители учтены, а баланс не сходится!','{c}: Проверил каждый контур. Потери реальные, но куда уходит энергия — непонятно.']},
+    {type:'phantom_signal',name:'Фантомный сигнал от несуществующего спутника',sys:['COM'],dmg:[1,3],sev:'warn',mystery:true,
+     crew_lines:['{c}: Принимаю телеметрию от спутника с ID LUNA-X7. Такого нет в реестре!','{c}: Сигнал структурированный, содержит данные. Но источник... его не существует.']},
+    {type:'time_drift',name:'Рассинхронизация бортовых часов',sys:['COM','LAB'],dmg:[2,4],sev:'warn',mystery:true,
+     crew_lines:['{c}: Часы секции Дельта отстают на 0.7 секунды от центральных. Не было калибровки.','{c}: Перепроверил — атомные часы лаборатории тоже показывают дрейф. Гравитационный эффект?']},
 ];
 
 // ---- CREW CHATTER ENGINE ----
@@ -976,7 +1049,159 @@ const AMBIENT_CHATTER = [
     {cond:T,weight:1,lines:[CH('{c1}','Менял термопасту на процессоре бортового компьютера. Грелся до 85°C, теперь 62°C.')]},
     {cond:T,weight:1,lines:[CH('{c1}','Обновил прошивку контроллера шлюза. Версия 2.4.1 — исправлена ошибка с таймером.')]},
     {cond:T,weight:1,lines:[CH('{c1}','{name2}, посмотри логи с датчика D-14. Шум появился после последнего лунотрясения.'),CH('{c2}','Вижу. Похоже на ложные срабатывания. Откалибрую заново.')]},
+    // === MYSTERY REACTIONS / THEORIES / PARANOIA ===
+    {cond:T,weight:1,lines:[CH('{c1}','Ты слышал про аномалию Apollo 12? Они тоже фиксировали сейсмические паттерны...'),CH('{c2}','Не начинай. Есть рациональное объяснение. Всегда есть.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Марс-Аврора сообщала о похожих явлениях в прошлом месяце. Совпадение?'),CH('{c2}','Передай им наши данные. Пусть сравнят.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Не могу заснуть. Всё думаю о том сигнале на 1420 МГц.'),CH('{c2}','Водородная линия. Классика SETI. Скорее всего, отражение от Земли.'),CH('{c1}','Скорее всего... Но паттерн был слишком правильный.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','{name2}, ты веришь в... ну, что мы здесь не одни?'),CH('{c2}','Я верю в физику. И в то, что мне нужно поспать. Спокойной ночи.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Перечитал отчёт Apollo 14 — у них тоже магнитометр сходил с ума в районе кратера.'),CH('{c2}','Лунные свёрлы — локальные магнитные аномалии. Давно известно.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Камера 12 опять записала что-то странное. Тень двигается, но солнце неподвижно.'),CH('{c2}','Артефакт сжатия видео. Проверь кодек.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Третий раз за неделю просыпаюсь от ощущения вибрации. Сейсмограф чист.'),CH('{c2}','Инфразвук от систем вентиляции. Уже было на МКС.')]},
+    {cond:()=>isDayPhase()>=0.5,weight:2,lines:[CH('{c1}','В лунную ночь тени другие. Глубже, абсолютно чёрные. Ничего не видно.'),CH('{c2}','Без атмосферного рассеяния тень — это полный ноль фотонов. Привыкай.')]},
+    {cond:()=>isDayPhase()>=0.5,weight:2,lines:[CH('{c1}','Вчера ночью слышал стук из-за стены. Из внешней стены. Там вакуум.'),CH('{c2}','Термические сокращения металла. Температура снаружи минус 185, конечно трещит.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Анализ тех данных с масс-спектрометра... Аминокислоты в лунном грунте?'),CH('{c2}','Контаминация образца. Перепроверь протокол забора.'),CH('{c1}','Перепроверил трижды. Чисто.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Земля запросила все наши данные по аномалиям. Отправил 40 гигабайт.'),CH('{c2}','Пусть анализируют. У них вычислительных мощностей больше.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Читал, что китайский луноход тоже фиксировал странные объекты на горизонте.'),CH('{c2}','Оптическая иллюзия в условиях низкого горизонта. Статья была в Nature.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Температурная аномалия в грунте — я вычислил, она перемещается. 2 метра за сутки.'),CH('{c2}','Подземный лёд, нагретый солнцем через трещину? Тепловая конвекция?'),CH('{c1}','Конвекция на Луне? Серьёзно?')]},
+    {cond:T,weight:1,lines:[CH('{c1}','{name2}, помнишь расследование прошлой аномалии? Результат был "неопределённый".'),CH('{c2}','Да, и Земля попросила не распространяться. Протокол.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Записал все аномалии на временну́ю шкалу. Есть паттерн — каждые 14.7 дней.'),CH('{c2}','Полсинодического месяца? Приливные силы?')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Ладно, научный факт: мы на самом деле не знаем, что у Луны внутри. Ядро жидкое?'),CH('{c2}','Частично. Но к нашим аномалиям это не имеет отношения.'),CH('{c1}','Может и имеет.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Скажи честно — тебе здесь не бывает жутко? Особенно по ночам?'),CH('{c2}','Бывает. Но я инженер, а не фантаст. Работаю с фактами.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Связь с экспедицией «Рассвет» пропала на 40 секунд. Потом вернулась как ни в чём не бывало.'),CH('{c2}','Горы блокировали сигнал. Они за хребтом.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Пересматриваю записи камер. На камере 3 в 02:47 — световое пятно на реголите. Источника нет.'),CH('{c2}','Блик от станции? Отражение от антенны?'),CH('{c1}','Проверил — угол не совпадает. Ничто на станции так не отражает.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Надо будет включить параграф об аномалиях в годовой отчёт. Земля ждёт.'),CH('{c2}','Пиши осторожно. Не хочу, чтобы нас считали за сумасшедших.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Провёл корреляцию: аномалии чаще во время лунной ночи. В 3 раза чаще.'),CH('{c2}','Электростатика реголита в тени? Ночной заряд без фотоэлектрического сброса?')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Тестирую новую гипотезу: подповерхностный лёд сублимирует и создаёт микроатмосферу.'),CH('{c2}','Этим можно объяснить левитацию пыли, но не сигналы. Не всё сразу.')]},
 ];
+
+// ---- INVESTIGATION SYSTEM ----
+const INVESTIGATION_CHATTER = [
+    '{c}: Замеры на месте аномалии. Пока ничего необычного... Стоп, вот опять!',
+    '{c}: Анализирую данные... Паттерн не совпадает ни с одной известной моделью.',
+    '{c}: {name2}, иди сюда. Ты должен это видеть.',
+    '{c}: Отправляю данные на Землю. Пусть посмотрят свежим взглядом.',
+    '{c}: Третий час наблюдаю. Явление повторяется, но нерегулярно.',
+    '{c}: Нашёл кое-что... Не уверен пока. Нужно больше данных.',
+    '{c}: Это выходит за рамки моей специализации. Но выглядит... необычно.',
+    '{c}: Провёл спектральный анализ. Результаты... неожиданные.',
+    '{c}: Записываю всё на видео. Если расскажу без доказательств — не поверят.',
+];
+
+const INVESTIGATION_CONCLUSIONS = {
+    scientific:[
+        'Расследование завершено. Причина установлена: {причина}. Явление полностью объясняется известной физикой.',
+        'Итог расследования: {причина}. Рекомендовано обновить модели для учёта данного фактора.',
+    ],
+    inconclusive:[
+        'Расследование завершено. Причина НЕ УСТАНОВЛЕНА. Данные собраны, отправлены на Землю для дальнейшего анализа.',
+        'Итог: явление прекратилось самопроизвольно. Воспроизвести не удалось. Статус: необъяснённое.',
+        'Расследование закрыто — недостаточно данных. Рекомендую установить дополнительные датчики.',
+    ],
+    discovery:[
+        'ОТКРЫТИЕ! Расследование привело к обнаружению ранее неизвестного подповерхностного процесса. Публикация!',
+        'Неожиданный результат: аномалия связана с уникальными свойствами лунного грунта в этом районе. Научная ценность — высокая.',
+        'Результат расследования: обнаружен новый минерал в образцах. Передаём данные на Землю, ждём подтверждения.',
+    ],
+};
+const SCIENTIFIC_REASONS = [
+    'электростатический разряд реголита','термическая деградация датчика',
+    'отражение сигнала от орбитального мусора','микросейсмическая активность масконов',
+    'фотоэлектрический эффект в лунной пыли','резонанс в системе охлаждения базы',
+    'космические лучи вызвали сбой электроники','деформация грунта из-за термоциклирования',
+];
+
+let activeInvestigations = [];
+let mysteryWOCount = 0;
+
+function startInvestigation(woId){
+    const wo = workOrders.find(w=>w.id===woId);
+    if(!wo || !wo.mystery) return;
+    const avail = freeCrew();
+    if(avail.length === 0){radioMsg('Система','system','Нет свободного персонала для расследования.');return;}
+    const c = avail[0];
+    const invTime = rng(40,90);
+    wo.status = 'РАССЛЕДОВАНИЕ';
+    wo.assignee = c.full;
+    wo.timeLeft = invTime;
+    wo.totalTime = invTime;
+    c.status = 'busy';
+    c.task = 'Расследование: '+wo.title;
+
+    radioMsg('Диспетчер','dispatch',`${c.callsign}, начинайте расследование: ${wo.title}. Соберите все данные.`);
+    setTimeout(()=>{
+        radioMsg(c.callsign,'crew',`Принял, Диспетчер. Приступаю к расследованию. Беру оборудование.`);
+    },rng(1500,3000)/speed);
+
+    const inv = {woId:wo.id, crewId:c.id, chatterCD:rng(8,15), elapsed:0, totalTime:invTime};
+    activeInvestigations.push(inv);
+}
+
+function updateInvestigations(sdt){
+    for(let i=activeInvestigations.length-1;i>=0;i--){
+        const inv=activeInvestigations[i];
+        const wo=workOrders.find(w=>w.id===inv.woId);
+        if(!wo){activeInvestigations.splice(i,1);continue;}
+
+        inv.elapsed+=sdt;
+        wo.timeLeft=Math.max(0,inv.totalTime-inv.elapsed);
+
+        // Investigation chatter
+        inv.chatterCD-=sdt;
+        if(inv.chatterCD<=0){
+            inv.chatterCD=rng(10,20);
+            const c=CREW.find(cr=>cr.id===inv.crewId);
+            const c2=pick(CREW.filter(cr=>cr.id!==inv.crewId));
+            if(c){
+                const line=pick(INVESTIGATION_CHATTER)
+                    .replace('{c}',c.callsign)
+                    .replace('{name2}',c2?c2.name:'коллега');
+                radioMsg(c.callsign,'crew',line);
+            }
+        }
+
+        // Complete
+        if(inv.elapsed>=inv.totalTime){
+            const c=CREW.find(cr=>cr.id===inv.crewId);
+            if(c){c.status='free';c.task=null;c.fatigue=clamp(c.fatigue+15,0,100);}
+
+            // Determine outcome
+            const roll=Math.random();
+            let outcomeType, conclusionText;
+            if(roll<0.4){
+                outcomeType='scientific';
+                conclusionText=pick(INVESTIGATION_CONCLUSIONS.scientific).replace('{причина}',pick(SCIENTIFIC_REASONS));
+            } else if(roll<0.75){
+                outcomeType='inconclusive';
+                conclusionText=pick(INVESTIGATION_CONCLUSIONS.inconclusive);
+            } else {
+                outcomeType='discovery';
+                conclusionText=pick(INVESTIGATION_CONCLUSIONS.discovery);
+                // Discovery bonus
+                SYS.LAB.params.exp.val=clamp(SYS.LAB.params.exp.val+8,0,100);
+            }
+
+            wo.status='ЗАВЕРШЁН';
+            radioMsg(c?c.callsign:'Экипаж','crew',conclusionText);
+            slog(`Расследование WO-${String(wo.id).padStart(4,'0')}: ${outcomeType==='scientific'?'научное объяснение':outcomeType==='inconclusive'?'неопределённый результат':'новое открытие!'}`
+                ,outcomeType==='discovery'?'ok':outcomeType==='inconclusive'?'wrn':'inf');
+
+            // Earth reaction
+            setTimeout(()=>{
+                const reactions={
+                    scientific:['Хьюстон: данные расследования получены. Подтверждаем — естественное явление. Хорошая работа.'],
+                    inconclusive:['Хьюстон: ...интересно. Отправьте все записи, мы подключим дополнительные специалистов. Пока воздержитесь от выводов.'],
+                    discovery:['Хьюстон: ОТЛИЧНО! Научный комитет в восторге. Это может быть прорыв. Запрашиваем дополнительные образцы!'],
+                };
+                const r=pick(reactions[outcomeType]);
+                radioMsg('Хьюстон','earth',r);
+                elog('from',r);
+            },(2600+rng(5000,12000))/speed);
+
+            activeInvestigations.splice(i,1);
+            setTimeout(()=>{workOrders=workOrders.filter(w=>w.id!==wo.id);},12000/speed);
+        }
+    }
+}
 
 let chatterCD = 4;
 let radioMessages = [];
@@ -1157,9 +1382,10 @@ function renderWorkOrders(){
             const pClass = {1:'wo-p1',2:'wo-p2',3:'wo-p3'}[wo.priority];
             const pLabel = {1:'КРИТИЧ',2:'ВАЖНЫЙ',3:'ШТАТН'}[wo.priority];
             const prog = wo.totalTime>0? ((wo.totalTime-wo.timeLeft)/wo.totalTime*100):0;
-            return `<div class="wo-card" onclick="woClick(${wo.id})">
+            const mysteryTag = wo.mystery?'<span class="wo-tag-mystery">РАССЛЕДОВАНИЕ</span>':'';
+            return `<div class="wo-card" onclick="woClick(${wo.id})" ${wo.mystery?'style="border-color:#2a1838"':''}>
                 <div class="wo-header">
-                    <span class="wo-id">WO-${String(wo.id).padStart(4,'0')}</span>
+                    <span class="wo-id">WO-${String(wo.id).padStart(4,'0')}${mysteryTag}</span>
                     <span class="wo-priority ${pClass}">${pLabel}</span>
                 </div>
                 <div class="wo-title">${wo.title}</div>
@@ -1167,7 +1393,7 @@ function renderWorkOrders(){
                     <span>${wo.assignee||'Не назначен'}</span>
                     <span>${wo.status}</span>
                 </div>
-                ${wo.status==='В РАБОТЕ'?`<div class="wo-progress"><div class="wo-progress-fill" style="width:${prog}%"></div></div>`:''}
+                ${(wo.status==='В РАБОТЕ'||wo.status==='РАССЛЕДОВАНИЕ')?`<div class="wo-progress"><div class="wo-progress-fill" style="width:${prog}%;${wo.mystery?'background:#8844cc':''}"></div></div>`:''}
             </div>`;
         }).join('');
     }
@@ -1183,7 +1409,11 @@ function woClick(id){
 
     const btns=[];
     if(wo.status==='ОЖИДАНИЕ'){
-        btns.push({text:'Назначить ремонт',cls:'m-primary',action:()=>{assignWO(wo);closeModal();}});
+        if(wo.mystery){
+            btns.push({text:'Начать расследование',cls:'m-primary',action:()=>{startInvestigation(wo.id);closeModal();}});
+        } else {
+            btns.push({text:'Назначить ремонт',cls:'m-primary',action:()=>{assignWO(wo);closeModal();}});
+        }
     }
     btns.push({text:'Закрыть',cls:'',action:closeModal});
     showModal(`WO-${String(wo.id).padStart(4,'0')}: ${wo.title}`,body,btns);
@@ -1224,6 +1454,7 @@ function assignWO(wo){
 // ---- RENDER: QUICK ACTIONS ----
 function renderActions(){
     const avail=freeCrew().length;
+    const hasMysteryWO=workOrders.some(w=>w.mystery&&w.status==='ОЖИДАНИЕ');
     const el=document.getElementById('quick-actions');
     el.innerHTML=`
         <button class="qa-btn" onclick="cmdRepairSys()" ${avail<1?'disabled':''}>Назначить ремонт</button>
@@ -1236,6 +1467,7 @@ function renderActions(){
         <button class="qa-btn" onclick="cmdCoolant()" ${INV.coolant_l.count<10?'disabled':''}>Заправка хлад. (${INV.coolant_l.count})</button>
         <button class="qa-btn" onclick="cmdSendReport()">Рапорт на Землю</button>
         <button class="qa-btn" onclick="cmdRestCrew()">Отдых экипажа</button>
+        ${hasMysteryWO?`<button class="qa-btn" onclick="cmdInvestigate()" ${avail<1?'disabled':''} style="border-color:#6644aa;color:#aa88ff">Начать расследование</button>`:''}
         <button class="qa-btn qa-danger" onclick="cmdEmergVent()">Аварийн. вентиляция</button>
         <button class="qa-btn qa-danger" onclick="cmdRebootSys()">Перезагр. системы</button>
     `;
@@ -1404,6 +1636,16 @@ function cmdRebootSys(){
         },15000/speed);
         closeModal();
     }},{text:'Отмена',cls:'',action:closeModal}]);
+}
+
+function cmdInvestigate(){
+    const mysteryWOs=workOrders.filter(w=>w.mystery&&w.status==='ОЖИДАНИЕ');
+    if(mysteryWOs.length===0){radioMsg('Система','system','Нет аномалий для расследования.');return;}
+    const wo=mysteryWOs[0];
+    showModal(`Расследование: ${wo.title}`,
+        `<p>${wo.desc}</p><p>Расследование потребует одного свободного члена экипажа и займёт 40-90 секунд.</p><p>Возможные итоги: научное объяснение, неопределённый результат, или новое открытие.</p>`,
+        [{text:'Начать расследование',cls:'m-primary',action:()=>{startInvestigation(wo.id);closeModal();}},
+         {text:'Отмена',cls:'',action:closeModal}]);
 }
 
 // ---- RENDER: CREW STRIP ----
@@ -2264,6 +2506,9 @@ function update(dt){
         generateChatter();
     }
 
+    // ---- INVESTIGATIONS ----
+    updateInvestigations(sdt);
+
     // ---- INTERPLANETARY COMMS ----
     ipChatterCD-=sdt;
     if(ipChatterCD<=0){
@@ -2334,19 +2579,31 @@ function spawnEvent(evt){
 
     // Create work order
     const wo=createWO(
-        `${evt.name}`,
-        `Событие: ${evt.name}. Затронуты: ${evt.sys.map(s=>SYS[s]?.name).join(', ')}. Урон: ${dmg.toFixed(0)}%`,
-        evt.sys[0],
+        `${evt.mystery?'[АНОМАЛИЯ] ':''}${evt.name}`,
+        `Событие: ${evt.name}. ${evt.sys.length?'Затронуты: '+evt.sys.map(s=>SYS[s]?.name).join(', ')+'.':''} ${dmg>0?'Урон: '+dmg.toFixed(0)+'%':'Урон: нет'}`,
+        evt.sys[0]||'LAB',
         evt.sev==='crit'?1:2
     );
 
+    // Tag mystery events
+    if(evt.mystery){
+        wo.mystery=true;
+        mysteryWOCount++;
+    }
+
     // Earth notification
     setTimeout(()=>{
-        elog('to',`АВАРИЙНЫЙ: ${evt.name}. Системы: ${evt.sys.join(',')}. Урон ${dmg.toFixed(0)}%.`);
-        radioMsg('Диспетчер','earth',`Хьюстон, аварийный рапорт: ${evt.name}. ${evt.sys.map(s=>SYS[s]?.name).join(', ')} повреждены.`);
+        const sysText=evt.sys.length?evt.sys.join(','):'—';
+        const dmgText=dmg>0?`Урон ${dmg.toFixed(0)}%.`:'Без повреждений.';
+        elog('to',`${evt.mystery?'АНОМАЛИЯ':'АВАРИЙНЫЙ'}: ${evt.name}. Системы: ${sysText}. ${dmgText}`);
+        radioMsg('Диспетчер','earth',`Хьюстон, ${evt.mystery?'отчёт об аномалии':'аварийный рапорт'}: ${evt.name}. ${evt.sys.length?evt.sys.map(s=>SYS[s]?.name).join(', ')+' затронуты.':'Повреждений систем нет.'}`);
     },rng(3000,8000)/speed);
     setTimeout(()=>{
-        const r=pick([
+        const r=evt.mystery?pick([
+            'Хьюстон: ...интересно. Зафиксируйте все данные. Рекомендуем начать расследование.',
+            'Хьюстон: получено. Подобное явление зафиксировано впервые. Начните расследование и отправьте все записи.',
+            'Хьюстон: принято. Научный комитет запрашивает детальное расследование. Приоритет высокий.',
+        ]):pick([
             'Хьюстон: принимаем аварийный. Рекомендуем приоритетный ремонт. Держите нас в курсе.',
             'Хьюстон: копия. Телеметрия подтверждает повреждения. Группа поддержки анализирует.',
             'Хьюстон: получено. Рекомендация — изолировать повреждённые секции и начать ремонт.',
@@ -2480,6 +2737,310 @@ document.addEventListener('keydown',e=>{
     if(e.key==='3')setSpeed(15);
 });
 
+// ---- RADAR ZOOM OVERLAY ----
+let radarZoomMode=null; // 'orbital' or 'deepspace' or null
+let radarZoomMouse={x:0,y:0};
+let radarZoomHovered=null;
+
+function openRadarZoom(mode){
+    radarZoomMode=mode;
+    radarZoomHovered=null;
+    document.getElementById('radar-zoom-overlay').classList.add('show');
+    document.getElementById('rzd-title').textContent=mode==='orbital'?'ORBITAL RADAR — ZOOM':'DEEP SPACE SCAN — ZOOM';
+    document.getElementById('rzd-body').innerHTML='<div style="color:var(--dim);padding:20px">Наведите курсор на объект для отображения деталей</div>';
+}
+function closeRadarZoom(){
+    radarZoomMode=null;
+    document.getElementById('radar-zoom-overlay').classList.remove('show');
+}
+
+document.getElementById('radar-section').addEventListener('click',()=>openRadarZoom('orbital'));
+document.getElementById('deepspace-section').addEventListener('click',()=>openRadarZoom('deepspace'));
+
+document.getElementById('radar-zoom-overlay').addEventListener('click',(e)=>{
+    if(e.target.id==='radar-zoom-overlay') closeRadarZoom();
+});
+
+document.getElementById('radar-zoom-canvas').addEventListener('mousemove',(e)=>{
+    const rect=e.target.getBoundingClientRect();
+    radarZoomMouse.x=e.clientX-rect.left;
+    radarZoomMouse.y=e.clientY-rect.top;
+});
+
+document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&radarZoomMode)closeRadarZoom();
+});
+
+function renderZoomedRadar(){
+    if(!radarZoomMode)return;
+    const canvas=document.getElementById('radar-zoom-canvas');
+    const container=document.getElementById('radar-zoom-container');
+    const rect=container.getBoundingClientRect();
+    canvas.width=rect.width*devicePixelRatio;
+    canvas.height=rect.height*devicePixelRatio;
+    const ctx=canvas.getContext('2d');
+    ctx.scale(devicePixelRatio,devicePixelRatio);
+    canvas.style.width=rect.width+'px';
+    canvas.style.height=rect.height+'px';
+    const W=rect.width,H=rect.height;
+
+    ctx.fillStyle='#020406';ctx.fillRect(0,0,W,H);
+
+    if(radarZoomMode==='orbital'){
+        renderZoomedOrbital(ctx,W,H);
+    } else {
+        renderZoomedDeepSpace(ctx,W,H);
+    }
+}
+
+function renderZoomedOrbital(ctx,W,H){
+    const cx=W*0.5,cy=H*0.5;
+    const maxR=Math.min(W*0.42,H*0.42);
+
+    // Range rings
+    ctx.strokeStyle='#0a1420';ctx.lineWidth=0.8;
+    for(let i=1;i<=5;i++){
+        const r=maxR*i/5;
+        ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+    }
+    // Cross + diagonals
+    ctx.beginPath();ctx.moveTo(cx-maxR,cy);ctx.lineTo(cx+maxR,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy-maxR);ctx.lineTo(cx,cy+maxR);ctx.stroke();
+    for(let a=0;a<360;a+=45){
+        const rad=a*Math.PI/180;
+        ctx.beginPath();ctx.moveTo(cx,cy);
+        ctx.lineTo(cx+Math.cos(rad)*maxR,cy+Math.sin(rad)*maxR);ctx.stroke();
+    }
+    // Range labels
+    ctx.fillStyle='#0c1824';ctx.font='9px monospace';ctx.textAlign='left';
+    const rlabels=['200км','500км','1000км','1500км','2000км'];
+    for(let i=1;i<=5;i++) ctx.fillText(rlabels[i-1],cx+maxR*i/5+4,cy-4);
+
+    // Sweep
+    const sa=radarSweep%(Math.PI*2);
+    for(let i=0;i<30;i++){
+        const a=sa-i*0.015;
+        const alpha=0.2*(1-i/30);
+        ctx.strokeStyle=`rgba(0,180,100,${alpha})`;ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(cx,cy);
+        ctx.lineTo(cx+Math.cos(a)*maxR,cy+Math.sin(a)*maxR);ctx.stroke();
+    }
+
+    // Base
+    ctx.fillStyle='#00ff88';ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(0,255,136,0.08)';ctx.beginPath();ctx.arc(cx,cy,14,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#00cc66';ctx.font='bold 10px monospace';ctx.textAlign='center';
+    ctx.fillText('РЕЗОНАНС-9',cx,cy+20);
+
+    // Satellites
+    let closest=null,closestDist=40;
+    for(const sat of SATS){
+        const rDist=sat.orbitR*maxR*0.9;
+        const sx=cx+Math.cos(sat.angle)*rDist;
+        const sy=cy+Math.sin(sat.angle)*rDist;
+        const angleDiff=((sa-sat.angle)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+        const brightness=angleDiff<1.5?(1-angleDiff/1.5):0.2;
+        const satCol=sat.health>80?[100,140,220]:sat.health>50?[200,180,60]:[220,60,60];
+
+        // Check mouse proximity
+        const dx=radarZoomMouse.x-sx, dy=radarZoomMouse.y-sy;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<closestDist){closestDist=dist;closest=sat;}
+
+        ctx.fillStyle=`rgba(${satCol[0]},${satCol[1]},${satCol[2]},${brightness*0.9+0.1})`;
+        ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);ctx.fill();
+        // Glow
+        ctx.fillStyle=`rgba(${satCol[0]},${satCol[1]},${satCol[2]},${brightness*0.25})`;
+        ctx.beginPath();ctx.arc(sx,sy,12,0,Math.PI*2);ctx.fill();
+
+        // Highlight hovered
+        const isHovered=closest===sat&&closestDist<40;
+        if(isHovered){
+            ctx.strokeStyle=`rgba(${satCol[0]},${satCol[1]},${satCol[2]},0.8)`;
+            ctx.lineWidth=2;
+            ctx.beginPath();ctx.arc(sx,sy,16,0,Math.PI*2);ctx.stroke();
+        }
+
+        // Label
+        ctx.fillStyle=`rgba(${satCol[0]},${satCol[1]},${satCol[2]},${clamp(brightness+0.3,0,1)})`;
+        ctx.font='9px monospace';ctx.textAlign='left';
+        ctx.fillText(sat.id,sx+10,sy-3);
+        ctx.font='8px monospace';ctx.fillStyle=`rgba(100,130,180,${clamp(brightness+0.2,0,0.9)})`;
+        ctx.fillText(`${sat.type} | ${sat.health.toFixed(0)}%`,sx+10,sy+8);
+
+        // Signal line
+        if(sat.signal>30&&brightness>0.3){
+            ctx.strokeStyle=`rgba(${satCol[0]},${satCol[1]},${satCol[2]},${brightness*0.12})`;
+            ctx.lineWidth=0.8;ctx.setLineDash([3,5]);
+            ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(cx,cy);ctx.stroke();
+            ctx.setLineDash([]);
+        }
+    }
+
+    // Title
+    ctx.fillStyle='#1a3050';ctx.font='11px monospace';ctx.textAlign='left';
+    ctx.fillText('ORBITAL RADAR — SATELLITE TRACKING [ZOOM]',10,20);
+    // Live
+    const rxOn=Math.sin(Date.now()/200)>0.3;
+    ctx.fillStyle=rxOn?'#00cc66':'#0a1a10';
+    ctx.beginPath();ctx.arc(W-16,16,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1a3040';ctx.textAlign='right';ctx.fillText('LIVE',W-24,19);
+
+    // Update detail panel
+    if(closest&&closestDist<40){
+        if(radarZoomHovered!==closest.id){
+            radarZoomHovered=closest.id;
+            showSatDetail(closest);
+        }
+    } else if(radarZoomHovered){
+        radarZoomHovered=null;
+        document.getElementById('rzd-body').innerHTML='<div style="color:var(--dim);padding:20px">Наведите курсор на объект для отображения деталей</div>';
+    }
+}
+
+function renderZoomedDeepSpace(ctx,W,H){
+    const cx=W*0.5,cy=H*0.5;
+    const maxR=Math.min(W*0.42,H*0.42);
+
+    // Range rings
+    ctx.strokeStyle='#080c18';ctx.lineWidth=0.8;
+    const ranges=['100K','500K','1M','3M','5M km'];
+    for(let i=1;i<=5;i++){
+        const r=maxR*i/5;
+        ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+        ctx.fillStyle='#0a1220';ctx.font='8px monospace';ctx.textAlign='left';
+        ctx.fillText(ranges[i-1],cx+r*0.7+4,cy-r*0.7);
+    }
+    ctx.beginPath();ctx.moveTo(cx-maxR,cy);ctx.lineTo(cx+maxR,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy-maxR);ctx.lineTo(cx,cy+maxR);ctx.stroke();
+
+    // Sweep
+    const sa=dsSweep%(Math.PI*2);
+    for(let i=0;i<20;i++){
+        const a=sa-i*0.012;
+        ctx.strokeStyle=`rgba(140,80,200,${0.15*(1-i/20)})`;ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(cx,cy);
+        ctx.lineTo(cx+Math.cos(a)*maxR,cy+Math.sin(a)*maxR);ctx.stroke();
+    }
+
+    // Moon center
+    ctx.fillStyle='#445';ctx.beginPath();ctx.arc(cx,cy,7,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#668';ctx.font='bold 9px monospace';ctx.textAlign='center';
+    ctx.fillText('ЛУНА',cx,cy+18);
+
+    // Objects
+    let closest=null,closestDist=40;
+    for(const obj of DS_OBJECTS){
+        const r=obj.dist*maxR;
+        const ox=cx+Math.cos(obj.angle)*r;
+        const oy=cy+Math.sin(obj.angle)*r;
+        const aDiff=((sa-obj.angle)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+        const bright=aDiff<1.2?(1-aDiff/1.2):0.15;
+
+        const dx=radarZoomMouse.x-ox,dy=radarZoomMouse.y-oy;
+        const dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<closestDist){closestDist=dist;closest=obj;}
+
+        ctx.globalAlpha=bright*0.8+0.2;
+        ctx.fillStyle=obj.color;
+        ctx.beginPath();ctx.arc(ox,oy,obj.size*1.5,0,Math.PI*2);ctx.fill();
+        // Glow
+        ctx.globalAlpha=bright*0.2;
+        ctx.beginPath();ctx.arc(ox,oy,obj.size*1.5+6,0,Math.PI*2);ctx.fill();
+
+        // Highlight
+        if(closest===obj&&closestDist<40){
+            ctx.globalAlpha=0.8;
+            ctx.strokeStyle=obj.color;ctx.lineWidth=2;
+            ctx.beginPath();ctx.arc(ox,oy,obj.size*1.5+12,0,Math.PI*2);ctx.stroke();
+        }
+
+        // Label
+        ctx.globalAlpha=clamp(bright+0.3,0,0.95);
+        ctx.fillStyle=obj.color;ctx.font='9px monospace';ctx.textAlign='left';
+        ctx.fillText(obj.label,ox+obj.size*1.5+6,oy-2);
+        ctx.font='8px monospace';ctx.fillStyle=`rgba(140,140,180,${clamp(bright+0.2,0,0.8)})`;
+        ctx.fillText(obj.type,ox+obj.size*1.5+6,oy+10);
+        ctx.globalAlpha=1;
+    }
+
+    // Title
+    ctx.fillStyle='#1a1830';ctx.font='11px monospace';ctx.textAlign='left';
+    ctx.fillText('DEEP SPACE SCAN — CISLUNAR [ZOOM]',10,20);
+    const liveOn=Math.sin(Date.now()/400)>0;
+    ctx.fillStyle=liveOn?'#8844cc':'#1a1020';
+    ctx.beginPath();ctx.arc(W-16,16,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#2a1838';ctx.textAlign='right';ctx.fillText('SCAN',W-24,19);
+
+    if(closest&&closestDist<40){
+        if(radarZoomHovered!==closest.id){
+            radarZoomHovered=closest.id;
+            showDSDetail(closest);
+        }
+    } else if(radarZoomHovered){
+        radarZoomHovered=null;
+        document.getElementById('rzd-body').innerHTML='<div style="color:var(--dim);padding:20px">Наведите курсор на объект для отображения деталей</div>';
+    }
+}
+
+function showSatDetail(sat){
+    document.getElementById('rzd-title').textContent=`${sat.id} — ${sat.name}`;
+    const hc=sat.health>80?'tp-nom':sat.health>50?'tp-warn':'tp-crit';
+    const sc=sat.signal>70?'tp-nom':sat.signal>40?'tp-warn':'tp-crit';
+    const fc=sat.fuel>30?'tp-nom':sat.fuel>15?'tp-warn':'tp-crit';
+    document.getElementById('rzd-body').innerHTML=`
+        <div class="rzd-row"><span class="rzd-label">ID</span><span class="rzd-val">${sat.id}</span></div>
+        <div class="rzd-row"><span class="rzd-label">Название</span><span class="rzd-val">${sat.name}</span></div>
+        <div class="rzd-row"><span class="rzd-label">Тип</span><span class="rzd-val">${sat.type}</span></div>
+        <div class="rzd-row"><span class="rzd-label">Орбита</span><span class="rzd-val">${sat.orbit}</span></div>
+        <div class="rzd-row"><span class="rzd-label">Целостность</span><span class="rzd-val ${hc}">${sat.health.toFixed(1)}%</span></div>
+        <div class="rzd-row"><span class="rzd-label">Сигнал</span><span class="rzd-val ${sc}">${sat.signal.toFixed(1)} dB</span></div>
+        <div class="rzd-row"><span class="rzd-label">Топливо</span><span class="rzd-val ${fc}">${sat.fuel.toFixed(1)}%</span></div>
+        <div class="rzd-row"><span class="rzd-label">Температура</span><span class="rzd-val">${sat.temp.toFixed(1)}°C</span></div>
+        <div class="rzd-row"><span class="rzd-label">Деградация</span><span class="rzd-val">${(sat.degradeRate*1000).toFixed(2)}/ks</span></div>
+        <div style="margin-top:12px;padding:8px;background:#060a10;border:1px solid #0a1420;border-radius:2px">
+            <div style="color:var(--dim);font-size:9px;margin-bottom:4px">СТАТУС</div>
+            <div style="color:${sat.health>70?'var(--green)':sat.health>40?'var(--yellow)':'var(--red2)'};font-size:12px">
+                ${sat.health>70?'НОМИНАЛЬНЫЙ':sat.health>40?'ДЕГРАДАЦИЯ':'КРИТИЧЕСКИЙ'}
+            </div>
+        </div>
+    `;
+}
+
+function showDSDetail(obj){
+    document.getElementById('rzd-title').textContent=`${obj.id} — ${obj.label}`;
+    const typeLabels={planet:'Планета',station:'Орбитальная станция',ship:'Грузовой корабль',expedition:'Экспедиция',debris:'Космический мусор',probe:'Научный зонд',asteroid:'Астероид'};
+    const statusLabels={planet:'Отслеживается',station:'На связи',ship:'В пути',expedition:'Активна',debris:'Отслеживается',probe:'Передаёт данные',asteroid:'На мониторинге'};
+    const distKm=obj.dist<0.3?`${(obj.dist*500).toFixed(0)}K км`:obj.dist<0.6?`${(obj.dist*5).toFixed(1)}M км`:`${(obj.dist*5).toFixed(1)}M км`;
+    document.getElementById('rzd-body').innerHTML=`
+        <div class="rzd-row"><span class="rzd-label">ID</span><span class="rzd-val">${obj.id}</span></div>
+        <div class="rzd-row"><span class="rzd-label">Название</span><span class="rzd-val">${obj.label}</span></div>
+        <div class="rzd-row"><span class="rzd-label">Тип</span><span class="rzd-val">${typeLabels[obj.type]||obj.type}</span></div>
+        <div class="rzd-row"><span class="rzd-label">Дистанция</span><span class="rzd-val">${distKm}</span></div>
+        <div class="rzd-row"><span class="rzd-label">Статус</span><span class="rzd-val" style="color:${obj.type==='debris'?'var(--dim)':'var(--green)'}">${statusLabels[obj.type]||'Неизвестно'}</span></div>
+        <div class="rzd-row"><span class="rzd-label">Размер (усл.)</span><span class="rzd-val">${obj.size}</span></div>
+        <div style="margin-top:12px;padding:8px;background:#060a10;border:1px solid #0a1420;border-radius:2px">
+            <div style="color:var(--dim);font-size:9px;margin-bottom:4px">ОПИСАНИЕ</div>
+            <div style="color:var(--text);font-size:11px;line-height:1.6">${getDSDescription(obj)}</div>
+        </div>
+    `;
+}
+
+function getDSDescription(obj){
+    const descs={
+        'MARS':'Красная планета. Колония «Аврора» — постоянная база с экипажем 12 человек. RTT: 8-24 мин.',
+        'ISS-L':'Орбитальная станция «Восток-3» на лунной орбите. Экипаж 6, перевалочная база.',
+        'CARGO-7':'Автоматический грузовой корабль. Следует к лунной орбите с запасами.',
+        'EXP-DAWN':'Мобильная экспедиция в 450 км к северу. Геологическая разведка кратера Пири.',
+        'DEBRIS-F':'Фрагменты ступени ракеты-носителя. Отслеживается для предотвращения столкновений.',
+        'DEBRIS-K':'Обломки вышедшего из строя аппарата. Орбита деградирует.',
+        'PROBE-3':'Научный зонд LMAP-3, картографирование лунной поверхности.',
+        'VENUS-T':'Венера. Ближайшая к Земле планета. Без постоянных баз.',
+        'ASTEROID':'Околоземный астероид 2024-LK7. Мониторинг орбиты.',
+    };
+    return descs[obj.id]||'Данные отсутствуют.';
+}
+
 // ---- MAIN LOOP ----
 let renderTick=0;
 function loop(now){
@@ -2488,6 +3049,7 @@ function loop(now){
     update(dt);
     renderRadar();
     renderDeepSpace();
+    if(radarZoomMode) renderZoomedRadar();
     renderCrewStrip(); // ECG needs frequent updates
     renderTick++;
     if(renderTick%30===0){
