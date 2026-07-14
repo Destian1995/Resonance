@@ -1689,14 +1689,20 @@ function cmdInvestigate(){
 }
 
 // ---- RENDER: CREW STRIP ----
-// ECG data per crew member
+// ECG data — circular buffer with write head
+const ECG_LEN = 160;
 const ecgBuffers = {};
-CREW.forEach(c => { ecgBuffers[c.id] = new Float32Array(80).fill(0); });
+const ecgHeads = {};   // write position (0..ECG_LEN-1)
+const ecgAges = {};    // age of each sample (for fade)
+CREW.forEach(c => {
+    ecgBuffers[c.id] = new Float32Array(ECG_LEN).fill(0);
+    ecgHeads[c.id] = 0;
+    ecgAges[c.id] = new Float32Array(ECG_LEN).fill(ECG_LEN); // all fully faded initially
+});
 let ecgPhase = {};
 CREW.forEach(c => { ecgPhase[c.id] = Math.random() * Math.PI * 2; });
 
 function getHeartRate(c) {
-    // Base HR 65-75, increases with fatigue and decreases health
     let hr = 68 + c.fatigue * 0.3 + (100 - c.health) * 0.4;
     if (c.status === 'eva') hr += 15;
     if (c.status === 'busy') hr += 8;
@@ -1713,101 +1719,129 @@ function getSpO2(c) {
 
 function generateECG(crewId, hr) {
     const buf = ecgBuffers[crewId];
-    buf.copyWithin(0, 1);
-    ecgPhase[crewId] += (hr / 60) * 0.35;
+    const ages = ecgAges[crewId];
+    let head = ecgHeads[crewId];
+
+    // Advance phase based on heart rate (slower overall)
+    ecgPhase[crewId] += (hr / 60) * 0.18;
     const phase = ecgPhase[crewId] % (Math.PI * 2);
+
+    // Generate ECG value
     let val = 0;
-    // QRS complex
-    if (phase < 0.15) val = Math.sin(phase / 0.15 * Math.PI) * 0.3;
-    else if (phase < 0.25) val = -0.1;
-    else if (phase < 0.35) val = Math.sin((phase - 0.25) / 0.1 * Math.PI) * 1.0;  // R peak
-    else if (phase < 0.45) val = -Math.sin((phase - 0.35) / 0.1 * Math.PI) * 0.25;  // S
-    else if (phase < 0.7) val = 0;
-    else if (phase < 0.9) val = Math.sin((phase - 0.7) / 0.2 * Math.PI) * 0.15;  // T wave
-    else val = 0;
-    val += rng(-0.02, 0.02); // noise
-    buf[buf.length - 1] = val;
+    if (phase < 0.12) val = Math.sin(phase / 0.12 * Math.PI) * 0.25;       // P wave
+    else if (phase < 0.20) val = -0.08;                                       // PR segment
+    else if (phase < 0.30) val = Math.sin((phase - 0.20) / 0.10 * Math.PI) * 1.0;  // R peak
+    else if (phase < 0.38) val = -Math.sin((phase - 0.30) / 0.08 * Math.PI) * 0.3;  // S wave
+    else if (phase < 0.60) val = 0;                                            // ST segment
+    else if (phase < 0.80) val = Math.sin((phase - 0.60) / 0.20 * Math.PI) * 0.15;  // T wave
+    else val = 0;                                                              // baseline
+    val += rng(-0.015, 0.015);
+
+    // Write to circular buffer
+    buf[head] = val;
+    ages[head] = 0; // fresh
+
+    // Age all samples
+    for (let i = 0; i < ECG_LEN; i++) {
+        ages[i] += 0.6; // fade speed
+    }
+
+    // Advance head (wraps around)
+    head = (head + 1) % ECG_LEN;
+    ecgHeads[crewId] = head;
 }
 
 function drawECGCanvas(canvas, crewId, health) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
 
-    // Dark background with subtle grid
+    // Dark background
     ctx.fillStyle = '#020408';
     ctx.fillRect(0, 0, w, h);
+
+    // Subtle grid
     ctx.strokeStyle = '#060c14';
     ctx.lineWidth = 0.5;
-    for (let y = 0; y < h; y += h/5) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
-    for (let x = 0; x < w; x += w/10) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (let y = 0; y < h; y += h / 5) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    for (let x = 0; x < w; x += w / 8) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
 
     const buf = ecgBuffers[crewId];
-    // Blue neon color scheme - shifts to red only when critical
-    const color = health > 60 ? '#0088ff' : health > 35 ? '#cc8800' : '#ff2244';
-    const glowColor = health > 60 ? '#0066cc' : health > 35 ? '#aa6600' : '#cc1133';
+    const ages = ecgAges[crewId];
+    const head = ecgHeads[crewId];
 
-    // Outer glow layer (wide, dim)
-    ctx.strokeStyle = glowColor;
-    ctx.lineWidth = 6;
-    ctx.globalAlpha = 0.08;
-    ctx.beginPath();
-    for (let i = 0; i < buf.length; i++) {
-        const x = (i / buf.length) * w;
-        const y = h / 2 - buf[i] * h * 0.42;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    const color = health > 60 ? [0, 136, 255] : health > 35 ? [204, 136, 0] : [255, 34, 68];
+    const whiteColor = health > 60 ? [136, 204, 255] : health > 35 ? [255, 204, 102] : [255, 136, 136];
+
+    // Draw each segment with individual alpha based on age
+    const fadeMax = ECG_LEN * 1.2; // samples until fully invisible
+    const gapBefore = 8; // blank gap ahead of the write head
+
+    for (let i = 0; i < ECG_LEN - 1; i++) {
+        const idx = i;
+        const idx2 = i + 1;
+
+        // Distance ahead of head (in the "future" = erased zone)
+        const distFromHead = ((idx - head) % ECG_LEN + ECG_LEN) % ECG_LEN;
+
+        // Skip the gap zone right ahead of the cursor
+        if (distFromHead < gapBefore && distFromHead > 0) continue;
+
+        const age = ages[idx];
+        const alpha = clamp(1 - age / fadeMax, 0, 1);
+        if (alpha <= 0.01) continue;
+
+        const x1 = (idx / ECG_LEN) * w;
+        const x2 = (idx2 / ECG_LEN) * w;
+        const y1 = h / 2 - buf[idx] * h * 0.42;
+        const y2 = h / 2 - buf[idx2] * h * 0.42;
+
+        // Skip wrap-around line
+        if (Math.abs(x2 - x1) > w / ECG_LEN * 2) continue;
+
+        // Outer glow
+        ctx.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},${alpha * 0.12})`;
+        ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+
+        // Core line
+        ctx.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},${alpha * 0.9})`;
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = `rgba(${color[0]},${color[1]},${color[2]},${alpha})`;
+        ctx.shadowBlur = alpha * 10;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+
+        // Bright inner
+        ctx.strokeStyle = `rgba(${whiteColor[0]},${whiteColor[1]},${whiteColor[2]},${alpha * 0.7})`;
+        ctx.lineWidth = 1;
+        ctx.shadowBlur = alpha * 4;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+
+        ctx.shadowBlur = 0;
     }
-    ctx.stroke();
 
-    // Mid glow layer
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
-    ctx.globalAlpha = 0.15;
+    // Glowing cursor dot at the write head position
+    const headIdx = (head - 1 + ECG_LEN) % ECG_LEN;
+    const dotX = (headIdx / ECG_LEN) * w;
+    const dotY = h / 2 - buf[headIdx] * h * 0.42;
+
+    // Glow layers
+    const grad = ctx.createRadialGradient(dotX, dotY, 0, dotX, dotY, 14);
+    grad.addColorStop(0, `rgba(${whiteColor[0]},${whiteColor[1]},${whiteColor[2]},1)`);
+    grad.addColorStop(0.2, `rgba(${color[0]},${color[1]},${color[2]},0.8)`);
+    grad.addColorStop(0.5, `rgba(${color[0]},${color[1]},${color[2]},0.2)`);
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.shadowColor = `rgb(${color[0]},${color[1]},${color[2]})`;
+    ctx.shadowBlur = 15;
     ctx.beginPath();
-    for (let i = 0; i < buf.length; i++) {
-        const x = (i / buf.length) * w;
-        const y = h / 2 - buf[i] * h * 0.42;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
+    ctx.arc(dotX, dotY, 14, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Core line (bright, thin)
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.shadowColor = color;
+    // Bright center dot
+    ctx.fillStyle = `rgba(${whiteColor[0]},${whiteColor[1]},${whiteColor[2]},1)`;
     ctx.shadowBlur = 8;
     ctx.beginPath();
-    for (let i = 0; i < buf.length; i++) {
-        const x = (i / buf.length) * w;
-        const y = h / 2 - buf[i] * h * 0.42;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    // Bright white core (innermost, very thin)
-    ctx.strokeStyle = health > 60 ? '#88ccff' : health > 35 ? '#ffcc66' : '#ff8888';
-    ctx.lineWidth = 1;
-    ctx.shadowBlur = 4;
-    ctx.beginPath();
-    for (let i = 0; i < buf.length; i++) {
-        const x = (i / buf.length) * w;
-        const y = h / 2 - buf[i] * h * 0.42;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    // Glowing dot at the end (leading edge)
-    const lastX = w;
-    const lastY = h / 2 - buf[buf.length - 1] * h * 0.42;
-    const dotGrad = ctx.createRadialGradient(lastX, lastY, 0, lastX, lastY, 10);
-    dotGrad.addColorStop(0, health > 60 ? '#ffffff' : health > 35 ? '#ffee88' : '#ff8888');
-    dotGrad.addColorStop(0.3, color);
-    dotGrad.addColorStop(1, 'transparent');
-    ctx.fillStyle = dotGrad;
-    ctx.shadowBlur = 12;
-    ctx.shadowColor = color;
-    ctx.beginPath();
-    ctx.arc(lastX, lastY, 10, 0, Math.PI * 2);
+    ctx.arc(dotX, dotY, 2.5, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.shadowBlur = 0;
