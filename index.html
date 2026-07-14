@@ -1,20 +1,2551 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>NEON STORM</title>
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        html,body{width:100%;height:100%;overflow:hidden;background:#000;}
-        canvas{display:block;width:100%;height:100%;cursor:crosshair;}
-        #loading{position:fixed;inset:0;background:#08080c;display:flex;align-items:center;justify-content:center;color:#0ff;font-size:24px;font-family:'Courier New',monospace;z-index:10;}
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>РЕЗОНАНС-9 — Лунная Диспетчерская</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+    --bg:#04060a;--panel:#080c14;--panel2:#0a0e18;
+    --border:#12202e;--accent:#0088cc;--accent2:#00aaee;
+    --green:#00cc66;--green2:#00ff88;--yellow:#ccaa00;--orange:#cc6600;--red:#cc2233;--red2:#ff2244;
+    --text:#8ca8c4;--text2:#b0c8e0;--dim:#2a3a4a;--white:#d0e0f0;
+}
+body{
+    background:var(--bg);color:var(--text);
+    font-family:'Share Tech Mono','Courier New',monospace;
+    height:100vh;width:100vw;display:flex;flex-direction:column;overflow:hidden;font-size:12px;
+}
+
+/* === TOP STATUS BAR === */
+#topbar{
+    display:flex;align-items:center;padding:0 12px;
+    background:#030508;border-bottom:1px solid var(--border);height:32px;flex-shrink:0;gap:4px;
+    width:100%;overflow:hidden;
+}
+.tb-section{display:flex;align-items:center;gap:6px;padding:0 10px;border-right:1px solid #0a1218}
+.tb-section:last-child{border:none;margin-left:auto}
+.tb-label{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:1px}
+.tb-val{color:var(--accent2);font-size:12px}
+.tb-val.ok{color:var(--green)}
+.tb-val.warn{color:var(--yellow)}
+.tb-val.crit{color:var(--red2);font-weight:bold}
+.tb-indicator{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:3px}
+.ind-green{background:var(--green);box-shadow:0 0 4px var(--green)}
+.ind-yellow{background:var(--yellow);box-shadow:0 0 4px var(--yellow)}
+.ind-red{background:var(--red2);box-shadow:0 0 6px var(--red2);animation:pulse-ind 0.8s infinite}
+@keyframes pulse-ind{0%,100%{opacity:1}50%{opacity:0.3}}
+#alert-strip{
+    display:none;position:absolute;top:32px;left:0;right:0;z-index:50;
+    padding:4px 16px;font-size:12px;text-align:center;
+    background:rgba(200,20,40,0.15);border-bottom:1px solid var(--red);color:var(--red2);
+    animation:alert-flash 1.5s infinite;
+}
+#alert-strip.show{display:block}
+@keyframes alert-flash{0%,100%{background:rgba(200,20,40,0.15)}50%{background:rgba(200,20,40,0.3)}}
+
+/* === MAIN LAYOUT: 3 columns === */
+#main{display:flex;flex:1;overflow:hidden;width:100%;min-width:0}
+
+/* LEFT COLUMN: Telemetry */
+#col-left{width:320px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden}
+.panel-header{
+    padding:5px 10px;background:#060a10;border-bottom:1px solid var(--border);
+    font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:2px;
+    display:flex;justify-content:space-between;align-items:center;
+}
+.panel-header .ph-title{color:var(--accent)}
+
+/* Telemetry Blocks */
+#telemetry{flex:1;overflow-y:auto;padding:2px}
+.telem-block{
+    background:var(--panel);border:1px solid var(--border);margin:2px;border-radius:2px;
+    padding:6px 8px;
+}
+.telem-block.warn-state{border-color:var(--yellow)}
+.telem-block.crit-state{border-color:var(--red);background:#0c0608}
+.telem-title{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid #0c1420;
+}
+.telem-name{color:var(--accent2);font-size:11px;font-weight:bold}
+.telem-status{font-size:9px;padding:1px 6px;border-radius:2px}
+.ts-nom{background:#0a1a10;color:var(--green)}
+.ts-deg{background:#1a1a08;color:var(--yellow)}
+.ts-crt{background:#1a0808;color:var(--red2)}
+.ts-off{background:#111;color:#555}
+
+.telem-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
+.telem-param{display:flex;justify-content:space-between;align-items:center;padding:1px 0}
+.tp-label{color:var(--dim);font-size:10px}
+.tp-value{font-size:11px;text-align:right}
+.tp-nom{color:var(--green2)}
+.tp-warn{color:var(--yellow)}
+.tp-crit{color:var(--red2)}
+.tp-unit{color:var(--dim);font-size:9px;margin-left:2px}
+
+.telem-bar{height:3px;background:#0a1218;margin-top:3px;border-radius:1px;overflow:hidden}
+.telem-bar-fill{height:100%;border-radius:1px;transition:width 0.8s}
+
+/* CENTER COLUMN: Radio + Map */
+#col-center{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+
+/* Radio panel - main feature */
+#radio-panel{flex:1;display:flex;flex-direction:column;border-bottom:1px solid var(--border);min-height:0;overflow:hidden}
+#radio-feed{
+    flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 12px;
+    background:var(--panel);min-height:0;
+}
+.radio-msg{
+    margin-bottom:6px;padding:5px 8px;border-radius:3px;
+    font-size:12px;line-height:1.6;position:relative;
+    border-left:3px solid transparent;
+    overflow:hidden;word-wrap:break-word;overflow-wrap:break-word;
+}
+.radio-msg .rm-header{display:flex;justify-content:space-between;margin-bottom:2px}
+.rm-time{color:#1a2a36;font-size:10px}
+.rm-callsign{font-weight:bold;font-size:11px}
+.rm-text{color:var(--text2);word-wrap:break-word;overflow-wrap:break-word}
+.rm-channel{font-size:9px;padding:0 4px;border-radius:2px;display:inline-block}
+
+/* Channel colors */
+.ch-crew{border-left-color:#2288aa}
+.ch-crew .rm-callsign{color:#44bbdd}
+.ch-crew .rm-channel{background:#0a1a22;color:#44bbdd}
+
+.ch-dispatch{border-left-color:var(--green)}
+.ch-dispatch .rm-callsign{color:var(--green2)}
+.ch-dispatch .rm-channel{background:#0a1a10;color:var(--green2)}
+
+.ch-earth{border-left-color:#6666cc}
+.ch-earth .rm-callsign{color:#8888ee}
+.ch-earth .rm-channel{background:#0a0a1a;color:#8888ee}
+
+.ch-alert{border-left-color:var(--red2);background:rgba(200,20,40,0.06)}
+.ch-alert .rm-callsign{color:var(--red2)}
+.ch-alert .rm-channel{background:#1a0808;color:var(--red2)}
+
+.ch-system{border-left-color:var(--yellow);background:rgba(180,150,0,0.04)}
+.ch-system .rm-callsign{color:var(--yellow)}
+.ch-system .rm-channel{background:#1a1a08;color:var(--yellow)}
+
+.ch-eva{border-left-color:#cc66ff}
+.ch-eva .rm-callsign{color:#cc88ff}
+.ch-eva .rm-channel{background:#120a1a;color:#cc88ff}
+
+/* Radio channel filter */
+#radio-filter-bar{
+    display:flex;align-items:center;gap:2px;padding:4px 8px;
+    background:#060a10;border-top:1px solid var(--border);flex-shrink:0;font-size:9px;
+}
+.rf-btn{
+    background:transparent;border:1px solid var(--border);color:var(--dim);
+    padding:2px 6px;font-family:inherit;font-size:9px;cursor:pointer;border-radius:2px;
+}
+.rf-btn.active{color:var(--accent2);border-color:var(--accent)}
+.rf-btn:hover{border-color:var(--accent)}
+.tx-indicator{
+    width:8px;height:8px;border-radius:50%;background:#333;
+    transition:background 0.2s;flex-shrink:0;
+}
+.tx-indicator.active{background:var(--red2);box-shadow:0 0 8px var(--red2)}
+
+/* Bottom panels: Radar + Radiation */
+#bottom-panels{height:220px;flex-shrink:0;border-top:1px solid var(--border);display:flex;overflow:hidden;min-width:0;width:100%}
+#radar-section{flex:1;position:relative;border-right:1px solid var(--border);overflow:hidden;min-width:0}
+#radar-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
+#radiation-section{width:280px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden}
+#rad-canvas{flex:1;display:block}
+#rad-data{padding:4px 8px;font-size:9px;overflow-y:auto;border-top:1px solid var(--border)}
+.rad-row{display:flex;justify-content:space-between;padding:1px 0;border-bottom:1px solid #080c14}
+.rad-label{color:var(--dim)}
+.rad-val{text-align:right}
+.rad-ok{color:var(--green)}
+.rad-warn{color:var(--yellow)}
+.rad-crit{color:var(--red2);font-weight:bold}
+
+/* RIGHT COLUMN: Actions + Status */
+#col-right{width:310px;flex-shrink:0;display:flex;flex-direction:column;border-left:1px solid var(--border);overflow:hidden}
+
+/* Work Orders */
+#workorders{flex:1;overflow-y:auto;padding:4px}
+.wo-card{
+    background:var(--panel);border:1px solid var(--border);border-radius:2px;
+    margin-bottom:3px;padding:6px 8px;cursor:pointer;transition:border-color 0.2s;
+}
+.wo-card:hover{border-color:var(--accent)}
+.wo-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.wo-id{color:var(--dim);font-size:10px}
+.wo-priority{font-size:9px;padding:1px 5px;border-radius:2px;font-weight:bold}
+.wo-p1{background:#1a0808;color:var(--red2)}
+.wo-p2{background:#1a1a08;color:var(--yellow)}
+.wo-p3{background:#081a18;color:var(--green)}
+.wo-title{color:var(--text2);font-size:11px;margin-bottom:2px}
+.wo-meta{color:var(--dim);font-size:10px;display:flex;justify-content:space-between}
+.wo-progress{height:2px;background:#0a1218;margin-top:3px;border-radius:1px;overflow:hidden}
+.wo-progress-fill{height:100%;background:var(--accent);border-radius:1px;transition:width 0.5s}
+
+/* Quick actions */
+#quick-actions{
+    padding:6px;border-top:1px solid var(--border);
+    display:grid;grid-template-columns:1fr 1fr;gap:3px;flex-shrink:0;
+}
+.qa-btn{
+    background:var(--panel);border:1px solid var(--border);border-radius:2px;
+    color:var(--text);padding:6px 4px;font-family:inherit;font-size:10px;
+    cursor:pointer;text-align:center;transition:all 0.15s;
+}
+.qa-btn:hover{border-color:var(--accent);color:var(--accent2)}
+.qa-btn:active{background:var(--accent);color:#000}
+.qa-btn:disabled{opacity:0.25;cursor:not-allowed}
+.qa-btn.qa-danger{border-color:#1a1010;color:var(--red)}
+.qa-btn.qa-danger:hover{border-color:var(--red)}
+
+/* Crew status strip */
+#crew-strip{
+    display:flex;border-top:1px solid var(--border);flex-shrink:0;
+    width:100%;overflow:hidden;
+}
+.cs-member{
+    flex:1;padding:5px 6px;border-right:1px solid var(--border);
+    font-size:10px;text-align:center;background:var(--panel);position:relative;
+    min-width:0;overflow:hidden;
+}
+.cs-member:last-child{border:none}
+.cs-name{color:var(--accent2);font-size:9px;font-weight:bold;margin-bottom:2px}
+.cs-role{color:var(--dim);font-size:8px;margin-bottom:1px}
+.cs-status{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cs-free{color:var(--green)}
+.cs-busy{color:var(--yellow)}
+.cs-eva{color:#cc88ff}
+.cs-rest{color:#6688aa}
+.cs-ecg{height:22px;margin:2px 0;position:relative;overflow:hidden}
+.cs-ecg canvas{width:100%;height:100%;display:block}
+.cs-vitals{display:flex;justify-content:space-around;font-size:8px;color:var(--dim)}
+.cs-hr{font-weight:bold}
+.cs-hr-ok{color:var(--green2)}
+.cs-hr-warn{color:var(--yellow)}
+.cs-hr-crit{color:var(--red2)}
+.cs-spo2{color:var(--accent2)}
+
+/* Blinking indicators */
+.blink-slow{animation:blink-s 2s infinite}
+.blink-med{animation:blink-m 1.2s infinite}
+.blink-fast{animation:blink-f 0.6s infinite}
+@keyframes blink-s{0%,100%{opacity:1}50%{opacity:0.4}}
+@keyframes blink-m{0%,100%{opacity:1}50%{opacity:0.2}}
+@keyframes blink-f{0%,100%{opacity:1}50%{opacity:0.1}}
+
+.led{width:5px;height:5px;border-radius:50%;display:inline-block;margin:0 1px}
+.led-green{background:var(--green);box-shadow:0 0 3px var(--green)}
+.led-yellow{background:var(--yellow);box-shadow:0 0 3px var(--yellow)}
+.led-red{background:var(--red2);box-shadow:0 0 4px var(--red2)}
+.led-blue{background:var(--accent2);box-shadow:0 0 3px var(--accent2)}
+.led-off{background:#1a1a1a;box-shadow:none}
+
+.telem-leds{display:flex;gap:2px;align-items:center;margin-top:3px}
+.telem-led-label{color:var(--dim);font-size:8px;margin-right:3px}
+
+/* LOG BAR (bottom) */
+#log-bar{
+    height:90px;border-top:1px solid var(--border);display:flex;flex-shrink:0;
+    width:100%;overflow:hidden;
+}
+#sys-log{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+#sys-log .panel-header{padding:3px 10px}
+#sys-log-entries{flex:1;overflow-y:auto;overflow-x:hidden;padding:2px 8px;font-size:10px;line-height:1.4}
+.slog{margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slog-t{color:#151f28}
+.sl-nom{color:var(--dim)}
+.sl-ok{color:var(--green)}
+.sl-wrn{color:var(--yellow)}
+.sl-err{color:var(--red2)}
+.sl-inf{color:var(--accent)}
+
+/* Earth comms (bottom right) */
+#earth-log{width:300px;flex-shrink:0;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+#earth-log-entries{flex:1;overflow-y:auto;overflow-x:hidden;padding:2px 8px;font-size:10px;line-height:1.4}
+.elog{margin-bottom:2px;padding:2px 4px;border-radius:2px;overflow:hidden;word-wrap:break-word;overflow-wrap:break-word}
+.elog-from{background:rgba(100,100,200,0.05);border-left:2px solid #4444aa}
+.elog-to{background:rgba(0,180,100,0.05);border-left:2px solid var(--green)}
+.elog-time{color:#151f28;font-size:9px}
+.elog-dir{font-size:9px;font-weight:bold}
+.elog-dir-from{color:#6666cc}
+.elog-dir-to{color:var(--green)}
+
+/* Speed controls */
+.spd-controls{display:flex;gap:2px;align-items:center}
+.spd-btn{
+    background:transparent;border:1px solid var(--border);color:var(--dim);
+    padding:1px 6px;font-family:inherit;font-size:10px;cursor:pointer;border-radius:2px;
+}
+.spd-btn.active{color:var(--green);border-color:var(--green)}
+.spd-btn:hover{border-color:var(--accent)}
+
+/* Modal */
+#modal-overlay{
+    display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,0.75);z-index:100;justify-content:center;align-items:center;
+}
+#modal-overlay.show{display:flex}
+#modal{
+    background:#080c14;border:1px solid var(--accent);border-radius:4px;
+    padding:20px;max-width:440px;width:90%;position:relative;
+}
+#modal h3{color:var(--accent2);margin-bottom:10px;font-size:14px}
+#modal p{margin-bottom:8px;line-height:1.6;font-size:12px}
+.modal-btns{display:flex;gap:6px;margin-top:14px}
+.m-btn{
+    flex:1;padding:8px;border:1px solid var(--border);border-radius:3px;
+    background:var(--panel);color:var(--text);cursor:pointer;font-family:inherit;font-size:12px;text-align:center;
+}
+.m-btn:hover{border-color:var(--accent)}
+.m-btn.m-primary{background:var(--accent);color:#000;font-weight:bold}
+.m-btn.m-danger{border-color:var(--red);color:var(--red)}
+#modal-close{position:absolute;top:6px;right:10px;background:none;border:none;color:var(--dim);font-size:16px;cursor:pointer}
+
+/* Critical overlay */
+#critical-overlay{
+    display:none;position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(10,0,0,0.9);z-index:200;justify-content:center;align-items:center;flex-direction:column;
+}
+#critical-overlay.show{display:flex}
+#critical-overlay h2{color:var(--red2);font-size:28px;margin-bottom:12px}
+#critical-overlay p{color:var(--text);font-size:14px;margin-bottom:6px;text-align:center}
+#critical-overlay button{
+    margin-top:20px;background:var(--accent);color:#000;border:none;padding:12px 36px;
+    font-family:inherit;font-size:14px;font-weight:bold;border-radius:4px;cursor:pointer;
+}
+
+/* Deep space radar */
+#deepspace-section{flex:1;position:relative;overflow:hidden;min-width:0;border-right:1px solid var(--border)}
+#deepspace-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
+
+/* Interplanetary comms */
+#interplanet-bar{
+    height:80px;flex-shrink:0;border-top:1px solid #1a102a;
+    display:flex;flex-direction:column;overflow:hidden;
+    background:#06040a;
+}
+#interplanet-feed{
+    flex:1;overflow-y:auto;overflow-x:hidden;padding:2px 8px;font-size:10px;line-height:1.4;
+}
+.ip-msg{margin-bottom:2px;padding:2px 4px;border-radius:2px;border-left:2px solid #6644aa}
+.ip-msg.ip-mars{border-left-color:#cc6644}
+.ip-msg.ip-iss{border-left-color:#44aacc}
+.ip-msg.ip-exp{border-left-color:#44cc66}
+.ip-source{font-size:9px;font-weight:bold}
+.ip-mars-c{color:#cc8866}
+.ip-iss-c{color:#66ccee}
+.ip-exp-c{color:#66ee88}
+
+/* Hint blinking button */
+.qa-hint{
+    animation:hint-glow 1.2s infinite;
+    border-color:var(--accent)!important;
+    color:var(--accent2)!important;
+    position:relative;
+}
+.qa-hint::after{
+    content:'◄';position:absolute;right:4px;top:50%;transform:translateY(-50%);
+    color:var(--accent);font-size:10px;animation:hint-arrow 1s infinite;
+}
+@keyframes hint-glow{
+    0%,100%{box-shadow:0 0 4px rgba(0,180,255,0.3);background:#0a1520}
+    50%{box-shadow:0 0 12px rgba(0,180,255,0.5);background:#0d1a2a}
+}
+@keyframes hint-arrow{0%,100%{opacity:1}50%{opacity:0.2}}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#141e28;border-radius:2px}
+
+/* Mobile tab bar - hidden on desktop */
+#mobile-tabs{display:none}
+
+/* ========== MOBILE / TABLET RESPONSIVE ========== */
+@media(max-width:1024px){
+    body{font-size:11px}
+    #topbar{flex-wrap:wrap;height:auto;padding:4px 8px;gap:2px}
+    .tb-section{padding:2px 6px;font-size:10px}
+    #col-left{width:260px}
+    #col-right{width:260px}
+    #earth-log{width:240px}
+    #radiation-section{width:220px}
+    .qa-btn{font-size:9px;padding:5px 3px}
+}
+
+@media(max-width:768px){
+    /* Complete mobile layout */
+    body{font-size:11px}
+
+    /* Topbar: compact 2-row */
+    #topbar{
+        flex-wrap:wrap;height:auto;padding:4px 6px;gap:1px;
+        justify-content:center;
+    }
+    .tb-section{padding:2px 5px;border-right:none;font-size:9px}
+    .tb-spd-section{width:100%;justify-content:center;margin:2px 0 0}
+    /* Hide less important topbar items on mobile */
+    .tb-hide-mobile{display:none!important}
+
+    /* Mobile tab bar */
+    #mobile-tabs{
+        display:flex;flex-shrink:0;
+        border-bottom:1px solid var(--border);background:#030508;
+        overflow-x:auto;-webkit-overflow-scrolling:touch;
+    }
+    .mob-tab{
+        flex:1;min-width:0;padding:10px 4px;text-align:center;
+        background:transparent;border:none;border-bottom:2px solid transparent;
+        color:var(--dim);font-family:inherit;font-size:10px;cursor:pointer;
+        white-space:nowrap;
+    }
+    .mob-tab.active{color:var(--accent2);border-bottom-color:var(--accent2);background:#060a12}
+    .mob-tab:hover{color:var(--text)}
+
+    /* Main: stack vertically, show one panel at a time */
+    #main{flex-direction:column;overflow:hidden}
+    #col-left,#col-center,#col-right{
+        width:100%!important;flex-shrink:0;
+        border:none!important;
+        display:none; /* hidden by default, JS shows active */
+    }
+    #col-left.mob-active,#col-center.mob-active,#col-right.mob-active{
+        display:flex!important;flex:1;overflow:hidden;
+    }
+
+    /* Telemetry scrollable */
+    #telemetry{overflow-y:auto;-webkit-overflow-scrolling:touch}
+    .telem-block{margin:3px}
+    .telem-grid{grid-template-columns:1fr 1fr}
+
+    /* Radio panel full height */
+    #radio-panel{flex:1;min-height:0}
+    #radio-feed{-webkit-overflow-scrolling:touch}
+    .radio-msg{font-size:11px;padding:4px 6px;margin-bottom:4px}
+    .rm-callsign{font-size:10px}
+    #radio-filter-bar{flex-wrap:wrap;gap:3px}
+    .rf-btn{padding:4px 8px;font-size:10px}
+
+    /* Bottom panels stack vertically */
+    #bottom-panels{flex-direction:column;height:auto;flex:1}
+    #radar-section{height:200px;flex-shrink:0;border-right:none!important;border-bottom:1px solid var(--border)}
+    #deepspace-section{height:200px;flex-shrink:0;border-right:none!important;border-bottom:1px solid var(--border)}
+    #radiation-section{width:100%!important;height:auto;flex:1;min-height:150px}
+    #interplanet-bar{height:auto;min-height:60px}
+
+    /* Work orders */
+    #workorders{-webkit-overflow-scrolling:touch}
+    .wo-card{padding:8px 10px}
+
+    /* Quick actions: 2 columns, bigger buttons */
+    #quick-actions{
+        grid-template-columns:1fr 1fr;gap:4px;padding:8px;
+    }
+    .qa-btn{padding:10px 6px;font-size:11px}
+
+    /* Crew strip: horizontal scroll */
+    #crew-strip{
+        overflow-x:auto;-webkit-overflow-scrolling:touch;
+        flex-wrap:nowrap;
+    }
+    .cs-member{min-width:140px;flex:none}
+
+    /* Log bar: stack */
+    #log-bar{flex-direction:column;height:auto;max-height:150px}
+    #sys-log{min-height:60px}
+    #earth-log{width:100%!important;border-left:none!important;border-top:1px solid var(--border);min-height:60px}
+
+    /* Modal bigger touch targets */
+    #modal{padding:16px;max-width:95%}
+    .m-btn{padding:12px;font-size:13px}
+
+    /* Alert strip */
+    #alert-strip{font-size:11px;padding:6px 10px}
+}
+
+@media(max-width:480px){
+    .tb-section{padding:1px 4px;font-size:8px}
+    .tb-label{font-size:8px;letter-spacing:0}
+    .tb-val{font-size:10px}
+    .mob-tab{padding:8px 2px;font-size:9px}
+    .telem-grid{grid-template-columns:1fr}
+    .telem-name{font-size:10px}
+    #quick-actions{grid-template-columns:1fr 1fr}
+    .qa-btn{padding:12px 4px;font-size:10px}
+    .cs-member{min-width:120px}
+    .radio-msg{font-size:10px}
+    #radar-section{height:180px}
+}
+</style>
 </head>
 <body>
-    <div id="loading">ЗАГРУЗКА...</div>
-    <canvas id="game"></canvas>
-    <script src="js/game.js"></script>
+
+<!-- TOP STATUS BAR -->
+<div id="topbar">
+    <div class="tb-section">
+        <span class="tb-label">РЕЗОНАНС-9</span>
+        <span class="tb-val" style="color:var(--accent2)">ИДП</span>
+    </div>
+    <div class="tb-section">
+        <span class="tb-label">MET</span>
+        <span class="tb-val" id="met-clock">000:00:00:00</span>
+    </div>
+    <div class="tb-section">
+        <span class="tb-label">UTC</span>
+        <span class="tb-val" id="utc-clock">--:--:--</span>
+    </div>
+    <div class="tb-section">
+        <span id="phase-ind" class="tb-indicator ind-green"></span>
+        <span class="tb-label">ФАЗА</span>
+        <span class="tb-val" id="phase-val">ЛУННЫЙ ДЕНЬ</span>
+    </div>
+    <div class="tb-section">
+        <span class="tb-label">T.EXT</span>
+        <span class="tb-val" id="ext-temp-val">+118°C</span>
+    </div>
+    <div class="tb-section">
+        <span class="tb-label">RAD</span>
+        <span class="tb-val ok" id="rad-val">0.42 mSv/h</span>
+    </div>
+    <div class="tb-section tb-hide-mobile">
+        <span class="led led-blue blink-slow" id="uplink-led"></span>
+        <span class="tb-label">UPLINK</span>
+        <span class="tb-val ok" id="uplink-val">NOMINAL</span>
+    </div>
+    <div class="tb-section tb-hide-mobile">
+        <span class="led led-green blink-slow" id="telem-led"></span>
+        <span class="tb-label">TELEM</span>
+        <span class="led led-green" id="rx-led" style="margin-left:4px"></span>
+        <span class="tb-label" style="font-size:8px">RX</span>
+        <span class="led led-off" id="tx-led-top" style="margin-left:2px"></span>
+        <span class="tb-label" style="font-size:8px">TX</span>
+    </div>
+    <div class="tb-section tb-spd-section" style="border:none">
+        <div class="spd-controls">
+            <button class="spd-btn active" id="spb-1" onclick="setSpeed(1)">1×</button>
+            <button class="spd-btn" id="spb-5" onclick="setSpeed(5)">5×</button>
+            <button class="spd-btn" id="spb-15" onclick="setSpeed(15)">15×</button>
+            <button class="spd-btn" id="spb-0" onclick="togglePause()">▌▌</button>
+        </div>
+    </div>
+</div>
+
+<div id="alert-strip"></div>
+
+<!-- MOBILE TAB BAR -->
+<div id="mobile-tabs">
+    <button class="mob-tab active" onclick="mobTab('telem')">ТЕЛЕМEТРИЯ</button>
+    <button class="mob-tab" onclick="mobTab('radio')">РАДИО</button>
+    <button class="mob-tab" onclick="mobTab('radar')">РАДАР</button>
+    <button class="mob-tab" onclick="mobTab('tasks')">ЗАДАЧИ</button>
+    <button class="mob-tab" onclick="mobTab('log')">ЖУРНАЛ</button>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div id="main">
+
+<!-- LEFT: TELEMETRY -->
+<div id="col-left">
+    <div class="panel-header">
+        <span class="ph-title">ТЕЛЕМЕТРИЯ СИСТЕМ</span>
+        <span id="sys-summary" style="color:var(--green)">6/6 NOM</span>
+    </div>
+    <div id="telemetry"></div>
+</div>
+
+<!-- CENTER: RADIO + MAP -->
+<div id="col-center">
+    <div class="panel-header">
+        <span class="ph-title">РАДИОЭФИР — ВНУТРЕННЯЯ СВЯЗЬ / ЗЕМЛЯ</span>
+        <span style="color:var(--dim)"><span class="tx-indicator" id="tx-ind"></span> PTT</span>
+    </div>
+    <div id="radio-panel">
+        <div id="radio-feed"></div>
+        <div id="radio-filter-bar">
+            <span style="color:var(--dim);margin-right:4px">ФИЛЬТР:</span>
+            <button class="rf-btn active" onclick="setRadioFilter('all',this)">ВСЕ</button>
+            <button class="rf-btn" onclick="setRadioFilter('crew',this)">ЭКИПАЖ</button>
+            <button class="rf-btn" onclick="setRadioFilter('earth',this)">ЗЕМЛЯ</button>
+            <button class="rf-btn" onclick="setRadioFilter('alert',this)">ТРЕВОГА</button>
+            <button class="rf-btn" onclick="setRadioFilter('system',this)">СИСТЕМА</button>
+            <button class="rf-btn" onclick="setRadioFilter('eva',this)">EVA</button>
+            <span style="flex:1"></span>
+            <span class="tx-indicator" id="tx-light"></span>
+            <span style="color:var(--dim);font-size:8px;margin-left:4px">RX ACTIVE</span>
+        </div>
+    </div>
+    <div id="bottom-panels">
+        <div id="radar-section">
+            <canvas id="radar-canvas"></canvas>
+        </div>
+        <div id="deepspace-section">
+            <canvas id="deepspace-canvas"></canvas>
+        </div>
+        <div id="radiation-section">
+            <div class="panel-header">
+                <span class="ph-title" style="color:#cc6644">РАДИАЦИЯ / СОЛН.АКТИВНОСТЬ</span>
+            </div>
+            <canvas id="rad-canvas"></canvas>
+            <div id="rad-data"></div>
+        </div>
+    </div>
+    <!-- INTERPLANETARY COMMS PANEL -->
+    <div id="interplanet-bar">
+        <div class="panel-header">
+            <span class="ph-title" style="color:#cc88ff">МЕЖПЛАНЕТНАЯ СВЯЗЬ</span>
+            <span style="color:var(--dim);font-size:9px" id="mars-delay">RTT MARS: 8-24min</span>
+        </div>
+        <div id="interplanet-feed"></div>
+    </div>
+</div>
+
+<!-- RIGHT: WORK ORDERS + ACTIONS -->
+<div id="col-right">
+    <div class="panel-header">
+        <span class="ph-title">НАРЯДЫ / ЗАДАЧИ</span>
+        <span id="wo-count" style="color:var(--dim)">0 активных</span>
+    </div>
+    <div id="workorders"></div>
+    <div class="panel-header">
+        <span class="ph-title">КОМАНДЫ</span>
+    </div>
+    <div id="quick-actions"></div>
+</div>
+
+</div>
+
+<!-- CREW STATUS STRIP -->
+<div id="crew-strip"></div>
+
+<!-- BOTTOM: LOGS -->
+<div id="log-bar">
+    <div id="sys-log">
+        <div class="panel-header">
+            <span class="ph-title">СИСТЕМНЫЙ ЖУРНАЛ</span>
+        </div>
+        <div id="sys-log-entries"></div>
+    </div>
+    <div id="earth-log">
+        <div class="panel-header">
+            <span class="ph-title">КАНАЛ ЗЕМЛЯ ↔ СТАНЦИЯ</span>
+            <span style="color:var(--dim);font-size:9px">RTT: 2.6s</span>
+        </div>
+        <div id="earth-log-entries"></div>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay">
+    <div id="modal">
+        <button id="modal-close" onclick="closeModal()">✕</button>
+        <h3 id="modal-title"></h3>
+        <div id="modal-body"></div>
+        <div class="modal-btns" id="modal-btns"></div>
+    </div>
+</div>
+
+<!-- CRITICAL EVENT OVERLAY -->
+<div id="critical-overlay">
+    <h2 id="crit-title">ПОТЕРЯ СТАНЦИИ</h2>
+    <p id="crit-reason"></p>
+    <p id="crit-stats"></p>
+    <button onclick="location.reload()">ПЕРЕЗАПУСК СИМУЛЯЦИИ</button>
+</div>
+
+<script>
+// ================================================================
+//  РЕЗОНАНС-9 — LUNAR ENGINEERING DISPATCH CONSOLE
+// ================================================================
+
+// ---- TIME ----
+let gt = 0;                  // Game time (MET seconds)
+let speed = 1;
+let paused = false;
+let lastT = performance.now();
+const LUNAR_DAY = 1200;     // sim-seconds per lunar day
+let extTemp = -185;          // current external temperature, smoothly interpolated
+
+// ---- AUDIO CONTEXT ----
+let audioCtx = null;
+function initAudio(){ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
+function beep(freq, dur, vol=0.08){
+    try{
+        initAudio();
+        const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination);
+        o.frequency.value=freq; g.gain.value=vol;
+        o.start(); o.stop(audioCtx.currentTime+dur);
+    }catch(e){}
+}
+function radioClick(){ beep(1400,0.03,0.04); setTimeout(()=>beep(1200,0.02,0.03),60); }
+function alarmTone(){ beep(880,0.15,0.1); setTimeout(()=>beep(660,0.15,0.1),200); }
+
+// ---- CREW ----
+const CREW = [
+    { id:'CDR-07341', name:'Козлов', full:'Козлов А.В.', role:'Командир экспедиции', callsign:'CDR-07341', status:'free', task:null, health:100, fatigue:0, loc:'HAB' },
+    { id:'ENG-01256', name:'Чен', full:'Чен Ли', role:'Инженер-электрик', callsign:'ENG-01256', status:'free', task:null, health:100, fatigue:0, loc:'PWR' },
+    { id:'ENG-03489', name:'Мюллер', full:'Мюллер К.', role:'Инженер СЖО', callsign:'ENG-03489', status:'free', task:null, health:100, fatigue:0, loc:'LSS' },
+    { id:'GEO-08812', name:'Танака', full:'Танака Ю.', role:'Геолог-оператор', callsign:'GEO-08812', status:'free', task:null, health:100, fatigue:0, loc:'LAB' },
+];
+
+// ---- SYSTEMS ----
+const SYS = {
+    PWR: {
+        name:'Энергосистема', abbr:'PWR', integrity:100, degradeRate:0.003,
+        params:{
+            solar:{label:'Солн. панели',val:98,unit:'%',nom:[80,100],warn:[50,80],crit:[0,50]},
+            rtg:{label:'RTG реактор',val:96,unit:'%',nom:[85,100],warn:[60,85],crit:[0,60]},
+            batt:{label:'АКБ заряд',val:87,unit:'%',nom:[60,100],warn:[30,60],crit:[0,30]},
+            load:{label:'Нагрузка сети',val:72,unit:'kW',nom:[0,85],warn:[85,95],crit:[95,100]},
+            bus_v:{label:'Шина напр.',val:124.2,unit:'V',nom:[120,130],warn:[115,135],crit:[0,140]},
+        }
+    },
+    LSS: {
+        name:'СЖО', abbr:'LSS', integrity:100, degradeRate:0.005,
+        params:{
+            o2:{label:'ppO₂',val:21.0,unit:'%',nom:[19.5,23.5],warn:[18,25],crit:[0,30]},
+            co2:{label:'pCO₂',val:0.4,unit:'%',nom:[0,0.5],warn:[0.5,1.0],crit:[1.0,5]},
+            rh:{label:'Влажность',val:45,unit:'%',nom:[30,60],warn:[20,70],crit:[0,100]},
+            press:{label:'Давление',val:101.3,unit:'kPa',nom:[98,104],warn:[95,107],crit:[0,110]},
+            h2o:{label:'Вода рецикл.',val:94,unit:'%',nom:[80,100],warn:[50,80],crit:[0,50]},
+            temp_hab:{label:'Темп. жилой',val:22.1,unit:'°C',nom:[18,26],warn:[14,32],crit:[0,45]},
+        }
+    },
+    THM: {
+        name:'Термоконтроль', abbr:'THM', integrity:100, degradeRate:0.004,
+        params:{
+            rad_eff:{label:'Радиаторы',val:93,unit:'%',nom:[75,100],warn:[50,75],crit:[0,50]},
+            coolant:{label:'Хладагент',val:96,unit:'%',nom:[80,100],warn:[50,80],crit:[0,50]},
+            loop_t:{label:'Контур t°',val:14.5,unit:'°C',nom:[10,20],warn:[5,30],crit:[0,45]},
+        }
+    },
+    COM: {
+        name:'Связь', abbr:'COM', integrity:100, degradeRate:0.002,
+        params:{
+            hga:{label:'HGA наведение',val:99.2,unit:'%',nom:[90,100],warn:[70,90],crit:[0,70]},
+            snr:{label:'SNR',val:38.5,unit:'dB',nom:[25,50],warn:[15,25],crit:[0,15]},
+            bw:{label:'Пропускная',val:92,unit:'Mbps',nom:[60,100],warn:[30,60],crit:[0,30]},
+        }
+    },
+    MIN: {
+        name:'Добыча/ISRU', abbr:'MIN', integrity:100, degradeRate:0.006,
+        params:{
+            drill:{label:'Бур.уст.',val:90,unit:'%',nom:[70,100],warn:[40,70],crit:[0,40]},
+            regolith:{label:'Реголит',val:58,unit:'т',nom:[0,100],warn:[0,100],crit:[0,100]},
+            he3:{label:'He³ запас',val:11.2,unit:'кг',nom:[0,100],warn:[0,100],crit:[0,100]},
+        }
+    },
+    LAB: {
+        name:'Лаборатория', abbr:'LAB', integrity:100, degradeRate:0.002,
+        params:{
+            exp:{label:'Эксперименты',val:42,unit:'%',nom:[0,100],warn:[0,100],crit:[0,100]},
+            bio:{label:'Биореактор',val:98,unit:'%',nom:[85,100],warn:[60,85],crit:[0,60]},
+        }
+    },
+};
+
+// ---- INVENTORY ----
+const INV = {
+    mech_parts:{ label:'Мех.запчасти', count:20, crit:5 },
+    elec_modules:{ label:'Электроника', count:15, crit:3 },
+    lss_filters:{ label:'Фильтры СЖО', count:12, crit:4 },
+    coolant_l:{ label:'Хладагент, л', count:50, crit:15 },
+    seals:{ label:'Уплотнители', count:8, crit:2 },
+    o2_reserve:{ label:'O₂ резерв, кг', count:40, crit:10 },
+    h2o_reserve:{ label:'H₂O резерв, л', count:200, crit:50 },
+    batteries:{ label:'Батареи рез.', count:4, crit:1 },
+    eva_kits:{ label:'EVA комплект', count:3, crit:1 },
+};
+
+// ---- SATELLITES ----
+const SATS = [
+    { id:'LCRS-1', name:'Lunar Comm Relay 1', type:'Ретранслятор', orbit:'Гало L2', health:100, signal:98, fuel:88, temp:22, degradeRate:0.001, angle:0, orbitR:0.75, speed:0.4 },
+    { id:'LCRS-2', name:'Lunar Comm Relay 2', type:'Ретранслятор', orbit:'Гало L2', health:97, signal:95, fuel:82, temp:21, degradeRate:0.0012, angle:Math.PI*0.66, orbitR:0.8, speed:0.38 },
+    { id:'LNAV-1', name:'Lunar Nav Sat 1', type:'Навигация', orbit:'Полярная 200км', health:95, signal:92, fuel:76, temp:18, degradeRate:0.0015, angle:Math.PI*0.33, orbitR:0.55, speed:0.65 },
+    { id:'LNAV-2', name:'Lunar Nav Sat 2', type:'Навигация', orbit:'Полярная 200км', health:98, signal:96, fuel:80, temp:20, degradeRate:0.001, angle:Math.PI, orbitR:0.5, speed:0.7 },
+    { id:'LRO-X', name:'Lunar Recon Orbiter', type:'Разведка', orbit:'Полярная 50км', health:89, signal:88, fuel:45, temp:25, degradeRate:0.002, angle:Math.PI*1.5, orbitR:0.4, speed:0.9 },
+    { id:'LMET-1', name:'Lunar Meteo Sat', type:'Метеорология', orbit:'Экват. 100км', health:92, signal:90, fuel:70, temp:19, degradeRate:0.0013, angle:Math.PI*0.8, orbitR:0.6, speed:0.55 },
+    { id:'LGPS-3', name:'Lunar GPS Sat 3', type:'Навигация', orbit:'Средняя 500км', health:100, signal:99, fuel:91, temp:21, degradeRate:0.0008, angle:Math.PI*1.2, orbitR:0.7, speed:0.45 },
+];
+let satChatterCD = 20;
+
+// ---- WORK ORDERS ----
+let workOrders = [];
+let woCounter = 1;
+let activeRepairs = [];
+
+// ---- EVENTS ----
+let eventCD = 45;
+const EVENTS = [
+    {type:'micrometeorite',name:'Удар микрометеорита',sys:['THM','LSS'],dmg:[6,14],sev:'warn',
+     crew_lines:['{c}: Диспетчер, зафиксирован удар по обшивке, секция {s}. Слышу шипение.','{c}: Подтверждаю, датчики вибрации сработали. Иду осматривать.']},
+    {type:'micrometeorite_heavy',name:'Множественный метеоритный поток',sys:['THM','LSS','PWR'],dmg:[12,22],sev:'crit',
+     crew_lines:['{c}: МНОЖЕСТВЕННЫЕ УДАРЫ! Три попадания за секунду! Секция {s} — пробой!','{c}: Вижу искры на внешней обшивке через камеру! Активирую протокол защиты!']},
+    {type:'solar_flare',name:'Солнечная вспышка',sys:['COM','PWR'],dmg:[10,22],sev:'crit',
+     crew_lines:['{c}: Внимание всем, радиационный датчик на максимуме! Всем в защищённые отсеки!','{c}: Вижу помехи на мониторах, связь с Землёй нестабильна.']},
+    {type:'solar_flare_x',name:'Солнечная вспышка класса X',sys:['COM','PWR','LAB'],dmg:[18,30],sev:'crit',
+     crew_lines:['{c}: ВСПЫШКА КЛАССА X! Дозиметры зашкаливают! НЕМЕДЛЕННАЯ ЭВАКУАЦИЯ из внешних модулей!','{c}: Электроника сбоит! Перезагружаю критические системы!','{c}: Все в центральном хабе! Закрываю переборки!']},
+    {type:'dust_accum',name:'Запыление панелей',sys:['PWR'],dmg:[4,10],sev:'warn',
+     crew_lines:['{c}: Диспетчер, выработка солнечных панелей падает. Вероятно, пыль.','{c}: Подтверждаю, камера показывает серый налёт на секции 3.']},
+    {type:'dust_static',name:'Электростатический разряд пыли',sys:['PWR','COM'],dmg:[5,12],sev:'warn',
+     crew_lines:['{c}: Статический разряд на панели 4! Вижу вспышку через иллюминатор.','{c}: Похоже, накопился заряд на реголите. Антенна тоже поймала помеху.']},
+    {type:'drill_jam',name:'Заклинивание бура',sys:['MIN'],dmg:[8,18],sev:'warn',
+     crew_lines:['{c}: Бур встал! Твёрдая порода, ток на моторе зашкаливает. Отключаю.','{c}: Нужна ручная разблокировка, потребуется выход.']},
+    {type:'drill_break',name:'Поломка буровой коронки',sys:['MIN'],dmg:[15,25],sev:'crit',
+     crew_lines:['{c}: Коронка бура разрушена! Обломки в скважине! Нужна полная замена.','{c}: Извлекаю обломки... Это базальтовая жила, не рассчитана коронка на такое.']},
+    {type:'coolant_leak',name:'Утечка контура охлаждения',sys:['THM'],dmg:[12,28],sev:'crit',
+     crew_lines:['{c}: Тревога, утечка хладагента! Вижу капли в коридоре секции Дельта.','{c}: Давление в контуре падает, 0.3 бара за минуту. Перекрываю клапан.']},
+    {type:'coolant_freeze',name:'Замерзание контура охлаждения',sys:['THM'],dmg:[10,20],sev:'crit',
+     crew_lines:['{c}: Контур охлаждения замёрз! Ночная фаза, внешняя петля кристаллизовалась!','{c}: Включаю обогрев трубопровода. Давление растёт — опасность разрыва!']},
+    {type:'antenna_drift',name:'Потеря наведения HGA',sys:['COM'],dmg:[8,16],sev:'warn',
+     crew_lines:['{c}: Земля не отвечает, SNR падает. Антенна ушла с оси.','{c}: Гиростабилизатор показывает смещение 2.4 градуса.']},
+    {type:'antenna_motor',name:'Отказ привода антенны',sys:['COM'],dmg:[12,20],sev:'crit',
+     crew_lines:['{c}: Мотор наведения антенны не отвечает! HGA заблокирована!','{c}: Пробую ручное управление... Не работает. Нужен EVA для диагностики.']},
+    {type:'o2_gen_fault',name:'Сбой электролизёра O₂',sys:['LSS'],dmg:[14,24],sev:'crit',
+     crew_lines:['{c}: ТРЕВОГА! Электролизёр отключился аварийно! ppO₂ будет падать!','{c}: Слышу щелчки из блока генерации. Похоже на замыкание, воняет горелым.']},
+    {type:'co2_scrubber',name:'Отказ CO₂ скруббера',sys:['LSS'],dmg:[10,18],sev:'crit',
+     crew_lines:['{c}: CO₂ скруббер остановился! Уровень углекислого газа растёт!','{c}: Проверяю фильтры... Забиты полностью. Нужна срочная замена!']},
+    {type:'seal_breach',name:'Нарушение герметизации',sys:['LSS'],dmg:[18,32],sev:'crit',
+     crew_lines:['{c}: РАЗГЕРМЕТИЗАЦИЯ! Давление падает! Свист слышен из стыка модулей!','{c}: Изолирую секцию! Всем надеть аварийные маски!']},
+    {type:'seal_micro',name:'Микротрещина в иллюминаторе',sys:['LSS'],dmg:[5,10],sev:'warn',
+     crew_lines:['{c}: Обнаружена микротрещина на иллюминаторе секции {s}. Медленная утечка.','{c}: Накладываю временную заплатку. Нужна замена стекла при поставке.']},
+    {type:'power_surge',name:'Скачок в энергосети',sys:['PWR','LAB'],dmg:[6,14],sev:'warn',
+     crew_lines:['{c}: Сработала защита на шине B. Перезапускаю... Лаборатория обесточена.','{c}: Бортовой компьютер перезагрузился, восстанавливаю конфигурацию.']},
+    {type:'power_inverter',name:'Выход из строя инвертора',sys:['PWR'],dmg:[10,18],sev:'crit',
+     crew_lines:['{c}: Инвертор секции 2 вышел из строя! Резервный канал перегружен!','{c}: Слышу гул из силового шкафа. Напряжение шины нестабильно, скачет 110-140V.']},
+    {type:'moonquake',name:'Сейсмическое событие',sys:['MIN','LSS','THM'],dmg:[8,18],sev:'crit',
+     crew_lines:['{c}: Трясёт! Сейсмограф зашкаливает! Все держитесь!','{c}: Вибрация прекратилась. Проверяю целостность стыков... Есть повреждения.']},
+    {type:'moonquake_deep',name:'Глубинное лунотрясение',sys:['MIN','LSS'],dmg:[5,12],sev:'warn',
+     crew_lines:['{c}: Сейсмограф фиксирует глубинное событие, магнитуда 3.2. Ощущается как лёгкая вибрация.','{c}: Проверил стыки — вроде всё на месте. Но бур сместился на 2 см.']},
+    {type:'batt_overheat',name:'Перегрев АКБ',sys:['PWR','THM'],dmg:[10,20],sev:'crit',
+     crew_lines:['{c}: Температура аккумулятора 68 градусов и растёт! Аварийное охлаждение!','{c}: Отключаю блок 2, переключаюсь на резервный.']},
+    {type:'bio_contam',name:'Контаминация биореактора',sys:['LAB'],dmg:[5,12],sev:'warn',
+     crew_lines:['{c}: У нас проблема в биолабе. Культура загрязнена, показатели аномальные.','{c}: Изолирую реактор, запускаю стерилизацию.']},
+    {type:'water_contam',name:'Загрязнение водяного контура',sys:['LSS'],dmg:[8,16],sev:'warn',
+     crew_lines:['{c}: Анализ воды — повышенное содержание примесей! pH сместился до 5.8.','{c}: Переключаюсь на резервный фильтр. Основной нужно промыть.']},
+    {type:'rtg_anomaly',name:'Аномалия RTG реактора',sys:['PWR'],dmg:[8,15],sev:'warn',
+     crew_lines:['{c}: RTG показывает нетипичные колебания мощности. Термопара 3 даёт скачки.','{c}: Может быть деградация термоэлемента. Мониторю, пока в допуске.']},
+    {type:'nav_computer',name:'Сбой навигационного компьютера',sys:['COM','LAB'],dmg:[4,10],sev:'warn',
+     crew_lines:['{c}: Навигационный модуль перезагрузился самопроизвольно. Потеря синхронизации.','{c}: Восстанавливаю эфемериды со спутников... Займёт пару минут.']},
+    {type:'regolith_clog',name:'Засорение фильтра реголитом',sys:['MIN','LSS'],dmg:[4,8],sev:'warn',
+     crew_lines:['{c}: Реголитовая пыль попала в вентиляцию модуля добычи! Фильтр забит.','{c}: Чищу... Нужно улучшить герметизацию шлюза между секциями.']},
+    {type:'solar_panel_crack',name:'Трещина солнечной панели',sys:['PWR'],dmg:[6,14],sev:'warn',
+     crew_lines:['{c}: Камера показывает трещину на панели P3. Выработка упала на 15%.','{c}: Термоциклирование... день-ночь берёт своё. Нужна замена секции.']},
+    {type:'hab_lighting',name:'Отказ освещения жилого модуля',sys:['PWR'],dmg:[2,5],sev:'warn',
+     crew_lines:['{c}: Свет погас в жилом модуле! Работаем при аварийном красном.','{c}: Нашёл — перегорел контроллер LED-массива. Меняю.']},
+    {type:'airlock_jam',name:'Заклинивание шлюзовой камеры',sys:['LSS'],dmg:[4,8],sev:'warn',
+     crew_lines:['{c}: Внешний люк шлюза не закрывается полностью! Зазор 3мм.','{c}: Похоже, реголит попал в направляющую. Чищу вручную.']},
+    {type:'pump_failure',name:'Отказ насоса водяного контура',sys:['LSS','THM'],dmg:[8,15],sev:'warn',
+     crew_lines:['{c}: Насос рецикла воды встал! Давление в контуре падает.','{c}: Переключаюсь на резервный. Основной нужно разбирать — похоже на крыльчатку.']},
+    {type:'radiation_spike',name:'Локальный радиационный выброс',sys:['LAB'],dmg:[3,8],sev:'warn',
+     crew_lines:['{c}: Дозиметр в лаборатории показал кратковременный скачок. 2.5 мЗв.','{c}: Источник — образец LR-47. Изолирую в свинцовый контейнер.']},
+    {type:'thermal_runaway',name:'Тепловой разгон оборудования',sys:['THM','PWR'],dmg:[12,22],sev:'crit',
+     crew_lines:['{c}: ТЕПЛОВОЙ РАЗГОН! Блок питания секции Гамма — 95°C и растёт!','{c}: Аварийное отключение! Включаю принудительный обдув!']},
+    {type:'comm_interference',name:'Интерференция связи',sys:['COM'],dmg:[3,8],sev:'warn',
+     crew_lines:['{c}: Сильные помехи на канале S-band. Похоже на отражение от кратера.','{c}: Переключаюсь на X-band... Лучше, но полоса уже. Земля, как слышите?']},
+    {type:'structural_creak',name:'Деформация конструкции',sys:['LSS','THM'],dmg:[6,12],sev:'warn',
+     crew_lines:['{c}: Слышу скрежет в переходе Альфа-Браво! Термическая деформация!','{c}: Проверяю... Болт крепления лопнул. Нужна замена и усиление.']},
+];
+
+// ---- CREW CHATTER ENGINE ----
+const CH = (c,t) => [c,'crew',t];
+const AL = (c,t) => [c,'alert',t];
+const EV = (c,t) => [c,'eva',t];
+const DP = (c,t) => [c,'dispatch',t];
+const T = ()=>true;
+const AMBIENT_CHATTER = [
+    // === ROUTINE OPS ===
+    {cond:T,weight:2,lines:[CH('{c1}','{c1} на связи. Штатный обход секции {s} завершён, замечаний нет.')]},
+    {cond:T,weight:2,lines:[CH('{c1}','{name1}, как там показания на секции Альфа?'),CH('{c2}','Всё номинально. Температура стабильна, давление в норме.')]},
+    {cond:T,weight:2,lines:[CH('{c1}','{name2}, можешь глянуть клапан на контуре 3? Что-то подкапывает.'),CH('{c2}','Принял, иду смотреть. Дам знать.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Плановая проверка шлюзовой камеры. Герметичность — норма.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Заменил фильтр CO₂ в секции {s}. Старый изношен на 80%.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Калибровка датчиков давления завершена. Погрешность 0.02%.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Проверка аварийных выходов... Люк 1 — норма, люк 2 — норма, люк 3 — норма.')]},
+    {cond:T,weight:2,lines:[CH('{c1}','Обход завершён. Секции Альфа, Браво, Гамма — без замечаний.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Тест аварийного освещения — все секции штатно.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Тест пожарной сигнализации секция {s} — сработала штатно.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Результаты анализа воды — все показатели в зелёной зоне. pH 7.1.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Электропитание секции {s} — напряжение стабильно, ток в допуске.')]},
+    {cond:T,weight:2,lines:[CH('{c1}','Диспетчер, снимаю показания с дозиметров. Все в пределах допуска.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Проверяю скафандры в шлюзе... Скафандр 1 — заряд 98%. Скафандр 2 — 95%.')]},
+    // === TOOLS / PARTS ===
+    {cond:T,weight:1,lines:[CH('{c1}','{name2}, передай мне ключ на 14 и мультиметр.'),CH('{c2}','Сейчас принесу, минуту.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Нужен осциллограф из ремкомплекта. {name2}, он у тебя?'),CH('{c2}','Да, в секции Браво. Сейчас принесу.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Израсходовал последний уплотнитель типа B. Запишите в заказ на поставку.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Диспетчер, {c1}. Проверил запас газовых картриджей — осталось 12 штук.')]},
+    // === MAINTENANCE ===
+    {cond:T,weight:1,lines:[CH('{c1}','Смазал механизм люка {s}. Скрипел при открытии.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Замена уплотнителя на люке секции {s}. Старый потрескался.'),CH('{c2}','Запиши расход — уплотнители на исходе.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Запускаю тест-цикл насосной группы. Минуту шумно будет.'),CH('{c2}','Принял, предупрежу остальных.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','{name2}, слышишь вибрацию от вентилятора в секции Браво?'),CH('{c2}','Подшипник, скорее всего. Поставлю в план на замену.'),CH('{c1}','Добро, не критично пока.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','{name2}, ты видел показания на термопаре 7? Скачок был.'),CH('{c2}','Да, заметил. Кратковременный, уже в норме. Запишу в журнал.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Диспетчер, обнаружил царапину на иллюминаторе секции {s}. Не сквозная.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','{name2}, давление в гидравлике чуть ниже нормы. 148 из 150.'),CH('{c2}','В допуске. Подкачаю при следующем обслуживании.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Почистил оптический датчик на камере 4. Был слой пыли.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Протянул кабель-канал в переходе Альфа-Браво. Раньше висел свободно.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Заменил перегоревший предохранитель на шине C. 15-амперный, артикул FU-15A.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Промыл теплообменник секции Гамма. Был налёт, теперь dT восстановился.')]},
+    // === SCIENCE ===
+    {cond:T,weight:1,lines:[CH('{c1}','{name2}, а ты записал данные с масс-спектрометра?'),CH('{c2}','Записал, всё в бортовом журнале. Интересные результаты, кстати.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Диспетчер, сделал фотофиксацию трещины на панели B4. Отправляю на Землю.')]},
+    {cond:()=>SYS.LAB.integrity>50,weight:2,lines:[CH('{c1}','Эксперимент серии B прошёл {exp_pct}%. Данные передаю на Землю.')]},
+    {cond:()=>SYS.LAB.integrity>50,weight:1,lines:[CH('{c1}','Биореактор показывает хороший рост. Образец 7 особенно перспективен.'),CH('{c2}','Отлично, Земля будет довольна. Запроси дополнительные реактивы.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Начинаю анализ грунтового образца LS-{he3_ppm}. Масс-спектрометр прогрет.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Результат анализа: содержание ильменита 14.2%. Хороший показатель для этого района.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Рентгенограмма образца готова. Вижу кристаллическую структуру, похоже на анортит.')]},
+    // === MINING ===
+    {cond:()=>SYS.MIN.integrity>60,weight:2,lines:[CH('{c1}','Бур работает штатно. Реголит поступает в бункер.'),CH('{c2}','Принял. Концентрация гелия-3 в последней партии — {he3_ppm} ppm.')]},
+    {cond:()=>SYS.MIN.integrity>60,weight:1,lines:[CH('{c1}','Глубина скважины — 3.4 метра. Грунт пошёл плотнее.'),CH('{c2}','Снизь обороты, не хватало ещё коронку сломать.')]},
+    {cond:()=>SYS.MIN.integrity>60,weight:1,lines:[CH('{c1}','Бункер реголита заполнен на 78%. Нужно скоро запускать переработку.')]},
+    // === POWER ISSUES ===
+    {cond:()=>SYS.PWR.integrity<80,weight:5,lines:[CH('{c1}','Диспетчер, энергосистема деградирует. Выходная мощность ниже нормы.'),CH('{c2}','Подтверждаю, батареи садятся быстрее расчётного. Нужна профилактика.')]},
+    {cond:()=>SYS.PWR.integrity<60,weight:6,lines:[CH('{c1}','Энергия критически низкая! Рекомендую отключить добычу и лабораторию.'),CH('{c2}','Согласен, RTG один не тянет всю нагрузку.')]},
+    {cond:()=>SYS.PWR.params.batt.val<40,weight:5,lines:[CH('{c1}','Батареи ниже 40%! При такой разрядке до утра не дотянем.'),CH('{c2}','Нужно срочно снижать потребление. Перевожу СЖО в экономичный режим.')]},
+    // === LIFE SUPPORT ISSUES ===
+    {cond:()=>SYS.LSS.integrity<75,weight:6,lines:[CH('{c1}','Здесь {c1}, ppO₂ тренд вниз. Если не починим генератор — будет плохо.'),CH('{c2}','Понял, готовлю инструмент. Запчасти есть?')]},
+    {cond:()=>SYS.LSS.params.o2.val<19,weight:8,lines:[AL('{c1}','ВНИМАНИЕ ЭКИПАЖУ! Кислород ниже нормы! Снизить физическую активность!'),CH('{c2}','Понял, переключаюсь на поверхностное дыхание. Где мы с ремонтом?')]},
+    {cond:()=>SYS.LSS.params.o2.val<17,weight:10,lines:[AL('{c1}','КРИТИЧЕСКИЙ УРОВЕНЬ O₂! Переходим на кислородные маски!'),AL('{c2}','Маски надеты. Резерв — на 4 часа. Чините генератор НЕМЕДЛЕННО!')]},
+    {cond:()=>SYS.LSS.params.press.val<97,weight:8,lines:[AL('{c1}','Давление в отсеке ниже нормы! Проверяем герметичность!'),CH('{c2}','Беру детектор утечек, начинаю от стыка Браво.')]},
+    {cond:()=>SYS.LSS.params.co2.val>0.7,weight:7,lines:[CH('{c1}','CO₂ повышен, чувствую головную боль. Скруббер справляется?'),CH('{c2}','Еле-еле. Фильтр на последнем издыхании.')]},
+    {cond:()=>SYS.LSS.params.temp_hab.val<16,weight:6,lines:[CH('{c1}','Холодно в жилом модуле. Вижу конденсат на стенках.'),CH('{c2}','Термоконтроль не справляется. Включи дополнительный обогреватель в секции {s}.')]},
+    {cond:()=>SYS.LSS.params.temp_hab.val>30,weight:6,lines:[CH('{c1}','Жарко. 30 градусов в жилом модуле. Радиаторы работают?'),CH('{c2}','Еле-еле. Контур перегружен, хладагент на минимуме.')]},
+    // === THERMAL ===
+    {cond:()=>SYS.THM.integrity<70,weight:5,lines:[CH('{c1}','В жилом модуле прохладно. Термоконтроль явно не справляется.'),CH('{c2}','Радиаторы нужно осмотреть. Может, клапан заклинило.')]},
+    {cond:()=>SYS.THM.params.coolant.val<60,weight:5,lines:[CH('{c1}','Хладагент на минимуме! Ещё немного и контур встанет.'),CH('{c2}','Есть резерв на складе? Нужно дозаправить срочно.')]},
+    // === COMMS ===
+    {cond:()=>SYS.COM.integrity<70,weight:5,lines:[CH('{c1}','Земля плохо слышит нас. Помехи на нисходящем канале.')]},
+    {cond:()=>SYS.COM.integrity<50,weight:7,lines:[CH('{c1}','Связь с Землёй потеряна! Только статический шум на всех частотах!'),CH('{c2}','Пробую переключить на резервную антенну... Есть слабый сигнал.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','{name2}, связь со спутником LCRS-2 нестабильна. Видишь?'),CH('{c2}','Вижу, периодические просадки. Вероятно, ориентация спутника сбилась.')]},
+    // === EVA ===
+    {cond:()=>CREW.some(c=>c.status==='eva'),weight:6,lines:[EV('EVA-1','Диспетчер, EVA-1 на связи. Продвигаюсь к точке работ. Видимость хорошая.'),DP('Диспетчер','Принял, EVA-1. Телеметрия скафандра номинальна. Время выхода {t} минут.')]},
+    {cond:()=>CREW.some(c=>c.status==='eva'),weight:4,lines:[EV('EVA-2','EVA-1, страхую тебя. Фал закреплён.'),EV('EVA-1','Принял, начинаю работу.')]},
+    {cond:()=>CREW.some(c=>c.status==='eva'),weight:3,lines:[EV('EVA-1','Диспетчер, вижу следы старого удара на обшивке модуля Браво. Кратер 3 мм.'),DP('Диспетчер','Копия, зафиксируйте и сфотографируйте. Включим в отчёт.')]},
+    {cond:()=>CREW.some(c=>c.status==='eva'),weight:3,lines:[EV('EVA-2','Какой вид отсюда... Земля прямо над горизонтом, полумесяцем.'),EV('EVA-1','Сосредоточься на работе. Потом полюбуешься.')]},
+    {cond:()=>CREW.some(c=>c.status==='eva'),weight:2,lines:[EV('EVA-1','Диспетчер, заканчиваю. Осталось закрутить четыре болта.'),DP('Диспетчер','Принял. Не торопитесь, кислорода достаточно.')]},
+    // === FATIGUE / MORALE ===
+    {cond:()=>CREW.some(c=>c.fatigue>60),weight:4,lines:[CH('{c1}','Диспетчер, экипаж устал. Запрашиваю разрешение на ротацию.')]},
+    {cond:()=>CREW.some(c=>c.fatigue>80),weight:5,lines:[CH('{c1}','Глаза закрываются... Когда смена?'),CH('{c2}','Через два часа. Держись, я принесу кофе.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Перерыв на приём пищи через 20 минут. Кто будет на вахте?'),CH('{c2}','Я останусь, подмените через час.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Варю кофе в модуле Альфа, кому принести?'),CH('{c2}','Мне, пожалуйста. С сахаром.'),CH('{c1}','Принял. Через пять минут.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Ещё 47 дней до ротации.'),CH('{c2}','Не считай, быстрее пройдёт. Займись лучше отчётом.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Получил письмо от семьи. Дочка нарисовала Луну.'),CH('{c2}','Покажи потом. У меня сын тоже рисует ракеты.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Кто вчера оставил грязную посуду в модуле Альфа?'),CH('{c2}','Виноват, закрутился с ремонтом. Сейчас уберу.')]},
+    // === PERSONAL / HUMAN ===
+    {cond:T,weight:1,lines:[CH('{c1}','Земля в иллюминаторе... Красиво сегодня. Облака над Тихим.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Сегодня ровно 100 дней миссии. Отметим?'),CH('{c2}','У меня есть припрятанная шоколадка. Делим на четверых.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Слушал вчера запись — соловьи поют. Странно звучит здесь.'),CH('{c2}','Я дождь включаю на ночь. Помогает заснуть в тишине.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Тренировка по расписанию. Иду на велотренажёр.'),CH('{c2}','2 часа минимум, врач на Земле следит за твоей кардио.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Видел тень на горизонте? Просто скала, но на секунду показалось...'),CH('{c2}','Лунная паранойя. Через пару месяцев привыкнешь.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Как думаешь, через 50 лет здесь город будет?'),CH('{c2}','Если мы не запорем эту базу — возможно.')]},
+    // === NIGHT PHASE ===
+    {cond:()=>isDayPhase()>=0.5,weight:3,lines:[CH('{c1}','Ночная фаза. Панели обесточены, работаем на RTG и батареях.'),CH('{c2}','Понял, отключаю некритичные потребители.')]},
+    {cond:()=>isDayPhase()>=0.5,weight:2,lines:[CH('{c1}','Температура снаружи минус 180. Чувствую, как стены остывают.'),CH('{c2}','Обогреватели на максимуме. Термоизоляция держит, но на пределе.')]},
+    {cond:()=>isDayPhase()>=0.5,weight:2,lines:[CH('{c1}','Звёзды невероятные. Без атмосферы — как алмазная россыпь.')]},
+    {cond:()=>isDayPhase()<0.1,weight:3,lines:[CH('{c1}','Рассвет! Вижу первые лучи на ободе кратера.'),CH('{c2}','Панели начинают заряжаться. Наконец-то.')]},
+    // === SATELLITES ===
+    {cond:()=>SATS.some(s=>s.health<70),weight:4,lines:[CH('{c1}','Диспетчер, телеметрия со спутника показывает аномалию. Проверьте на пульте.')]},
+    {cond:()=>SATS.some(s=>s.health<50),weight:6,lines:[CH('{c1}','Один из ретрансляторов деградирует, сигнал ухудшается.'),CH('{c2}','Без ретранслятора потеряем связь с Землёй на теневой стороне.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','LRO сейчас над нами, можно запросить свежие снимки района.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Навигационный спутник передал обновлённые эфемериды.')]},
+    {cond:()=>SATS.some(s=>s.fuel<30),weight:4,lines:[CH('{c1}','Топливо спутника на исходе. Без коррекции орбиты потеряем его через неделю.'),CH('{c2}','Земля должна отправить команду на манёвр экономии.')]},
+    // === DISCOVERIES ===
+    {cond:T,weight:1,lines:[CH('{c1}','Интересная находка в образце — кристаллы оливина необычного цвета.'),CH('{c2}','Сфотографируй и в спектрометр. Земля оценит.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Сейсмограф зафиксировал микрособытие на глубине 50 км. Магнитуда 0.8.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Странные показания магнитометра в районе скважины. Локальная аномалия.'),CH('{c2}','Может быть железорудное тело. Надо будет исследовать.')]},
+    // === MEDICAL ===
+    {cond:()=>CREW.some(c=>c.health<80),weight:5,lines:[CH('{c1}','Диспетчер, жалуюсь на головную боль. Вероятно, повышенный CO₂.'),CH('{c2}','Прими анальгетик и отдохни. Я покараулю системы.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Плановый медосмотр: давление 120/80, пульс 72. Норма.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Сдал кровь на анализ по протоколу М-7. Отправляю данные на Землю.')]},
+    // === HUMOR / LIGHTER ===
+    {cond:T,weight:1,lines:[CH('{c1}','Кто последний ел тюбик с борщом? Пустой, а новый не достал.'),CH('{c2}','Виноват. Но борщ был отличный.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Мячик для пинг-понга опять улетел за панель. Третий за неделю.'),CH('{c2}','При одной шестой g играть одно удовольствие, но мячики страдают.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Завтра день рождения {name2}. Кто-нибудь придумал подарок?'),CH('{c2}','Я распечатал на 3D-принтере модель базы. Думаю, оценит.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Нашёл паука в вентиляции. Шутка. Но на секунду сердце остановилось.')]},
+    // === TECHNICAL DEEP ===
+    {cond:T,weight:1,lines:[CH('{c1}','Проверяю токи утечки на шине DC. 2.3 мА — в допуске, но вырос с прошлой недели.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Провёл дефектоскопию сварного шва на переходе Браво-Гамма. Чисто.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Центрифуга водоочистки — вибрация 0.3g на 4000 об/мин. Подшипник?'),CH('{c2}','Может быть дисбаланс. Попробуй перебалансировать ротор.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Вакуумный насос шлюза — время откачки 4 мин 20 сек. Было 3:50. Деградация.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Протокол самодиагностики бортового компьютера: 0 ошибок, uptime 847 часов.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Менял термопасту на процессоре бортового компьютера. Грелся до 85°C, теперь 62°C.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','Обновил прошивку контроллера шлюза. Версия 2.4.1 — исправлена ошибка с таймером.')]},
+    {cond:T,weight:1,lines:[CH('{c1}','{name2}, посмотри логи с датчика D-14. Шум появился после последнего лунотрясения.'),CH('{c2}','Вижу. Похоже на ложные срабатывания. Откалибрую заново.')]},
+];
+
+let chatterCD = 4;
+let radioMessages = [];
+let earthLog = [];
+let sysLog = [];
+
+// ---- HELPERS ----
+function rng(a,b){return Math.random()*(b-a)+a}
+function rngI(a,b){return Math.floor(rng(a,b+1))}
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v))}
+function isDayPhase(){return (gt%LUNAR_DAY)/LUNAR_DAY}
+function formatMET(t){
+    const d=Math.floor(t/86400),h=Math.floor((t%86400)/3600),m=Math.floor((t%3600)/60),s=Math.floor(t%60);
+    return `${String(d).padStart(3,'0')}:${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function metShort(){
+    const h=Math.floor((gt%86400)/3600),m=Math.floor((gt%3600)/60),s=Math.floor(gt%60);
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function paramStatus(p){
+    const v=p.val;
+    if(v>=p.nom[0]&&v<=p.nom[1]) return 'nom';
+    if(v>=p.warn[0]&&v<=p.warn[1]) return 'warn';
+    return 'crit';
+}
+function sysStatus(sys){
+    if(sys.integrity<=0) return 'off';
+    if(sys.integrity<30) return 'crt';
+    if(sys.integrity<60) return 'deg';
+    return 'nom';
+}
+function freeCrew(){return CREW.filter(c=>c.status==='free'&&c.health>10&&c.fatigue<90)}
+
+// ---- LOGGING ----
+function slog(msg,type='inf'){
+    sysLog.push({t:metShort(),msg,type});
+    if(sysLog.length>200)sysLog.shift();
+    renderSysLog();
+}
+function elog(dir,msg){
+    earthLog.push({t:metShort(),dir,msg});
+    if(earthLog.length>100)earthLog.shift();
+    renderEarthLog();
+}
+
+// ---- RADIO ----
+function radioMsg(callsign, channel, text){
+    radioMessages.push({t:metShort(),cs:callsign,ch:channel,text});
+    if(radioMessages.length>150)radioMessages.shift();
+    renderRadio();
+    radioClick();
+}
+
+// Radio filter
+let radioFilter = 'all';
+function setRadioFilter(f, btn){
+    radioFilter = f;
+    document.querySelectorAll('.rf-btn').forEach(b=>b.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+    renderRadio();
+}
+
+// ---- RENDER: RADIO ----
+function renderRadio(){
+    const el=document.getElementById('radio-feed');
+    let filtered = radioMessages;
+    if(radioFilter!=='all') filtered = radioMessages.filter(m=>m.ch===radioFilter||m.ch==='dispatch');
+    const last40 = filtered.slice(-40);
+    el.innerHTML = last40.map(m=>{
+        const chClass = 'ch-'+m.ch;
+        const chLabel = {crew:'ЭКИПАЖ',dispatch:'ДИСПЕТЧ',earth:'ЗЕМЛЯ',alert:'ТРЕВОГА',system:'СИСТЕМА',eva:'EVA'}[m.ch]||m.ch;
+        return `<div class="radio-msg ${chClass}">
+            <div class="rm-header">
+                <span><span class="rm-callsign">${m.cs}</span> <span class="rm-channel">${chLabel}</span></span>
+                <span class="rm-time">${m.t}</span>
+            </div>
+            <div class="rm-text">${m.text}</div>
+        </div>`;
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+}
+
+// ---- RENDER: TELEMETRY ----
+function renderTelemetry(){
+    const el=document.getElementById('telemetry');
+    let html='';
+    let nomCount=0, total=0;
+    for(const [id,sys] of Object.entries(SYS)){
+        total++;
+        const st=sysStatus(sys);
+        if(st==='nom')nomCount++;
+        const stLabel={nom:'НОРМ',deg:'ДЕГРАД',crt:'КРИТИЧ',off:'ОТКЛ'}[st];
+        const stClass={nom:'ts-nom',deg:'ts-deg',crt:'ts-crt',off:'ts-off'}[st];
+        const blockClass = st==='crt'?'crit-state':st==='deg'?'warn-state':'';
+
+        html+=`<div class="telem-block ${blockClass}">
+            <div class="telem-title">
+                <span class="telem-name">${sys.abbr} — ${sys.name}</span>
+                <span class="telem-status ${stClass}">${stLabel} ${sys.integrity.toFixed(0)}%</span>
+            </div>
+            <div class="telem-grid">`;
+
+        for(const [pid,p] of Object.entries(sys.params)){
+            const ps=paramStatus(p);
+            const cls={nom:'tp-nom',warn:'tp-warn',crit:'tp-crit'}[ps];
+            const displayVal = typeof p.val==='number'? (p.val>=100?p.val.toFixed(0):p.val.toFixed(1)):p.val;
+            html+=`<div class="telem-param">
+                <span class="tp-label">${p.label}</span>
+                <span class="tp-value ${cls}">${displayVal}<span class="tp-unit">${p.unit}</span></span>
+            </div>`;
+        }
+
+        html+=`</div>`;
+
+        // LED indicators row
+        const repair = activeRepairs.find(r=>r.sysId===id);
+        const blinkClass = st==='crt'?'blink-fast':st==='deg'?'blink-med':'blink-slow';
+        html+=`<div class="telem-leds">
+            <span class="telem-led-label">SYS</span>
+            <span class="led ${st==='nom'?'led-green':st==='deg'?'led-yellow blink-med':st==='crt'?'led-red blink-fast':'led-off'}"></span>
+            <span class="telem-led-label">PWR</span>
+            <span class="led ${SYS.PWR.integrity>50?'led-green blink-slow':'led-yellow blink-med'}"></span>
+            <span class="telem-led-label">DATA</span>
+            <span class="led led-blue blink-slow"></span>
+            ${repair?'<span class="telem-led-label">REP</span><span class="led led-yellow blink-med"></span>':''}
+            <span style="flex:1"></span>
+            <span class="telem-led-label">${sys.integrity.toFixed(0)}%</span>
+        </div>`;
+
+        html+=`<div class="telem-bar"><div class="telem-bar-fill" style="width:${sys.integrity}%;background:${sys.integrity>65?'var(--green)':sys.integrity>35?'var(--yellow)':'var(--red2)'}"></div></div>
+        </div>`;
+    }
+    // Satellite telemetry
+    html+=`<div class="telem-block" style="border-color:#1a1a30">
+        <div class="telem-title">
+            <span class="telem-name" style="color:#7788cc">SAT — Орбитальная группировка</span>
+            <span class="telem-status" style="background:#0a0a1a;color:#7788cc">${SATS.filter(s=>s.health>50).length}/${SATS.length} ACT</span>
+        </div>
+        <div style="font-size:10px">`;
+    for(const sat of SATS){
+        const hc = sat.health>80?'tp-nom':sat.health>50?'tp-warn':'tp-crit';
+        const sigBlink = sat.signal<70?'blink-med':'';
+        const fuelWarn = sat.fuel<30;
+        html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:1px 0;border-bottom:1px solid #080c14">
+            <span style="color:var(--dim);width:58px;font-size:9px">${sat.id}</span>
+            <span class="led ${sat.health>80?'led-green':sat.health>50?'led-yellow blink-med':'led-red blink-fast'}" style="width:4px;height:4px"></span>
+            <span style="color:#5566aa;width:50px;font-size:9px;text-align:center">${sat.type.slice(0,5)}</span>
+            <span class="${hc}" style="width:30px;text-align:right;font-size:9px">${sat.health.toFixed(0)}%</span>
+            <span style="color:var(--dim);width:10px;text-align:center;font-size:8px">S</span>
+            <span class="${sigBlink}" style="color:var(--accent2);width:28px;text-align:right;font-size:9px">${sat.signal.toFixed(0)}</span>
+            <span style="color:var(--dim);width:10px;text-align:center;font-size:8px">F</span>
+            <span style="color:${fuelWarn?'var(--orange)':'var(--dim)'};width:28px;text-align:right;font-size:9px">${sat.fuel.toFixed(0)}%</span>
+        </div>`;
+    }
+    html+=`</div>
+        <div class="telem-leds" style="margin-top:4px">
+            <span class="telem-led-label">TLM</span><span class="led led-blue blink-slow"></span>
+            <span class="telem-led-label">CMD</span><span class="led led-green blink-slow"></span>
+            <span class="telem-led-label">RNG</span><span class="led led-green ${SATS.some(s=>s.health<60)?'blink-med':''}"></span>
+            <span style="flex:1"></span>
+            <span class="telem-led-label" style="color:#5566aa">CONSTELLATION</span>
+        </div>
+    </div>`;
+
+    el.innerHTML=html;
+    document.getElementById('sys-summary').textContent=`${nomCount}/${total} NOM`;
+    document.getElementById('sys-summary').style.color = nomCount===total?'var(--green)':nomCount>=4?'var(--yellow)':'var(--red2)';
+}
+
+// ---- RENDER: WORK ORDERS ----
+function renderWorkOrders(){
+    const el=document.getElementById('workorders');
+    if(workOrders.length===0){
+        el.innerHTML='<div style="padding:20px;text-align:center;color:var(--dim);font-size:11px">Нет активных нарядов</div>';
+    } else {
+        el.innerHTML = workOrders.map(wo=>{
+            const pClass = {1:'wo-p1',2:'wo-p2',3:'wo-p3'}[wo.priority];
+            const pLabel = {1:'КРИТИЧ',2:'ВАЖНЫЙ',3:'ШТАТН'}[wo.priority];
+            const prog = wo.totalTime>0? ((wo.totalTime-wo.timeLeft)/wo.totalTime*100):0;
+            return `<div class="wo-card" onclick="woClick(${wo.id})">
+                <div class="wo-header">
+                    <span class="wo-id">WO-${String(wo.id).padStart(4,'0')}</span>
+                    <span class="wo-priority ${pClass}">${pLabel}</span>
+                </div>
+                <div class="wo-title">${wo.title}</div>
+                <div class="wo-meta">
+                    <span>${wo.assignee||'Не назначен'}</span>
+                    <span>${wo.status}</span>
+                </div>
+                ${wo.status==='В РАБОТЕ'?`<div class="wo-progress"><div class="wo-progress-fill" style="width:${prog}%"></div></div>`:''}
+            </div>`;
+        }).join('');
+    }
+    document.getElementById('wo-count').textContent=`${workOrders.length} активных`;
+}
+
+function woClick(id){
+    const wo=workOrders.find(w=>w.id===id);
+    if(!wo)return;
+    const prog = wo.totalTime>0?((wo.totalTime-wo.timeLeft)/wo.totalTime*100).toFixed(0):'—';
+    let body=`<p>${wo.desc}</p><p>Система: <b>${wo.system}</b></p><p>Прогресс: <b>${prog}%</b></p>`;
+    if(wo.assignee) body+=`<p>Исполнитель: <b>${wo.assignee}</b></p>`;
+
+    const btns=[];
+    if(wo.status==='ОЖИДАНИЕ'){
+        btns.push({text:'Назначить ремонт',cls:'m-primary',action:()=>{assignWO(wo);closeModal();}});
+    }
+    btns.push({text:'Закрыть',cls:'',action:closeModal});
+    showModal(`WO-${String(wo.id).padStart(4,'0')}: ${wo.title}`,body,btns);
+}
+
+function createWO(title,desc,system,priority){
+    const wo={
+        id:woCounter++, title, desc, system, priority,
+        status:'ОЖИДАНИЕ', assignee:null, timeLeft:0, totalTime:0,
+    };
+    workOrders.push(wo);
+    slog(`Наряд WO-${String(wo.id).padStart(4,'0')}: ${title}`,priority===1?'err':'wrn');
+    return wo;
+}
+
+function assignWO(wo){
+    const avail=freeCrew();
+    if(avail.length===0){
+        radioMsg('Система','system','Нет свободного персонала для назначения.');
+        return;
+    }
+    const c=avail[0];
+    const repTime=rng(25,70);
+    wo.status='В РАБОТЕ';
+    wo.assignee=c.full;
+    wo.timeLeft=repTime;
+    wo.totalTime=repTime;
+    c.status='busy';
+    c.task=wo.title;
+    activeRepairs.push({woId:wo.id,crewId:c.id,sysId:wo.system});
+
+    radioMsg('Диспетчер','dispatch',`${c.callsign}, назначаю вам наряд WO-${String(wo.id).padStart(4,'0')}: ${wo.title}. Приступайте.`);
+    setTimeout(()=>{
+        radioMsg(c.callsign,'crew',`Принял, Диспетчер. Направляюсь к ${SYS[wo.system]?.name||wo.system}. Ориентировочно ${Math.ceil(repTime)} минут.`);
+    },rng(1500,3000)/speed);
+}
+
+// ---- RENDER: QUICK ACTIONS ----
+function renderActions(){
+    const avail=freeCrew().length;
+    const el=document.getElementById('quick-actions');
+    el.innerHTML=`
+        <button class="qa-btn" onclick="cmdRepairSys()" ${avail<1?'disabled':''}>Назначить ремонт</button>
+        <button class="qa-btn" onclick="cmdMaintenance()">Профилактика</button>
+        <button class="qa-btn" onclick="cmdEVA()" ${avail<2?'disabled':''}>Запросить EVA</button>
+        <button class="qa-btn" onclick="cmdRedistPower()">Перераспр. энергию</button>
+        <button class="qa-btn" onclick="cmdReserveO2()" ${INV.o2_reserve.count<5?'disabled':''}>Резерв O₂ (${INV.o2_reserve.count})</button>
+        <button class="qa-btn" onclick="cmdReserveH2O()" ${INV.h2o_reserve.count<20?'disabled':''}>Резерв H₂O (${INV.h2o_reserve.count})</button>
+        <button class="qa-btn" onclick="cmdSwapBatt()" ${INV.batteries.count<1?'disabled':''}>Замена АКБ (${INV.batteries.count})</button>
+        <button class="qa-btn" onclick="cmdCoolant()" ${INV.coolant_l.count<10?'disabled':''}>Заправка хлад. (${INV.coolant_l.count})</button>
+        <button class="qa-btn" onclick="cmdSendReport()">Рапорт на Землю</button>
+        <button class="qa-btn" onclick="cmdRestCrew()">Отдых экипажа</button>
+        <button class="qa-btn qa-danger" onclick="cmdEmergVent()">Аварийн. вентиляция</button>
+        <button class="qa-btn qa-danger" onclick="cmdRebootSys()">Перезагр. системы</button>
+    `;
+}
+
+// ---- COMMANDS ----
+function cmdRepairSys(){
+    const damaged = Object.entries(SYS).filter(([,s])=>s.integrity<90).sort((a,b)=>a[1].integrity-b[1].integrity);
+    if(damaged.length===0){radioMsg('Система','system','Все системы в допустимых пределах.');return;}
+    const [id,sys]=damaged[0];
+    if(workOrders.find(w=>w.system===id&&w.status==='В РАБОТЕ')){radioMsg('Система','system',`${sys.name} уже в ремонте.`);return;}
+    const wo=createWO(`Ремонт: ${sys.name}`,`Восстановление целостности ${sys.name}. Текущая: ${sys.integrity.toFixed(0)}%`,id,sys.integrity<30?1:2);
+    assignWO(wo);
+}
+
+function cmdMaintenance(){
+    const avail=freeCrew();
+    if(avail.length===0){radioMsg('Система','system','Нет свободного персонала.');return;}
+    const c=avail[0];
+    const worst=Object.entries(SYS).sort((a,b)=>a[1].integrity-b[1].integrity)[0];
+    const [id,sys]=worst;
+    const boost=rng(4,12);
+    sys.integrity=clamp(sys.integrity+boost,0,100);
+    c.fatigue=clamp(c.fatigue+8,0,100);
+    radioMsg('Диспетчер','dispatch',`${c.callsign}, проведите штатную профилактику ${sys.name}.`);
+    setTimeout(()=>{
+        radioMsg(c.callsign,'crew',`Принял. Профилактика завершена, целостность ${sys.integrity.toFixed(0)}%. Подтянул соединения, проверил контакты.`);
+    },rng(3000,6000)/speed);
+    slog(`Профилактика ${sys.name}: +${boost.toFixed(1)}%`,'ok');
+    if(id==='LSS'&&INV.lss_filters.count>0){INV.lss_filters.count--;sys.integrity=clamp(sys.integrity+3,0,100);}
+}
+
+function cmdEVA(){
+    const avail=freeCrew();
+    if(avail.length<2){radioMsg('Система','system','Для EVA нужны минимум 2 свободных.');return;}
+    const purposes=['Осмотр обшивки и стыков','Ремонт солнечных панелей','Обслуживание антенны HGA','Проверка радиаторов'];
+    const purpose=pick(purposes);
+    showModal('Запрос EVA',`<p>Цель: ${purpose}</p><p>Экипаж: ${avail[0].full}, ${avail[1].full}</p><p>Расчётное время: 40-90 минут</p><p>Внешняя температура: ${document.getElementById('ext-temp-val').textContent}</p>`,
+    [{text:'Разрешить выход',cls:'m-primary',action:()=>{execEVA(avail[0],avail[1],purpose);closeModal();}},{text:'Отмена',cls:'',action:closeModal}]);
+}
+
+function execEVA(c1,c2,purpose){
+    if(INV.eva_kits.count<=0){radioMsg('Система','system','Нет EVA-комплектов!');return;}
+    INV.eva_kits.count--;
+    c1.status='eva'; c1.task='EVA: '+purpose;
+    c2.status='eva'; c2.task='EVA: '+purpose;
+
+    radioMsg('Диспетчер','dispatch',`${c1.callsign}, ${c2.callsign}, разрешаю EVA. Цель: ${purpose}. Соблюдайте протокол безопасности.`);
+    setTimeout(()=>radioMsg(c1.callsign,'eva',`Принял, шлюзование... Давление выравнено. Открываю люк.`),2000/speed);
+    setTimeout(()=>radioMsg(c2.callsign,'eva',`EVA-2 вышел. Фал закреплён. Видимость отличная, вижу Землю на горизонте.`),5000/speed);
+    setTimeout(()=>radioMsg(c1.callsign,'eva',`Продвигаюсь к цели. ${purpose}...`),9000/speed);
+
+    const evaTime=rng(35,80);
+    setTimeout(()=>{
+        if(purpose.includes('панел')){SYS.PWR.integrity=clamp(SYS.PWR.integrity+15,0,100);SYS.PWR.params.solar.val=clamp(SYS.PWR.params.solar.val+25,0,100);}
+        else if(purpose.includes('антенн')){SYS.COM.integrity=clamp(SYS.COM.integrity+20,0,100);SYS.COM.params.hga.val=clamp(SYS.COM.params.hga.val+20,0,100);}
+        else if(purpose.includes('радиатор')){SYS.THM.integrity=clamp(SYS.THM.integrity+18,0,100);SYS.THM.params.rad_eff.val=clamp(SYS.THM.params.rad_eff.val+20,0,100);}
+        else{for(const s of Object.values(SYS))s.integrity=clamp(s.integrity+4,0,100);}
+
+        radioMsg(c1.callsign,'eva',`EVA-1 — Диспетчер. Работы завершены. Возвращаемся в шлюз.`);
+        setTimeout(()=>{
+            radioMsg(c2.callsign,'eva','Шлюзование завершено. Скафандры на зарядке. Оба в норме.');
+            c1.status='free';c1.task=null;c1.fatigue=clamp(c1.fatigue+25,0,100);
+            c2.status='free';c2.task=null;c2.fatigue=clamp(c2.fatigue+25,0,100);
+            INV.eva_kits.count++;
+            slog(`EVA завершён: ${purpose}`,'ok');
+        },4000/speed);
+    },evaTime*1000/speed);
+}
+
+function cmdRedistPower(){
+    radioMsg('Диспетчер','dispatch','Всем постам: перераспределение энергии. Отключаю лабораторию и добычу, приоритет — СЖО и связь.');
+    SYS.LAB.integrity=clamp(SYS.LAB.integrity-15,0,100);
+    SYS.MIN.integrity=clamp(SYS.MIN.integrity-15,0,100);
+    SYS.LSS.integrity=clamp(SYS.LSS.integrity+8,0,100);
+    SYS.PWR.params.batt.val=clamp(SYS.PWR.params.batt.val+12,0,100);
+    setTimeout(()=>radioMsg(pick(CREW).callsign,'crew','Принял, некритичные потребители отключены.'),rng(2000,4000)/speed);
+    slog('Энергия перераспределена: приоритет СЖО','ok');
+}
+
+function cmdReserveO2(){
+    if(INV.o2_reserve.count<5)return;
+    INV.o2_reserve.count-=5;
+    SYS.LSS.params.o2.val=clamp(SYS.LSS.params.o2.val+2.5,0,23);
+    radioMsg('Диспетчер','dispatch','Открываю резервный O₂. Пять килограмм в контур.');
+    setTimeout(()=>radioMsg(CREW[2].callsign,'crew','Подтверждаю, ppO₂ растёт. Сейчас '+SYS.LSS.params.o2.val.toFixed(1)+'%.'),rng(2000,4000)/speed);
+    slog('Резервный O₂ использован: -5 кг','inf');
+}
+
+function cmdReserveH2O(){
+    if(INV.h2o_reserve.count<20)return;
+    INV.h2o_reserve.count-=20;
+    SYS.LSS.params.h2o.val=clamp(SYS.LSS.params.h2o.val+15,0,100);
+    radioMsg('Диспетчер','dispatch','Подключаю резервный бак воды.');
+    slog('Резервная вода: -20 л','inf');
+}
+
+function cmdSwapBatt(){
+    if(INV.batteries.count<1)return;
+    INV.batteries.count--;
+    SYS.PWR.params.batt.val=clamp(SYS.PWR.params.batt.val+35,0,100);
+    radioMsg('Диспетчер','dispatch',CREW[1].callsign+', замените аккумуляторный блок на резервный.');
+    setTimeout(()=>radioMsg(CREW[1].callsign,'crew','Блок заменён, заряд '+SYS.PWR.params.batt.val.toFixed(0)+'%. Старый — на утилизацию.'),rng(3000,6000)/speed);
+    slog('АКБ заменена','ok');
+}
+
+function cmdCoolant(){
+    if(INV.coolant_l.count<10)return;
+    INV.coolant_l.count-=10;
+    SYS.THM.params.coolant.val=clamp(SYS.THM.params.coolant.val+20,0,100);
+    radioMsg('Диспетчер','dispatch',CREW[2].callsign+', дозаправьте контур охлаждения.');
+    setTimeout(()=>radioMsg(CREW[2].callsign,'crew','Хладагент дозаправлен, уровень '+SYS.THM.params.coolant.val.toFixed(0)+'%.'),rng(2000,4000)/speed);
+    slog('Хладагент дозаправлен: -10 л','ok');
+}
+
+function cmdSendReport(){
+    const report = Object.entries(SYS).map(([id,s])=>`${s.abbr}: ${s.integrity.toFixed(0)}%`).join(' | ');
+    const crewRep = CREW.map(c=>`${c.id}: ${c.health.toFixed(0)}%HP/${c.fatigue.toFixed(0)}%F`).join(', ');
+    radioMsg('Диспетчер','earth',`Хьюстон, Резонанс-9. Плановый рапорт. Системы: ${report}. Экипаж: ${crewRep}. Конец.`);
+    elog('to',`Плановый рапорт. ${report}`);
+    setTimeout(()=>{
+        const r=pick([
+            'Хьюстон: рапорт принят. Телеметрия подтверждена. Хорошая работа, Резонанс.',
+            'Хьюстон: копия. Обращаем внимание на деградацию систем. Запланируйте профилактику.',
+            'Хьюстон: данные получены. Научный комитет доволен прогрессом. Следующий рапорт через 2 часа MET.',
+        ]);
+        radioMsg('Хьюстон','earth',r);
+        elog('from',r);
+    },(2600+rng(3000,10000))/speed);
+    slog('Рапорт передан на Землю','inf');
+}
+
+function cmdRestCrew(){
+    let rested=0;
+    for(const c of CREW){
+        if(c.status==='free'){c.fatigue=clamp(c.fatigue-25,0,100);c.health=clamp(c.health+3,0,100);rested++;}
+    }
+    if(rested>0){
+        radioMsg('Диспетчер','dispatch',`Свободный состав — отдых по расписанию. ${rested} чел.`);
+        setTimeout(()=>radioMsg(pick(CREW).callsign,'crew','Принял, уходим на отдых. Приятно слышать.'),rng(2000,4000)/speed);
+    }else radioMsg('Система','system','Весь экипаж занят.');
+}
+
+function cmdEmergVent(){
+    SYS.LSS.params.co2.val=clamp(SYS.LSS.params.co2.val-0.4,0,5);
+    SYS.LSS.params.press.val=clamp(SYS.LSS.params.press.val-3,0,110);
+    SYS.LSS.params.o2.val=clamp(SYS.LSS.params.o2.val-0.8,0,23);
+    radioMsg('Диспетчер','alert','ВСЕМ ПОСТАМ: аварийная вентиляция! Ожидайте кратковременное падение давления!');
+    alarmTone();
+    setTimeout(()=>radioMsg(pick(CREW).callsign,'crew','Копия, держимся. Уши заложило. CO₂ падает.'),rng(1500,3000)/speed);
+    slog('АВАРИЙНАЯ ВЕНТИЛЯЦИЯ','err');
+}
+
+function cmdRebootSys(){
+    const damaged=Object.entries(SYS).filter(([,s])=>s.integrity<80).sort((a,b)=>a[1].integrity-b[1].integrity);
+    if(damaged.length===0){radioMsg('Система','system','Нет систем для перезагрузки.');return;}
+    const [id,sys]=damaged[0];
+    showModal(`Перезагрузка: ${sys.name}`,`<p>Система ${sys.name} будет отключена на ~15 секунд. Физические повреждения не устраняются.</p><p>Целостность: ${sys.integrity.toFixed(0)}%</p>`,
+    [{text:'Перезагрузить',cls:'m-danger',action:()=>{
+        const orig=sys.integrity;sys.integrity=0;
+        radioMsg('Диспетчер','alert',`Перезагрузка ${sys.name}! Система временно offline!`);
+        alarmTone();
+        setTimeout(()=>{
+            sys.integrity=clamp(orig+rng(4,12),0,100);
+            radioMsg('Система','system',`${sys.name} — перезагрузка завершена. Целостность: ${sys.integrity.toFixed(0)}%.`);
+        },15000/speed);
+        closeModal();
+    }},{text:'Отмена',cls:'',action:closeModal}]);
+}
+
+// ---- RENDER: CREW STRIP ----
+// ECG data per crew member
+const ecgBuffers = {};
+CREW.forEach(c => { ecgBuffers[c.id] = new Float32Array(80).fill(0); });
+let ecgPhase = {};
+CREW.forEach(c => { ecgPhase[c.id] = Math.random() * Math.PI * 2; });
+
+function getHeartRate(c) {
+    // Base HR 65-75, increases with fatigue and decreases health
+    let hr = 68 + c.fatigue * 0.3 + (100 - c.health) * 0.4;
+    if (c.status === 'eva') hr += 15;
+    if (c.status === 'busy') hr += 8;
+    hr += Math.sin(gt * 0.1 + CREW.indexOf(c)) * 3;
+    return clamp(hr, 45, 160);
+}
+
+function getSpO2(c) {
+    let spo2 = 98 - (100 - c.health) * 0.15;
+    const o2 = SYS.LSS.params.o2.val;
+    if (o2 < 19) spo2 -= (19 - o2) * 2;
+    return clamp(spo2 + rng(-0.3, 0.3), 70, 100);
+}
+
+function generateECG(crewId, hr) {
+    const buf = ecgBuffers[crewId];
+    buf.copyWithin(0, 1);
+    ecgPhase[crewId] += (hr / 60) * 0.35;
+    const phase = ecgPhase[crewId] % (Math.PI * 2);
+    let val = 0;
+    // QRS complex
+    if (phase < 0.15) val = Math.sin(phase / 0.15 * Math.PI) * 0.3;
+    else if (phase < 0.25) val = -0.1;
+    else if (phase < 0.35) val = Math.sin((phase - 0.25) / 0.1 * Math.PI) * 1.0;  // R peak
+    else if (phase < 0.45) val = -Math.sin((phase - 0.35) / 0.1 * Math.PI) * 0.25;  // S
+    else if (phase < 0.7) val = 0;
+    else if (phase < 0.9) val = Math.sin((phase - 0.7) / 0.2 * Math.PI) * 0.15;  // T wave
+    else val = 0;
+    val += rng(-0.02, 0.02); // noise
+    buf[buf.length - 1] = val;
+}
+
+function drawECGCanvas(canvas, crewId, health) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.fillStyle = '#040608';
+    ctx.fillRect(0, 0, w, h);
+
+    // Grid
+    ctx.strokeStyle = '#0a1015';
+    ctx.lineWidth = 0.5;
+    for (let y = 0; y < h; y += h/4) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+    const buf = ecgBuffers[crewId];
+    const color = health > 70 ? '#00ff88' : health > 40 ? '#ccaa00' : '#ff2244';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 3;
+    ctx.beginPath();
+    for (let i = 0; i < buf.length; i++) {
+        const x = (i / buf.length) * w;
+        const y = h / 2 - buf[i] * h * 0.4;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+}
+
+function renderCrewStrip(){
+    // Only rebuild DOM if needed
+    const strip = document.getElementById('crew-strip');
+    if (strip.children.length !== CREW.length) {
+        strip.innerHTML = CREW.map(c => {
+            return `<div class="cs-member" id="cs-${c.id}">
+                <div class="cs-name">${c.id} — ${c.name}</div>
+                <div class="cs-role">${c.role}</div>
+                <div class="cs-ecg"><canvas id="ecg-${c.id}" width="120" height="28"></canvas></div>
+                <div class="cs-vitals">
+                    <span class="cs-hr" id="hr-${c.id}">♥ --</span>
+                    <span class="cs-spo2" id="spo2-${c.id}">SpO₂ --</span>
+                </div>
+                <div class="cs-status" id="st-${c.id}"></div>
+            </div>`;
+        }).join('');
+    }
+
+    // Update each
+    for (const c of CREW) {
+        const hr = getHeartRate(c);
+        const spo2 = getSpO2(c);
+        generateECG(c.id, hr);
+
+        const canvas = document.getElementById('ecg-' + c.id);
+        if (canvas) drawECGCanvas(canvas, c.id, c.health);
+
+        const hrEl = document.getElementById('hr-' + c.id);
+        if (hrEl) {
+            hrEl.textContent = `♥ ${Math.round(hr)}`;
+            hrEl.className = 'cs-hr ' + (hr < 100 ? 'cs-hr-ok' : hr < 130 ? 'cs-hr-warn' : 'cs-hr-crit');
+        }
+
+        const spo2El = document.getElementById('spo2-' + c.id);
+        if (spo2El) {
+            spo2El.textContent = `SpO₂ ${spo2.toFixed(0)}%`;
+            spo2El.style.color = spo2 > 95 ? 'var(--accent2)' : spo2 > 90 ? 'var(--yellow)' : 'var(--red2)';
+        }
+
+        let stText, stClass;
+        switch(c.status){
+            case 'free': stText='Свободен'; stClass='cs-free'; break;
+            case 'busy': stText=c.task||'Занят'; stClass='cs-busy'; break;
+            case 'eva': stText='EVA'; stClass='cs-eva'; break;
+            case 'rest': stText='Отдых'; stClass='cs-rest'; break;
+            default: stText=c.status; stClass='';
+        }
+        const stEl = document.getElementById('st-' + c.id);
+        if (stEl) { stEl.textContent = stText; stEl.className = 'cs-status ' + stClass; }
+    }
+}
+
+// ---- RENDER: LOGS ----
+function renderSysLog(){
+    const el=document.getElementById('sys-log-entries');
+    const last30=sysLog.slice(-30);
+    el.innerHTML=last30.map(e=>`<div class="slog"><span class="slog-t">[${e.t}]</span> <span class="sl-${e.type}">${e.msg}</span></div>`).join('');
+    el.scrollTop=el.scrollHeight;
+}
+function renderEarthLog(){
+    const el=document.getElementById('earth-log-entries');
+    const last20=earthLog.slice(-20);
+    el.innerHTML=last20.map(e=>`<div class="elog ${e.dir==='from'?'elog-from':'elog-to'}">
+        <span class="elog-time">[${e.t}]</span> <span class="elog-dir ${e.dir==='from'?'elog-dir-from':'elog-dir-to'}">${e.dir==='from'?'◀ ЗЕМЛЯ':'▶ СТАНЦИЯ'}</span> ${e.msg}
+    </div>`).join('');
+    el.scrollTop=el.scrollHeight;
+}
+
+// ---- ORBITAL RADAR ----
+const radarCanvas=document.getElementById('radar-canvas');
+const rctx=radarCanvas.getContext('2d');
+let radarSweep=0;
+
+// Radiation history
+const radHistory=new Float32Array(120).fill(0.42);
+const solarWindHistory=new Float32Array(120).fill(380);
+const protonHistory=new Float32Array(120).fill(0.5);
+let solarActivity={
+    wind:380, protons:0.5, kp:1, fluxF10:120, xrayClass:'A1.0',
+    cme:false, cmeETA:0, spe:false, geoStorm:false
+};
+
+function renderRadar(){
+    const rect=radarCanvas.parentElement.getBoundingClientRect();
+    radarCanvas.width=rect.width*devicePixelRatio;
+    radarCanvas.height=rect.height*devicePixelRatio;
+    rctx.scale(devicePixelRatio,devicePixelRatio);
+    radarCanvas.style.width=rect.width+'px';
+    radarCanvas.style.height=rect.height+'px';
+    const W=rect.width,H=rect.height;
+
+    rctx.fillStyle='#020406';rctx.fillRect(0,0,W,H);
+
+    const cx=W*0.42, cy=H*0.52;
+    const maxR=Math.min(W*0.38,H*0.45);
+
+    // Range rings
+    rctx.strokeStyle='#0a1218';rctx.lineWidth=0.5;
+    for(let i=1;i<=4;i++){
+        const r=maxR*i/4;
+        rctx.beginPath();rctx.arc(cx,cy,r,0,Math.PI*2);rctx.stroke();
+    }
+    // Cross
+    rctx.beginPath();rctx.moveTo(cx-maxR,cy);rctx.lineTo(cx+maxR,cy);rctx.stroke();
+    rctx.beginPath();rctx.moveTo(cx,cy-maxR);rctx.lineTo(cx,cy+maxR);rctx.stroke();
+    // Diagonals
+    for(let a=0;a<360;a+=45){
+        const rad=a*Math.PI/180;
+        rctx.beginPath();rctx.moveTo(cx,cy);
+        rctx.lineTo(cx+Math.cos(rad)*maxR,cy+Math.sin(rad)*maxR);rctx.stroke();
+    }
+
+    // Range labels
+    rctx.fillStyle='#0c1824';rctx.font='7px monospace';rctx.textAlign='left';
+    rctx.fillText('200км',cx+maxR*0.25+2,cy-3);
+    rctx.fillText('500км',cx+maxR*0.5+2,cy-3);
+    rctx.fillText('1000км',cx+maxR*0.75+2,cy-3);
+    rctx.fillText('2000км',cx+maxR+2,cy-3);
+
+    // Radar sweep
+    radarSweep+=0.015*speed;
+    const sweepAngle=radarSweep%(Math.PI*2);
+    // Sweep trail
+    for(let i=0;i<20;i++){
+        const a=sweepAngle-i*0.02;
+        const alpha=0.15*(1-i/20);
+        rctx.strokeStyle=`rgba(0,180,100,${alpha})`;
+        rctx.lineWidth=1;
+        rctx.beginPath();rctx.moveTo(cx,cy);
+        rctx.lineTo(cx+Math.cos(a)*maxR,cy+Math.sin(a)*maxR);rctx.stroke();
+    }
+
+    // Base marker (center)
+    rctx.fillStyle='#00ff88';
+    rctx.beginPath();rctx.arc(cx,cy,3,0,Math.PI*2);rctx.fill();
+    rctx.fillStyle='rgba(0,255,136,0.1)';
+    rctx.beginPath();rctx.arc(cx,cy,8,0,Math.PI*2);rctx.fill();
+    rctx.fillStyle='#00cc66';rctx.font='bold 8px monospace';rctx.textAlign='center';
+    rctx.fillText('BASE',cx,cy+14);
+
+    // Satellites on radar
+    for(const sat of SATS){
+        // Map orbit to radar distance
+        const rDist = sat.orbitR * maxR * 0.9;
+        const sx = cx + Math.cos(sat.angle) * rDist;
+        const sy = cy + Math.sin(sat.angle) * rDist;
+
+        // Only show if sweep recently passed
+        const angleDiff = ((sweepAngle - sat.angle) % (Math.PI*2) + Math.PI*2) % (Math.PI*2);
+        const brightness = angleDiff < 1.5 ? (1 - angleDiff/1.5) : 0.15;
+
+        const satCol = sat.health>80?[100,140,220]:sat.health>50?[200,180,60]:[220,60,60];
+        rctx.fillStyle=`rgba(${satCol[0]},${satCol[1]},${satCol[2]},${brightness*0.9+0.1})`;
+        rctx.beginPath();rctx.arc(sx,sy,3,0,Math.PI*2);rctx.fill();
+
+        // Glow
+        rctx.fillStyle=`rgba(${satCol[0]},${satCol[1]},${satCol[2]},${brightness*0.2})`;
+        rctx.beginPath();rctx.arc(sx,sy,7,0,Math.PI*2);rctx.fill();
+
+        // Label
+        rctx.fillStyle=`rgba(${satCol[0]},${satCol[1]},${satCol[2]},${clamp(brightness+0.3,0,1)})`;
+        rctx.font='7px monospace';rctx.textAlign='left';
+        rctx.fillText(sat.id,sx+6,sy-2);
+        rctx.font='6px monospace';rctx.fillStyle=`rgba(100,120,160,${clamp(brightness+0.2,0,0.8)})`;
+        rctx.fillText(`${sat.health.toFixed(0)}%`,sx+6,sy+6);
+
+        // Signal line to base (blinking)
+        if(sat.signal>30 && brightness>0.3){
+            rctx.strokeStyle=`rgba(${satCol[0]},${satCol[1]},${satCol[2]},${brightness*0.15})`;
+            rctx.lineWidth=0.5;
+            rctx.setLineDash([2,4]);
+            rctx.beginPath();rctx.moveTo(sx,sy);rctx.lineTo(cx,cy);rctx.stroke();
+            rctx.setLineDash([]);
+        }
+    }
+
+    // Title
+    rctx.fillStyle='#1a2a3a';rctx.font='8px monospace';rctx.textAlign='left';
+    rctx.fillText('ORBITAL RADAR — SATELLITE TRACKING',6,12);
+
+    // Blinking RX indicator
+    const rxOn = Math.sin(Date.now()/200)>0.3;
+    rctx.fillStyle=rxOn?'#00cc66':'#0a1a10';
+    rctx.beginPath();rctx.arc(W-12,10,3,0,Math.PI*2);rctx.fill();
+    rctx.fillStyle='#1a2a3a';rctx.textAlign='right';
+    rctx.fillText('LIVE',W-18,13);
+
+    // Legend bottom-right
+    rctx.textAlign='right';rctx.font='7px monospace';
+    rctx.fillStyle='#6688cc';rctx.fillText('● RELAY',W-8,H-28);
+    rctx.fillStyle='#66cc88';rctx.fillText('● NAV',W-8,H-18);
+    rctx.fillStyle='#cc8866';rctx.fillText('● RECON/MET',W-8,H-8);
+}
+
+// ---- RADIATION / SOLAR PANEL ----
+const radCanvas=document.getElementById('rad-canvas');
+const radCtx=radCanvas.getContext('2d');
+
+function updateSolarActivity(sdt){
+    // Evolve solar weather
+    solarActivity.wind = clamp(solarActivity.wind + rng(-2,2)*sdt, 250, 900);
+    solarActivity.protons = clamp(solarActivity.protons + rng(-0.05,0.05)*sdt, 0.01, 50);
+    solarActivity.kp = clamp(Math.round(solarActivity.kp + rng(-0.1,0.1)*sdt), 0, 9);
+
+    // X-ray class
+    const classes=['A1.0','A5.0','B1.0','B5.0','C1.0','C5.0','M1.0','M5.0','X1.0'];
+    const idx=clamp(Math.floor(solarActivity.protons/5),0,classes.length-1);
+    solarActivity.xrayClass=classes[idx];
+
+    // Random CME
+    if(!solarActivity.cme && Math.random()<0.00005*sdt){
+        solarActivity.cme=true;
+        solarActivity.cmeETA=rng(200,600);
+        radioMsg('Система','alert',`⚠ ОБНАРУЖЕН КОРОНАЛЬНЫЙ ВЫБРОС МАССЫ! ETA до Луны: ${Math.ceil(solarActivity.cmeETA/60)} мин. Рекомендуется укрытие.`);
+        slog('CME обнаружен! Прогноз прибытия через '+Math.ceil(solarActivity.cmeETA/60)+' мин','err');
+        alarmTone();
+    }
+    if(solarActivity.cme){
+        solarActivity.cmeETA-=sdt;
+        if(solarActivity.cmeETA<=0){
+            solarActivity.cme=false;
+            solarActivity.protons=clamp(solarActivity.protons+rng(5,20),0,50);
+            solarActivity.wind=clamp(solarActivity.wind+rng(200,400),250,900);
+            solarActivity.kp=clamp(solarActivity.kp+rngI(2,5),0,9);
+            solarActivity.geoStorm=true;
+            radioMsg('Система','alert','CME ДОСТИГ ЛУНЫ! Радиационный фон резко повышен! Экипаж — в защищённые отсеки!');
+            alarmTone();
+            // Damage comms
+            SYS.COM.integrity=clamp(SYS.COM.integrity-rng(5,15),0,100);
+            SYS.PWR.integrity=clamp(SYS.PWR.integrity-rng(3,8),0,100);
+            setTimeout(()=>{solarActivity.geoStorm=false;solarActivity.protons*=0.5;solarActivity.wind*=0.7;},rng(30,60)*1000/speed);
+        }
+    }
+
+    // Random SPE (solar particle events)
+    if(!solarActivity.spe && Math.random()<0.0001*sdt){
+        solarActivity.spe=true;
+        solarActivity.protons+=rng(3,12);
+        radioMsg('Система','system',`Солнечное протонное событие (SPE): поток протонов ${solarActivity.protons.toFixed(1)} p/cm²/s`);
+        setTimeout(()=>{solarActivity.spe=false;solarActivity.protons*=0.3;},rng(20,50)*1000/speed);
+    }
+
+    // Push to history
+    radHistory.copyWithin(0,1);
+    radHistory[radHistory.length-1]=0.42+solarActivity.protons*0.3+(solarActivity.geoStorm?rng(2,5):0);
+    solarWindHistory.copyWithin(0,1);
+    solarWindHistory[solarWindHistory.length-1]=solarActivity.wind;
+    protonHistory.copyWithin(0,1);
+    protonHistory[protonHistory.length-1]=solarActivity.protons;
+}
+
+// ---- DEEP SPACE RADAR ----
+const dsCanvas=document.getElementById('deepspace-canvas');
+const dsCtx=dsCanvas.getContext('2d');
+let dsSweep=0;
+
+// Deep space objects
+const DS_OBJECTS=[
+    {id:'MARS',label:'Марс',dist:0.82,angle:0.4,size:4,color:'#cc6644',type:'planet'},
+    {id:'ISS-L',label:'Орб.станция',dist:0.15,angle:1.2,size:3,color:'#44ccee',type:'station'},
+    {id:'CARGO-7',label:'Грузовой-7',dist:0.35,angle:2.8,size:2,color:'#66cc66',type:'ship'},
+    {id:'EXP-DAWN',label:'Экспед.Рассвет',dist:0.55,angle:1.8,size:2,color:'#eecc44',type:'expedition'},
+    {id:'DEBRIS-F',label:'Обломки',dist:0.28,angle:3.5,size:1,color:'#666',type:'debris'},
+    {id:'DEBRIS-K',label:'Обломки',dist:0.45,angle:5.1,size:1,color:'#555',type:'debris'},
+    {id:'PROBE-3',label:'Зонд LMAP-3',dist:0.62,angle:4.2,size:2,color:'#8888cc',type:'probe'},
+    {id:'VENUS-T',label:'Венера',dist:0.95,angle:3.1,size:3,color:'#eeee88',type:'planet'},
+    {id:'ASTEROID',label:'2024-LK7',dist:0.70,angle:0.9,size:2,color:'#aa8866',type:'asteroid'},
+];
+
+function renderDeepSpace(){
+    const rect=dsCanvas.parentElement.getBoundingClientRect();
+    dsCanvas.width=rect.width*devicePixelRatio;
+    dsCanvas.height=rect.height*devicePixelRatio;
+    dsCtx.scale(devicePixelRatio,devicePixelRatio);
+    dsCanvas.style.width=rect.width+'px';
+    dsCanvas.style.height=rect.height+'px';
+    const W=rect.width,H=rect.height;
+
+    dsCtx.fillStyle='#020304';dsCtx.fillRect(0,0,W,H);
+
+    const cx=W*0.5,cy=H*0.52;
+    const maxR=Math.min(W*0.44,H*0.44);
+
+    // Range rings
+    dsCtx.strokeStyle='#080c14';dsCtx.lineWidth=0.5;
+    const ranges=['100K','500K','1M','5M km'];
+    for(let i=1;i<=4;i++){
+        const r=maxR*i/4;
+        dsCtx.beginPath();dsCtx.arc(cx,cy,r,0,Math.PI*2);dsCtx.stroke();
+        dsCtx.fillStyle='#0a1218';dsCtx.font='6px monospace';dsCtx.textAlign='left';
+        dsCtx.fillText(ranges[i-1],cx+r*0.7+2,cy-r*0.7);
+    }
+    // Cross
+    dsCtx.beginPath();dsCtx.moveTo(cx-maxR,cy);dsCtx.lineTo(cx+maxR,cy);dsCtx.stroke();
+    dsCtx.beginPath();dsCtx.moveTo(cx,cy-maxR);dsCtx.lineTo(cx,cy+maxR);dsCtx.stroke();
+
+    // Sweep
+    dsSweep+=0.008*speed;
+    const sa=dsSweep%(Math.PI*2);
+    for(let i=0;i<15;i++){
+        const a=sa-i*0.015;
+        dsCtx.strokeStyle=`rgba(140,80,200,${0.12*(1-i/15)})`;
+        dsCtx.lineWidth=1;
+        dsCtx.beginPath();dsCtx.moveTo(cx,cy);
+        dsCtx.lineTo(cx+Math.cos(a)*maxR,cy+Math.sin(a)*maxR);dsCtx.stroke();
+    }
+
+    // Moon (center)
+    dsCtx.fillStyle='#334';
+    dsCtx.beginPath();dsCtx.arc(cx,cy,5,0,Math.PI*2);dsCtx.fill();
+    dsCtx.fillStyle='#556';dsCtx.font='bold 7px monospace';dsCtx.textAlign='center';
+    dsCtx.fillText('ЛУНА',cx,cy+14);
+
+    // Objects
+    for(const obj of DS_OBJECTS){
+        obj.angle+=0.001*speed*(obj.type==='debris'?0.3:obj.type==='planet'?0.05:0.15);
+        const r=obj.dist*maxR;
+        const ox=cx+Math.cos(obj.angle)*r;
+        const oy=cy+Math.sin(obj.angle)*r;
+
+        const aDiff=((sa-obj.angle)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+        const bright=aDiff<1.2?(1-aDiff/1.2):0.1;
+
+        dsCtx.fillStyle=obj.color.replace(')',`,${bright*0.8+0.2})`).replace('rgb','rgba').replace('#','')||obj.color;
+        dsCtx.globalAlpha=bright*0.8+0.2;
+        dsCtx.fillStyle=obj.color;
+        dsCtx.beginPath();dsCtx.arc(ox,oy,obj.size,0,Math.PI*2);dsCtx.fill();
+
+        // Glow
+        dsCtx.globalAlpha=bright*0.15;
+        dsCtx.beginPath();dsCtx.arc(ox,oy,obj.size+4,0,Math.PI*2);dsCtx.fill();
+
+        // Label
+        dsCtx.globalAlpha=clamp(bright+0.2,0,0.9);
+        dsCtx.fillStyle=obj.color;
+        dsCtx.font='6px monospace';dsCtx.textAlign='left';
+        dsCtx.fillText(obj.label,ox+obj.size+3,oy-1);
+        dsCtx.globalAlpha=1;
+    }
+
+    // Title
+    dsCtx.fillStyle='#1a1528';dsCtx.font='8px monospace';dsCtx.textAlign='left';
+    dsCtx.fillText('DEEP SPACE SCAN — CISLUNAR',4,12);
+    // Live indicator
+    const liveOn=Math.sin(Date.now()/400)>0;
+    dsCtx.fillStyle=liveOn?'#8844cc':'#1a1020';
+    dsCtx.beginPath();dsCtx.arc(W-12,10,3,0,Math.PI*2);dsCtx.fill();
+    dsCtx.fillStyle='#2a1838';dsCtx.textAlign='right';dsCtx.fillText('SCAN',W-18,13);
+}
+
+// ---- INTERPLANETARY COMMS ----
+let ipMessages=[];
+let ipChatterCD=25;
+
+const IP_SOURCES={
+    mars:{name:'Марс-Колония «Аврора»',callsign:'MARS-AURORA',color:'ip-mars',cClass:'ip-mars-c',delay:'12 мин'},
+    iss:{name:'Орб.станция «Восток-3»',callsign:'VOSTOK-3',color:'ip-iss',cClass:'ip-iss-c',delay:'1.3 сек'},
+    expedition:{name:'Экспедиция «Рассвет»',callsign:'EXP-DAWN',color:'ip-exp',cClass:'ip-exp-c',delay:'4 мин'},
+};
+
+const IP_CHATTER=[
+    // Mars colony
+    {src:'mars',weight:3,lines:['MARS-AURORA — Резонансу-9: плановый обмен данными. Песчаная буря в районе Элизиум утихает. Ресурсы стабильны.']},
+    {src:'mars',weight:2,lines:['MARS-AURORA: Запрашиваем обновлённые каталоги астероидов от вашего LRO. Приём.']},
+    {src:'mars',weight:2,lines:['MARS-AURORA: Наш реактор потерял 3% мощности. Консультируемся с Землёй. Как ваш RTG?']},
+    {src:'mars',weight:1,lines:['MARS-AURORA: Привет с Марса! Вчера видели фобосовское затмение. Красиво.']},
+    {src:'mars',weight:2,lines:['MARS-AURORA: Передаём метеоданные — солнечный ветер на нашей орбите '+rngI(350,550)+' км/с.']},
+    {src:'mars',weight:1,lines:['MARS-AURORA: Сколько у вас до ротации? У нас ещё 240 солов.']},
+    // Orbital station
+    {src:'iss',weight:3,lines:['VOSTOK-3: Резонанс-9, штатный обмен. Орбита стабильна, экипаж 6 человек, все здоровы.']},
+    {src:'iss',weight:2,lines:['VOSTOK-3: Видим ваш сектор. Камера высокого разрешения фиксирует базу. Отправляем снимки.']},
+    {src:'iss',weight:2,lines:['VOSTOK-3: Грузовик «Прогресс-Л82» стартовал к вам. ETA 3 суток.']},
+    {src:'iss',weight:1,lines:['VOSTOK-3: Как там на поверхности? Мы соскучились по твёрдому грунту под ногами.']},
+    {src:'iss',weight:2,lines:['VOSTOK-3: Передаём предупреждение — зафиксирован обломок на пересекающей орбите. Без угрозы для базы.']},
+    // Expedition
+    {src:'expedition',weight:3,lines:['EXP-DAWN: Резонанс-9, экспедиция «Рассвет» на связи. Находимся в 450 км к северу, район кратера Пири.']},
+    {src:'expedition',weight:2,lines:['EXP-DAWN: Нашли интересный выход породы. Берём образцы. Нужна консультация вашего геолога.']},
+    {src:'expedition',weight:2,lines:['EXP-DAWN: Ровер-2 сел батареей. Переходим на ровер-1. Просим подготовить зарядную станцию к нашему возвращению.']},
+    {src:'expedition',weight:1,lines:['EXP-DAWN: Вид отсюда потрясающий — видим Землю на горизонте, а ваша база мерцает вдали.']},
+    {src:'expedition',weight:2,lines:['EXP-DAWN: Запрашиваем прогноз радиации на ближайшие 12 часов. Мы без укрытия.']},
+    {src:'expedition',weight:3,lines:['EXP-DAWN: Навигация сбоит, спутник LNAV-1 не отвечает. Используем резервные координаты.']},
+];
+
+function generateIPChatter(){
+    const totalW=IP_CHATTER.reduce((s,c)=>s+c.weight,0);
+    let r=Math.random()*totalW;
+    let chosen=IP_CHATTER[0];
+    for(const ch of IP_CHATTER){r-=ch.weight;if(r<=0){chosen=ch;break;}}
+
+    const src=IP_SOURCES[chosen.src];
+    const msg=chosen.lines[0].replace(/\{[^}]+\}/g,'');
+    ipMessages.push({t:metShort(),src:chosen.src,text:msg});
+    if(ipMessages.length>30)ipMessages.shift();
+    renderIPFeed();
+    // Blink TX light
+    const tx=document.getElementById('tx-light');
+    if(tx){tx.classList.add('active');setTimeout(()=>tx.classList.remove('active'),800);}
+}
+
+function renderIPFeed(){
+    const el=document.getElementById('interplanet-feed');
+    if(!el)return;
+    el.innerHTML=ipMessages.slice(-8).map(m=>{
+        const src=IP_SOURCES[m.src];
+        return `<div class="ip-msg ip-${m.src}">
+            <span class="ip-source ${src.cClass}">[${m.t}] ${src.callsign}</span>
+            <span style="color:var(--dim);font-size:8px;margin-left:4px">RTT:${src.delay}</span><br>
+            <span style="color:var(--text)">${m.text}</span>
+        </div>`;
+    }).join('');
+    el.scrollTop=el.scrollHeight;
+}
+
+// ---- HINT SYSTEM ----
+let currentHint=null;
+function updateHints(){
+    // Determine what the dispatcher should do based on system states
+    currentHint=null;
+    const btns=document.querySelectorAll('.qa-btn');
+    btns.forEach(b=>b.classList.remove('qa-hint'));
+
+    // Priority hints
+    if(SYS.LSS.params.o2.val<18 && INV.o2_reserve?.count>=5){
+        currentHint='reserveO2'; highlightBtn('Резерв O₂');
+    } else if(SYS.LSS.params.co2.val>0.8){
+        currentHint='emergVent'; highlightBtn('Аварийн.');
+    } else if(SYS.PWR.params.batt.val<30 && INV.batteries?.count>=1){
+        currentHint='swapBatt'; highlightBtn('Замена АКБ');
+    } else if(SYS.THM.params.coolant.val<50 && INV.coolant_l?.count>=10){
+        currentHint='coolant'; highlightBtn('Заправка хлад');
+    } else if(Object.values(SYS).some(s=>s.integrity<50)){
+        currentHint='repair'; highlightBtn('Назначить ремонт');
+    } else if(SYS.PWR.integrity<60){
+        currentHint='redistPower'; highlightBtn('Перераспр.');
+    } else if(Object.values(SYS).some(s=>s.integrity<80)){
+        currentHint='maintenance'; highlightBtn('Профилактика');
+    }
+}
+
+function highlightBtn(partialText){
+    const btns=document.querySelectorAll('.qa-btn');
+    for(const b of btns){
+        if(b.textContent.includes(partialText) && !b.disabled){
+            b.classList.add('qa-hint');
+            break;
+        }
+    }
+}
+
+function renderRadiation(){
+    const rect=radCanvas.parentElement.getBoundingClientRect();
+    const cw=rect.width;
+    radCanvas.width=cw*devicePixelRatio;
+    radCanvas.height=90*devicePixelRatio;
+    radCtx.scale(devicePixelRatio,devicePixelRatio);
+    radCanvas.style.width=cw+'px';
+    radCanvas.style.height='90px';
+    const W=cw,H=90;
+
+    radCtx.fillStyle='#030406';radCtx.fillRect(0,0,W,H);
+
+    // Draw radiation graph
+    const graphH=38, graphY=5;
+    radCtx.fillStyle='#060a0e';radCtx.fillRect(4,graphY,W-8,graphH);
+
+    // Grid
+    radCtx.strokeStyle='#0a1015';radCtx.lineWidth=0.5;
+    for(let y=0;y<3;y++){
+        const yy=graphY+graphH*y/3;
+        radCtx.beginPath();radCtx.moveTo(4,yy);radCtx.lineTo(W-4,yy);radCtx.stroke();
+    }
+
+    // Radiation line
+    const maxRad=Math.max(5,...radHistory);
+    radCtx.strokeStyle='#ff4444';radCtx.lineWidth=1.5;
+    radCtx.shadowColor='#ff4444';radCtx.shadowBlur=2;
+    radCtx.beginPath();
+    for(let i=0;i<radHistory.length;i++){
+        const x=4+(W-8)*i/radHistory.length;
+        const y=graphY+graphH-(radHistory[i]/maxRad)*graphH;
+        if(i===0)radCtx.moveTo(x,y);else radCtx.lineTo(x,y);
+    }
+    radCtx.stroke();radCtx.shadowBlur=0;
+
+    // Fill under
+    radCtx.lineTo(W-4,graphY+graphH);radCtx.lineTo(4,graphY+graphH);
+    radCtx.fillStyle='rgba(255,50,50,0.08)';radCtx.fill();
+
+    // Label
+    radCtx.fillStyle='#662222';radCtx.font='7px monospace';radCtx.textAlign='left';
+    radCtx.fillText('RAD mSv/h',6,graphY+8);
+    radCtx.fillStyle='#ff4444';radCtx.textAlign='right';
+    radCtx.fillText(radHistory[radHistory.length-1].toFixed(2),W-6,graphY+8);
+
+    // Solar wind graph
+    const g2Y=graphY+graphH+4, g2H=36;
+    radCtx.fillStyle='#060a0e';radCtx.fillRect(4,g2Y,W-8,g2H);
+
+    const maxWind=Math.max(600,...solarWindHistory);
+    radCtx.strokeStyle='#cc8844';radCtx.lineWidth=1;
+    radCtx.beginPath();
+    for(let i=0;i<solarWindHistory.length;i++){
+        const x=4+(W-8)*i/solarWindHistory.length;
+        const y=g2Y+g2H-(solarWindHistory[i]/maxWind)*g2H;
+        if(i===0)radCtx.moveTo(x,y);else radCtx.lineTo(x,y);
+    }
+    radCtx.stroke();
+
+    // Proton flux overlay
+    const maxP=Math.max(3,...protonHistory);
+    radCtx.strokeStyle='#44aaff';radCtx.lineWidth=1;
+    radCtx.setLineDash([2,2]);
+    radCtx.beginPath();
+    for(let i=0;i<protonHistory.length;i++){
+        const x=4+(W-8)*i/protonHistory.length;
+        const y=g2Y+g2H-(protonHistory[i]/maxP)*g2H;
+        if(i===0)radCtx.moveTo(x,y);else radCtx.lineTo(x,y);
+    }
+    radCtx.stroke();radCtx.setLineDash([]);
+
+    radCtx.fillStyle='#553322';radCtx.font='7px monospace';radCtx.textAlign='left';
+    radCtx.fillText('SOLAR WIND km/s',6,g2Y+8);
+    radCtx.fillStyle='#223355';
+    radCtx.fillText('PROTON p/cm²',6,g2Y+17);
+
+    // CME warning
+    if(solarActivity.cme){
+        const flash=Math.sin(Date.now()/300)>0;
+        if(flash){
+            radCtx.fillStyle='rgba(255,40,40,0.15)';
+            radCtx.fillRect(0,0,W,H);
+            radCtx.fillStyle='#ff2244';radCtx.font='bold 9px monospace';radCtx.textAlign='center';
+            radCtx.fillText(`⚠ CME INBOUND — ETA ${Math.ceil(solarActivity.cmeETA/60)}min`,W/2,H-4);
+        }
+    }
+    if(solarActivity.geoStorm){
+        const flash=Math.sin(Date.now()/200)>0;
+        if(flash){
+            radCtx.fillStyle='rgba(255,20,20,0.1)';radCtx.fillRect(0,0,W,H);
+        }
+    }
+}
+
+function renderRadData(){
+    const el=document.getElementById('rad-data');
+    const r=radHistory[radHistory.length-1];
+    const rc=r>3?'rad-crit':r>1?'rad-warn':'rad-ok';
+    const wc=solarActivity.wind>600?'rad-crit':solarActivity.wind>450?'rad-warn':'rad-ok';
+    const pc=solarActivity.protons>5?'rad-crit':solarActivity.protons>1?'rad-warn':'rad-ok';
+    const kc=solarActivity.kp>=5?'rad-crit':solarActivity.kp>=3?'rad-warn':'rad-ok';
+
+    el.innerHTML=`
+        <div class="rad-row"><span class="rad-label">Радиация</span><span class="rad-val ${rc}">${r.toFixed(2)} mSv/h</span></div>
+        <div class="rad-row"><span class="rad-label">Солн.ветер</span><span class="rad-val ${wc}">${solarActivity.wind.toFixed(0)} км/с</span></div>
+        <div class="rad-row"><span class="rad-label">Протоны</span><span class="rad-val ${pc}">${solarActivity.protons.toFixed(2)} p/cm²</span></div>
+        <div class="rad-row"><span class="rad-label">Kp индекс</span><span class="rad-val ${kc}">${solarActivity.kp}</span></div>
+        <div class="rad-row"><span class="rad-label">X-ray класс</span><span class="rad-val" style="color:${solarActivity.xrayClass[0]==='X'?'var(--red2)':solarActivity.xrayClass[0]==='M'?'var(--orange)':'var(--dim)'}">${solarActivity.xrayClass}</span></div>
+        <div class="rad-row"><span class="rad-label">F10.7 поток</span><span class="rad-val" style="color:var(--dim)">${(120+rng(-5,5)).toFixed(0)} sfu</span></div>
+        ${solarActivity.cme?`<div class="rad-row"><span class="rad-label" style="color:var(--red2)">CME</span><span class="rad-val rad-crit">ETA ${Math.ceil(solarActivity.cmeETA/60)} мин</span></div>`:''}
+        ${solarActivity.spe?`<div class="rad-row"><span class="rad-label" style="color:var(--orange)">SPE</span><span class="rad-val rad-warn">АКТИВНО</span></div>`:''}
+        ${solarActivity.geoStorm?`<div class="rad-row"><span class="rad-label" style="color:var(--red2)">ШТОРМ</span><span class="rad-val rad-crit blink-fast">ГЕОМАГНИТНЫЙ</span></div>`:''}
+    `;
+}
+
+// ---- MODAL ----
+function showModal(t,b,btns){
+    document.getElementById('modal-title').textContent=t;
+    document.getElementById('modal-body').innerHTML=b;
+    const be=document.getElementById('modal-btns');be.innerHTML='';
+    for(const btn of btns){const e=document.createElement('button');e.className='m-btn '+(btn.cls||'');e.textContent=btn.text;e.onclick=btn.action;be.appendChild(e);}
+    document.getElementById('modal-overlay').classList.add('show');
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('show')}
+
+// ---- UPDATE ----
+function update(dt){
+    if(paused)return;
+    const sdt=dt*speed;
+    gt+=sdt;
+
+    const phase=isDayPhase();
+    const isNight=phase>=0.5;
+
+    // Clock
+    document.getElementById('met-clock').textContent=formatMET(gt);
+    const now=new Date();
+    document.getElementById('utc-clock').textContent=`${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}:${String(now.getUTCSeconds()).padStart(2,'0')}`;
+
+    // Phase
+    document.getElementById('phase-val').textContent=isNight?'ЛУННАЯ НОЧЬ':'ЛУННЫЙ ДЕНЬ';
+    document.getElementById('phase-val').style.color=isNight?'#4466aa':'var(--yellow)';
+    document.getElementById('phase-ind').className='tb-indicator '+(isNight?'ind-yellow':'ind-green');
+
+    // Ext temp — South Pole, Shackleton crater rim
+    // Smooth target temperature based on lunar phase, no jitter
+    // Real data: illuminated rim ~+40°C max, night -190°C, PSR floor -238°C
+    let targetExtT;
+    if(phase < 0.03){
+        // Pre-dawn: still cold, barely starting to warm
+        targetExtT = -185 + (phase/0.03) * 25;
+    } else if(phase < 0.08){
+        // Dawn: rapid warming through -160 to -40
+        const p = (phase-0.03)/0.05;
+        targetExtT = -160 + p * 120;
+    } else if(phase < 0.45){
+        // Polar day: sun at very low angle, smooth sine curve
+        const p = (phase-0.08)/0.37;
+        targetExtT = -40 + 80 * Math.sin(p * Math.PI); // peaks ~+40°C
+    } else if(phase < 0.52){
+        // Dusk: cooling
+        const p = (phase-0.45)/0.07;
+        targetExtT = -40 - p * 120;
+    } else {
+        // Night: gradual cooling toward minimum
+        const p = (phase-0.52)/0.48;
+        targetExtT = -160 - p * 30; // reaches -190°C at deepest night
+    }
+    // Smooth interpolation — extTemp approaches target slowly
+    extTemp += (targetExtT - extTemp) * 0.002 * sdt;
+    const extTDisplay = Math.round(extTemp);
+    document.getElementById('ext-temp-val').textContent=`${extTDisplay>0?'+':''}${extTDisplay}°C`;
+    document.getElementById('ext-temp-val').style.color=extTDisplay<-100?'#4488cc':extTDisplay<0?'#6699bb':extTDisplay<30?'var(--yellow)':'var(--red)';
+
+    // Radiation (from solar activity model)
+    const rad=radHistory[radHistory.length-1];
+    document.getElementById('rad-val').textContent=`${rad.toFixed(2)} mSv/h`;
+    document.getElementById('rad-val').className='tb-val '+(rad>3?'crit':rad>1?'warn':'ok');
+
+    // ---- SYSTEM DEGRADATION ----
+    for(const [id,sys] of Object.entries(SYS)){
+        sys.integrity=clamp(sys.integrity-sys.degradeRate*sdt,0,100);
+
+        if(id==='PWR'){
+            const p=sys.params;
+            if(isNight){p.solar.val=clamp(p.solar.val-0.05*sdt,0,100);}
+            else{p.solar.val=clamp(p.solar.val+0.02*sdt,0,sys.integrity);}
+            if(isNight){p.batt.val=clamp(p.batt.val-0.02*sdt,0,100);}
+            else{p.batt.val=clamp(p.batt.val+0.01*sdt,0,100);}
+            p.load.val=clamp(55+25*(1-sys.integrity/100)+rng(-2,2),0,100);
+            p.bus_v.val=clamp(124+6*(sys.integrity/100)+rng(-0.5,0.5),100,140);
+            p.rtg.val=clamp(p.rtg.val+(sys.integrity-p.rtg.val)*0.0005*sdt,0,100);
+        }
+        if(id==='LSS'){
+            const p=sys.params;
+            const powerOK=SYS.PWR.params.batt.val>15&&SYS.PWR.integrity>15;
+            if(powerOK&&sys.integrity>20){
+                p.o2.val=clamp(p.o2.val+(21-p.o2.val)*0.001*sdt*(sys.integrity/100),0,23);
+                p.co2.val=clamp(p.co2.val+(0.04-p.co2.val*0.5)*0.001*sdt*(sys.integrity/100),0,5);
+                p.h2o.val=clamp(p.h2o.val-0.001*sdt+0.0008*sdt*(sys.integrity/100),0,100);
+            }else{
+                p.o2.val=clamp(p.o2.val-0.008*sdt,0,23);
+                p.co2.val=clamp(p.co2.val+0.005*sdt,0,5);
+            }
+            if(sys.integrity<40)p.press.val=clamp(p.press.val-0.015*sdt,0,110);
+            else p.press.val=clamp(p.press.val+(101.3-p.press.val)*0.0008*sdt,0,110);
+            p.rh.val=clamp(p.rh.val+(45-p.rh.val)*0.0005*sdt,0,100);
+            // Polar thermal: night is far colder, day only mildly warm
+            // Heat loss is much greater at night due to extreme cold outside (-190°C)
+            const heatLeak=isNight?-0.025:0.005;
+            if(SYS.THM.integrity>30)p.temp_hab.val=clamp(p.temp_hab.val+(22-p.temp_hab.val)*0.0012*sdt*(SYS.THM.integrity/100)+heatLeak*sdt,-10,50);
+            else p.temp_hab.val=clamp(p.temp_hab.val+heatLeak*sdt*3,-40,60);
+        }
+        if(id==='THM'){
+            const p=sys.params;
+            p.rad_eff.val=clamp(p.rad_eff.val+(sys.integrity-p.rad_eff.val)*0.0005*sdt,0,100);
+            p.coolant.val=clamp(p.coolant.val-0.001*sdt,0,100);
+            p.loop_t.val=clamp(14+8*(1-sys.integrity/100)+rng(-0.3,0.3),0,50);
+        }
+        if(id==='COM'){
+            const p=sys.params;
+            p.hga.val=clamp(sys.integrity*0.98+rng(-1,1),0,100);
+            p.snr.val=clamp(20+18*(sys.integrity/100)+rng(-1,1),0,50);
+            p.bw.val=clamp(sys.integrity*0.95+rng(-2,2),0,100);
+        }
+        if(id==='MIN'&&sys.integrity>50){
+            sys.params.regolith.val=clamp(sys.params.regolith.val+0.004*sdt,0,100);
+            sys.params.he3.val=clamp(sys.params.he3.val+0.0008*sdt,0,100);
+            sys.params.drill.val=clamp(sys.params.drill.val+(sys.integrity-sys.params.drill.val)*0.0003*sdt,0,100);
+        }
+        if(id==='LAB'&&sys.integrity>40){
+            sys.params.exp.val=clamp(sys.params.exp.val+0.002*sdt*(sys.integrity/100),0,100);
+            sys.params.bio.val=clamp(sys.params.bio.val+(sys.integrity-sys.params.bio.val)*0.0003*sdt,0,100);
+        }
+    }
+
+    // Uplink status
+    const comOK=SYS.COM.integrity>50;
+    document.getElementById('uplink-val').textContent=comOK?'NOMINAL':'DEGRADED';
+    document.getElementById('uplink-val').className='tb-val '+(comOK?'ok':'warn');
+    const uplinkLed=document.getElementById('uplink-led');
+    if(uplinkLed)uplinkLed.className='led '+(comOK?'led-blue blink-slow':'led-yellow blink-fast');
+
+    // RX/TX LEDs flicker
+    const rxLed=document.getElementById('rx-led');
+    const txLedTop=document.getElementById('tx-led-top');
+    if(rxLed){
+        // RX flickers periodically
+        if(Math.random()<0.08) rxLed.className='led led-green';
+        else if(Math.random()<0.3) rxLed.className='led led-green blink-slow';
+        else rxLed.className='led led-off';
+    }
+    if(txLedTop){
+        if(Math.random()<0.04) txLedTop.className='led led-red';
+        else txLedTop.className='led led-off';
+    }
+
+    // ---- REPAIRS ----
+    for(let i=activeRepairs.length-1;i>=0;i--){
+        const r=activeRepairs[i];
+        const wo=workOrders.find(w=>w.id===r.woId);
+        if(wo){
+            wo.timeLeft-=sdt;
+            if(wo.timeLeft<=0){
+                const sys=SYS[r.sysId];
+                const boost=rng(18,35);
+                sys.integrity=clamp(sys.integrity+boost,0,100);
+                wo.status='ЗАВЕРШЁН';
+                const c=CREW.find(cr=>cr.id===r.crewId);
+                if(c){c.status='free';c.task=null;}
+                radioMsg(c?c.callsign:'Экипаж','crew',`Диспетчер, наряд WO-${String(wo.id).padStart(4,'0')} выполнен. ${sys.name} — целостность ${sys.integrity.toFixed(0)}%. Всё собрано, проверено.`);
+                slog(`WO-${String(wo.id).padStart(4,'0')} завершён: ${sys.name} +${boost.toFixed(0)}%`,'ok');
+                if(INV.mech_parts.count>0)INV.mech_parts.count--;
+                if(INV.elec_modules.count>0)INV.elec_modules.count--;
+                activeRepairs.splice(i,1);
+                // Remove completed WOs after delay
+                setTimeout(()=>{workOrders=workOrders.filter(w=>w.id!==wo.id);},10000/speed);
+            }
+        }
+    }
+
+    // ---- CREW ----
+    for(const c of CREW){
+        c.fatigue=clamp(c.fatigue+0.002*sdt,0,100);
+        if(c.status==='busy')c.fatigue=clamp(c.fatigue+0.004*sdt,0,100);
+        const o2=SYS.LSS.params.o2.val;
+        const co2=SYS.LSS.params.co2.val;
+        const temp=SYS.LSS.params.temp_hab.val;
+        if(o2<18)c.health=clamp(c.health-0.02*sdt,0,100);
+        if(co2>1.0)c.health=clamp(c.health-0.025*sdt,0,100);
+        if(temp<8||temp>38)c.health=clamp(c.health-0.01*sdt,0,100);
+        if(rad>3)c.health=clamp(c.health-0.015*sdt,0,100);
+    }
+
+    // ---- SOLAR ACTIVITY ----
+    updateSolarActivity(sdt);
+
+    // ---- SATELLITES ----
+    for(const sat of SATS){
+        sat.angle += sat.speed * 0.01 * sdt;
+        sat.health = clamp(sat.health - sat.degradeRate * sdt, 0, 100);
+        sat.fuel = clamp(sat.fuel - 0.0005 * sdt, 0, 100);
+        sat.signal = clamp(sat.health * 0.9 + rng(-3,3) * (SYS.COM.integrity/100), 0, 100);
+        sat.temp = 20 + (100-sat.health)*0.15 + rng(-1,1);
+        // Random glitches
+        if(Math.random() < 0.0002 * sdt){
+            sat.health = clamp(sat.health - rng(3,10), 0, 100);
+            radioMsg('Система','system',`Аномалия телеметрии спутника ${sat.id}. Целостность: ${sat.health.toFixed(0)}%.`);
+            slog(`Спутник ${sat.id}: аномалия, целостность ${sat.health.toFixed(0)}%`,sat.health<50?'err':'wrn');
+        }
+    }
+    // Satellite chatter
+    satChatterCD -= sdt;
+    if(satChatterCD <= 0){
+        satChatterCD = rng(15,40);
+        const sat = pick(SATS);
+        const msgs = [
+            `Телеметрия ${sat.id}: ${sat.orbit}, целостность ${sat.health.toFixed(0)}%, топливо ${sat.fuel.toFixed(0)}%.`,
+            `${sat.id} — обновление эфемерид. Орбита стабильна.`,
+            `Пинг ${sat.id}: RTT ${rngI(80,250)}мс, SNR ${sat.signal.toFixed(0)}дБ.`,
+            `${sat.id}: температура борта ${sat.temp.toFixed(1)}°C, солнечные батареи ${clamp(sat.health+rng(-5,5),0,100).toFixed(0)}%.`,
+        ];
+        if(sat.health < 60) msgs.push(`⚠ ${sat.id}: деградация! Рекомендуется коррекция орбиты.`);
+        if(sat.fuel < 30) msgs.push(`⚠ ${sat.id}: низкий запас топлива — ${sat.fuel.toFixed(0)}%.`);
+        radioMsg('Система','system',pick(msgs));
+    }
+
+    // ---- EVENTS ----
+    eventCD-=sdt;
+    if(eventCD<=0){
+        eventCD=rng(30,70);
+        tryEvent();
+    }
+
+    // ---- CREW CHATTER ----
+    chatterCD-=sdt;
+    if(chatterCD<=0){
+        chatterCD=rng(3,10);
+        generateChatter();
+    }
+
+    // ---- INTERPLANETARY COMMS ----
+    ipChatterCD-=sdt;
+    if(ipChatterCD<=0){
+        ipChatterCD=rng(15,40);
+        generateIPChatter();
+    }
+
+    // ---- SYSTEM AUTO-MESSAGES ----
+    // Periodic telemetry pings in radio
+    if(Math.random()<0.003*sdt){
+        const autoMsgs=[
+            ()=>`Автотелеметрия: PWR ${SYS.PWR.integrity.toFixed(0)}% | LSS ${SYS.LSS.integrity.toFixed(0)}% | THM ${SYS.THM.integrity.toFixed(0)}% | COM ${SYS.COM.integrity.toFixed(0)}%`,
+            ()=>`Цикл мониторинга: ppO₂ ${SYS.LSS.params.o2.val.toFixed(1)}% | CO₂ ${SYS.LSS.params.co2.val.toFixed(2)}% | P ${SYS.LSS.params.press.val.toFixed(1)}kPa`,
+            ()=>`Энергобаланс: Solar ${SYS.PWR.params.solar.val.toFixed(0)}% RTG ${SYS.PWR.params.rtg.val.toFixed(0)}% Batt ${SYS.PWR.params.batt.val.toFixed(0)}% Load ${SYS.PWR.params.load.val.toFixed(0)}kW`,
+            ()=>`THM отчёт: Хладагент ${SYS.THM.params.coolant.val.toFixed(0)}% | Радиаторы ${SYS.THM.params.rad_eff.val.toFixed(0)}% | Контур ${SYS.THM.params.loop_t.val.toFixed(1)}°C`,
+            ()=>`NAV: Обновление от ${pick(SATS).id}. Координаты базы подтверждены. Точность ±0.${rngI(1,9)}м.`,
+            ()=>`LCRS статус: ${SATS.filter(s=>s.type==='Ретранслятор').map(s=>`${s.id}:${s.signal.toFixed(0)}dB`).join(' | ')}`,
+            ()=>`Метео: Солнечный ветер ${rngI(300,500)}км/с | Протоны ${rng(0.1,2.5).toFixed(1)}p/cm² | Геомагн.индекс Kp=${rngI(0,4)}`,
+        ];
+        radioMsg('АВТОТЛМ','system',pick(autoMsgs)());
+    }
+
+    // ---- ALERTS ----
+    const critSys=Object.values(SYS).filter(s=>sysStatus(s)==='crt');
+    const strip=document.getElementById('alert-strip');
+    if(critSys.length>0){
+        strip.textContent=`⚠ ТРЕВОГА: ${critSys.map(s=>s.abbr).join(', ')} — КРИТИЧЕСКОЕ СОСТОЯНИЕ ⚠`;
+        strip.classList.add('show');
+    }else strip.classList.remove('show');
+
+    // ---- CRITICAL FAILURE ----
+    const o2v=SYS.LSS.params.o2.val;
+    const pv=SYS.LSS.params.press.val;
+    const alive=CREW.filter(c=>c.health>0).length;
+    if(o2v<=10||pv<=70||alive===0){
+        paused=true;
+        document.getElementById('crit-title').textContent='ПОТЕРЯ СТАНЦИИ';
+        document.getElementById('crit-reason').textContent=o2v<=10?'Критическое снижение кислорода':pv<=70?'Катастрофическая разгерметизация':'Гибель экипажа';
+        document.getElementById('crit-stats').innerHTML=`MET: ${formatMET(gt)}<br>День: ${Math.floor(gt/LUNAR_DAY)+1}`;
+        document.getElementById('critical-overlay').classList.add('show');
+    }
+}
+
+function tryEvent(){
+    for(const evt of EVENTS){
+        if(Math.random()<0.04*(1+gt/3600*0.1)){
+            spawnEvent(evt);
+            return;
+        }
+    }
+}
+
+function spawnEvent(evt){
+    const dmg=rng(evt.dmg[0],evt.dmg[1]);
+    for(const sId of evt.sys){if(SYS[sId])SYS[sId].integrity=clamp(SYS[sId].integrity-dmg,0,100);}
+
+    // Crew radio response
+    const c1=pick(CREW),c2=pick(CREW.filter(cr=>cr.id!==c1.id));
+    for(let i=0;i<evt.crew_lines.length;i++){
+        const line=evt.crew_lines[i];
+        const speaker=i===0?c1:c2;
+        const text=line.replace('{c}',speaker.callsign).replace('{s}',pick(['Альфа','Браво','Дельта','Гамма']));
+        const ch=evt.sev==='crit'?'alert':'crew';
+        setTimeout(()=>radioMsg(speaker.callsign,ch,text),i*rng(2500,5000)/speed);
+    }
+
+    if(evt.sev==='crit')alarmTone();
+
+    // Create work order
+    const wo=createWO(
+        `${evt.name}`,
+        `Событие: ${evt.name}. Затронуты: ${evt.sys.map(s=>SYS[s]?.name).join(', ')}. Урон: ${dmg.toFixed(0)}%`,
+        evt.sys[0],
+        evt.sev==='crit'?1:2
+    );
+
+    // Earth notification
+    setTimeout(()=>{
+        elog('to',`АВАРИЙНЫЙ: ${evt.name}. Системы: ${evt.sys.join(',')}. Урон ${dmg.toFixed(0)}%.`);
+        radioMsg('Диспетчер','earth',`Хьюстон, аварийный рапорт: ${evt.name}. ${evt.sys.map(s=>SYS[s]?.name).join(', ')} повреждены.`);
+    },rng(3000,8000)/speed);
+    setTimeout(()=>{
+        const r=pick([
+            'Хьюстон: принимаем аварийный. Рекомендуем приоритетный ремонт. Держите нас в курсе.',
+            'Хьюстон: копия. Телеметрия подтверждает повреждения. Группа поддержки анализирует.',
+            'Хьюстон: получено. Рекомендация — изолировать повреждённые секции и начать ремонт.',
+        ]);
+        radioMsg('Хьюстон','earth',r);
+        elog('from',r);
+    },(2600+rng(5000,15000))/speed);
+}
+
+function generateChatter(){
+    const eligible=AMBIENT_CHATTER.filter(ch=>ch.cond());
+    if(eligible.length===0)return;
+
+    // Weighted pick
+    const totalW=eligible.reduce((s,c)=>s+c.weight,0);
+    let r=Math.random()*totalW;
+    let chosen=eligible[0];
+    for(const ch of eligible){r-=ch.weight;if(r<=0){chosen=ch;break;}}
+
+    const c1=pick(CREW),c2=pick(CREW.filter(cr=>cr.id!==c1.id));
+
+    for(let i=0;i<chosen.lines.length;i++){
+        const [speaker,ch,text]=chosen.lines[i];
+        let finalSpeaker=speaker.replace('{c1}',c1.callsign).replace('{c2}',c2.callsign);
+        const sections=['Альфа','Браво','Гамма','Дельта','Эхо'];
+        let finalText=text
+            .replace(/{name1}/g,c1.name).replace(/{name2}/g,c2.name)
+            .replace(/{c1}/g,c1.callsign).replace(/{c2}/g,c2.callsign)
+            .replace(/{s}/g,pick(sections))
+            .replace(/{t}/g,rngI(40,90).toString())
+            .replace(/{he3_ppm}/g,rngI(5,45).toString())
+            .replace(/{exp_pct}/g,SYS.LAB.params.exp.val.toFixed(0));
+
+        setTimeout(()=>radioMsg(finalSpeaker,ch,finalText),i*rng(2000,5000)/speed);
+    }
+}
+
+// ---- MOBILE TABS ----
+function mobTab(tab){
+    document.querySelectorAll('.mob-tab').forEach(b=>b.classList.remove('active'));
+    event.target.classList.add('active');
+
+    const left=document.getElementById('col-left');
+    const center=document.getElementById('col-center');
+    const right=document.getElementById('col-right');
+    const logBar=document.getElementById('log-bar');
+    const crewStrip=document.getElementById('crew-strip');
+
+    // Hide all
+    [left,center,right].forEach(el=>el.classList.remove('mob-active'));
+    logBar.style.display='none';
+
+    // On mobile, bottom-panels may need to be shown/hidden inside col-center
+    const radioPanel=document.getElementById('radio-panel');
+    const bottomPanels=document.getElementById('bottom-panels');
+    const radioHeader=center.querySelector('.panel-header');
+
+    switch(tab){
+        case 'telem':
+            left.classList.add('mob-active');
+            crewStrip.style.display='flex';
+            break;
+        case 'radio':
+            center.classList.add('mob-active');
+            if(radioPanel)radioPanel.style.display='flex';
+            if(bottomPanels)bottomPanels.style.display='none';
+            if(radioHeader)radioHeader.style.display='flex';
+            crewStrip.style.display='flex';
+            break;
+        case 'radar':
+            center.classList.add('mob-active');
+            if(radioPanel)radioPanel.style.display='none';
+            if(bottomPanels)bottomPanels.style.display='flex';
+            if(radioHeader)radioHeader.style.display='none';
+            crewStrip.style.display='none';
+            break;
+        case 'tasks':
+            right.classList.add('mob-active');
+            crewStrip.style.display='flex';
+            break;
+        case 'log':
+            // Show logs fullscreen
+            logBar.style.display='flex';
+            logBar.style.flex='1';
+            logBar.style.maxHeight='none';
+            logBar.style.flexDirection='column';
+            crewStrip.style.display='none';
+            break;
+    }
+}
+
+// On load: if mobile, activate default tab
+function initMobileLayout(){
+    if(window.innerWidth<=768){
+        document.getElementById('col-left').classList.add('mob-active');
+        document.getElementById('log-bar').style.display='none';
+    }
+}
+window.addEventListener('resize',()=>{
+    if(window.innerWidth>768){
+        // Restore desktop layout
+        ['col-left','col-center','col-right'].forEach(id=>{
+            document.getElementById(id).classList.remove('mob-active');
+            document.getElementById(id).style.display='';
+        });
+        const logBar=document.getElementById('log-bar');
+        logBar.style.display='';logBar.style.flex='';logBar.style.maxHeight='';logBar.style.flexDirection='';
+        document.getElementById('crew-strip').style.display='';
+        const rp=document.getElementById('radio-panel');if(rp)rp.style.display='';
+        const bp=document.getElementById('bottom-panels');if(bp)bp.style.display='';
+        const rh=document.getElementById('col-center')?.querySelector('.panel-header');if(rh)rh.style.display='';
+    }
+});
+
+// ---- SPEED / PAUSE ----
+function setSpeed(s){
+    speed=s;paused=false;
+    document.querySelectorAll('.spd-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('spb-'+s)?.classList.add('active');
+    document.getElementById('spb-0').classList.remove('active');
+}
+function togglePause(){
+    paused=!paused;
+    document.getElementById('spb-0').classList.toggle('active',paused);
+}
+document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')return;
+    if(e.key===' '){e.preventDefault();togglePause();}
+    if(e.key==='1')setSpeed(1);
+    if(e.key==='2')setSpeed(5);
+    if(e.key==='3')setSpeed(15);
+});
+
+// ---- MAIN LOOP ----
+let renderTick=0;
+function loop(now){
+    const dt=Math.min((now-lastT)/1000,0.1);
+    lastT=now;
+    update(dt);
+    renderRadar();
+    renderDeepSpace();
+    renderCrewStrip(); // ECG needs frequent updates
+    renderTick++;
+    if(renderTick%30===0){
+        renderTelemetry();
+        renderActions();
+        renderWorkOrders();
+        renderRadiation();
+        renderRadData();
+        updateHints();
+    }
+    requestAnimationFrame(loop);
+}
+
+// ---- INIT ----
+slog('Система инициализирована. ИДП РЕЗОНАНС-9 онлайн.','ok');
+slog('Лунная база «Резонанс-9», южный полюс Луны, кратер Шеклтон.','inf');
+radioMsg('Система','system','Инженерный диспетчерский пульт активирован. Все каналы на приёме.');
+radioMsg('Хьюстон','earth','Резонанс-9, Хьюстон. Подтверждаем связь. Телеметрия поступает номинально. Добро пожаловать на вахту.');
+elog('from','Хьюстон: связь установлена. Телеметрия номинальна. Ждём первый рапорт.');
+
+setTimeout(()=>radioMsg(CREW[0].callsign,'crew','Диспетчер, '+CREW[0].callsign+' на связи. Экипаж на местах, все системы проверены. Готовы к работе.'),3000);
+setTimeout(()=>radioMsg(CREW[1].callsign,'crew',CREW[1].callsign+', энергосистема — норма. RTG стабилен, панели чистые.'),5500);
+setTimeout(()=>radioMsg(CREW[2].callsign,'crew',CREW[2].callsign+', СЖО — все параметры в зелёной зоне. Фильтры свежие.'),7500);
+setTimeout(()=>radioMsg(CREW[3].callsign,'crew',CREW[3].callsign+' на связи. Лаборатория готова, бур в ждущем режиме.'),9500);
+
+// Periodic Earth comms
+setInterval(()=>{
+    if(paused)return;
+    if(Math.random()<0.12){
+        const pings=[
+            'Хьюстон: плановая проверка канала. Резонанс, как приём?',
+            'Хьюстон: телеметрия стабильна. Ждём плановый рапорт.',
+            'Хьюстон: научный комитет запрашивает обновление по экспериментам серии B.',
+            'Хьюстон: прогноз солнечной активности — умеренная. Следите за радиацией.',
+            'Хьюстон: подтвердите статус экипажа для медицинского журнала.',
+            'Хьюстон: грузовой модуль «Прогресс-Л» на подходе, ETA 72 часа. Подтвердите готовность шлюза.',
+        ];
+        const p=pick(pings);
+        radioMsg('Хьюстон','earth',p);
+        elog('from',p);
+    }
+},45000);
+
+// Supply drops
+setInterval(()=>{
+    if(paused||gt<100)return;
+    if(Math.random()<0.05){
+        radioMsg('Хьюстон','earth','Резонанс, грузовой модуль успешно сел в зоне посадки Дельта. Экипаж, приступайте к разгрузке.');
+        elog('from','Грузовой модуль доставлен. Разгрузка.');
+        for(const [,item] of Object.entries(INV)){item.count=Math.min(item.count+Math.ceil(item.count*0.4+2),item.count+20);}
+        setTimeout(()=>radioMsg(CREW[0].callsign,'crew','Диспетчер, разгрузка завершена. Склад пополнен. Всё по описи.'),rng(5000,10000)/speed);
+        slog('Грузовой модуль разгружен, запасы пополнены','ok');
+    }
+},120000);
+
+lastT=performance.now();
+initMobileLayout();
+requestAnimationFrame(loop);
+</script>
 </body>
 </html>
