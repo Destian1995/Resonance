@@ -404,6 +404,31 @@ body{
     font-family:inherit;font-size:14px;font-weight:bold;border-radius:4px;cursor:pointer;
 }
 
+/* Space weather panel (mobile КОСМОС tab) */
+#space-weather-panel{
+    flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    background:var(--bg);padding:6px;
+}
+#sw-content{font-size:11px;line-height:1.6}
+.sw-section{
+    background:var(--panel);border:1px solid var(--border);border-radius:3px;
+    margin-bottom:4px;padding:8px 10px;
+}
+.sw-title{color:var(--accent2);font-size:11px;font-weight:bold;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
+.sw-row{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #080c14}
+.sw-label{color:var(--dim)}
+.sw-val{text-align:right}
+.sw-ok{color:var(--green)}
+.sw-warn{color:var(--yellow)}
+.sw-crit{color:var(--red2);font-weight:bold}
+.sw-obj{
+    padding:5px 8px;margin-bottom:2px;border:1px solid var(--border);border-radius:2px;
+    display:flex;justify-content:space-between;align-items:center;font-size:10px;
+}
+.sw-obj-name{color:var(--text2);font-weight:bold}
+.sw-obj-info{color:var(--dim);font-size:9px}
+.sw-threat{border-color:var(--red)!important;background:rgba(255,34,68,0.04)}
+
 /* Anomaly panel in radar view */
 #anomaly-panel{flex-shrink:0;border-top:1px solid #1a102a;border-bottom:1px solid #1a102a;max-height:160px;display:flex;flex-direction:column;overflow:hidden}
 #anomaly-list{flex:1;overflow-y:auto;padding:4px 8px;font-size:10px}
@@ -789,7 +814,7 @@ body{
     <button class="mob-tab" onclick="mobTab('radio')">РАДИО</button>
     <button class="mob-tab" id="mob-tab-radar" onclick="mobTab('radar')">РАДАР</button>
     <button class="mob-tab" id="mob-tab-tasks" onclick="mobTab('tasks')">ИНЦИДЕНТЫ</button>
-    <button class="mob-tab" onclick="mobTab('log')">ЖУРНАЛ</button>
+    <button class="mob-tab" onclick="mobTab('space')">КОСМОС</button>
 </div>
 
 <!-- MAIN LAYOUT -->
@@ -873,6 +898,11 @@ body{
 
 <!-- CREW STATUS STRIP -->
 <div id="crew-strip"></div>
+
+<!-- SPACE WEATHER PANEL (mobile tab КОСМОС) -->
+<div id="space-weather-panel" style="display:none">
+    <div id="sw-content"></div>
+</div>
 
 <!-- BOTTOM: LOGS -->
 <div id="log-bar">
@@ -3496,14 +3526,145 @@ function cmdSendReport(){
 }
 
 function cmdRestCrew(){
-    let rested=0;
-    for(const c of CREW){
-        if(c.status==='free'){c.fatigue=clamp(c.fatigue-25,0,100);c.health=clamp(c.health+3,0,100);c.stress=clamp(c.stress-15,0,100);c.morale=clamp(c.morale+5,0,100);rested++;}
+    const free=CREW.filter(c=>c.status==='free');
+    if(free.length===0){radioMsg('Система','system','Весь экипаж занят.');return;}
+
+    // Show rest assignment modal
+    const tired=free.sort((a,b)=>b.fatigue-a.fatigue);
+    const most=tired[0];
+
+    const restTypes=[
+        {name:'Короткий перерыв (30 мин)',duration:20,fatigue:-15,stress:-8,morale:3,health:1},
+        {name:'Полноценный сон (8 ч)',duration:60,fatigue:-50,stress:-30,morale:10,health:5},
+        {name:'Медицинский отдых',duration:45,fatigue:-35,stress:-25,morale:5,health:15},
+    ];
+
+    let body=`<p style="margin-bottom:8px">Свободные члены экипажа:</p>`;
+    for(const c of tired){
+        const fColor=c.fatigue>70?'var(--red2)':c.fatigue>40?'var(--yellow)':'var(--green)';
+        body+=`<div style="padding:4px 8px;margin-bottom:3px;border:1px solid var(--border);border-radius:3px;display:flex;justify-content:space-between;align-items:center">
+            <span style="color:var(--accent2)">${c.callsign} — ${c.name}</span>
+            <span>Уст: <span style="color:${fColor}">${c.fatigue.toFixed(0)}%</span> | Стр: ${c.stress.toFixed(0)}% | HP: ${c.health.toFixed(0)}%</span>
+        </div>`;
     }
-    if(rested>0){
-        radioMsg('Диспетчер','dispatch',`Свободный состав — отдых по расписанию. ${rested} чел.`);
-        setTimeout(()=>radioMsg(pick(CREW).callsign,'crew','Принял, уходим на отдых. Приятно слышать.'),rng(2000,4000)/speed);
-    }else radioMsg('Система','system','Весь экипаж занят.');
+    body+=`<p style="margin-top:8px;color:var(--dim)">Выберите тип отдыха:</p>`;
+
+    const btns=restTypes.map(rt=>({
+        text:rt.name,
+        cls:rt.health>5?'m-primary':'',
+        action:()=>{
+            for(const c of free){
+                c.status='rest'; c.task='Отдых: '+rt.name;
+                setTimeout(()=>{
+                    c.fatigue=clamp(c.fatigue+rt.fatigue,0,100);
+                    c.stress=clamp(c.stress+rt.stress,0,100);
+                    c.morale=clamp(c.morale+rt.morale,0,100);
+                    c.health=clamp(c.health+rt.health,0,100);
+                    c.status='free'; c.task=null;
+                    radioMsg(c.callsign,'crew',pick([
+                        'Отдохнул, чувствую себя лучше. Готов к работе.',
+                        'Спасибо за отдых. Силы восстановлены.',
+                        'Выспался наконец-то. Голова ясная.',
+                        'Перерыв помог. Снова в строю.',
+                    ]));
+                },rt.duration*1000/speed);
+            }
+            radioMsg('Диспетчер','dispatch',`Свободный состав — ${rt.name.toLowerCase()}. ${free.length} чел.`);
+            setTimeout(()=>{
+                const c=pick(free);
+                radioMsg(c.callsign,'crew',pick([
+                    'Принял, иду отдыхать. Наконец-то.',
+                    'Спасибо, Диспетчер. Глаза уже слипаются.',
+                    'Отбой. Не будите если не горит.',
+                    'Наконец-то... Двадцать часов на ногах.',
+                ]));
+            },rng(1500,3000)/speed);
+            closeModal();
+        }
+    }));
+    btns.push({text:'Отмена',cls:'',action:closeModal});
+    showModal('Отдых экипажа',body,btns);
+}
+
+// ---- SPACE WEATHER PANEL ----
+function renderSpaceWeather(){
+    const el=document.getElementById('sw-content');
+    if(!el)return;
+    const r=typeof radHistory!=='undefined'?radHistory[radHistory.length-1]:0.42;
+    const sa=typeof solarActivity!=='undefined'?solarActivity:{wind:380,protons:0.5,kp:1,xrayClass:'A1.0',cme:false,spe:false,geoStorm:false,cmeETA:0};
+    const rc=r>3?'sw-crit':r>1?'sw-warn':'sw-ok';
+    const wc=sa.wind>600?'sw-crit':sa.wind>450?'sw-warn':'sw-ok';
+    const pc=sa.protons>5?'sw-crit':sa.protons>1?'sw-warn':'sw-ok';
+    const kc=sa.kp>=5?'sw-crit':sa.kp>=3?'sw-warn':'sw-ok';
+
+    // Collect nearby objects from DS_OBJECTS
+    const threats=typeof DS_OBJECTS!=='undefined'?DS_OBJECTS.filter(o=>o.dist<0.3):[];
+    const debris=typeof DS_OBJECTS!=='undefined'?DS_OBJECTS.filter(o=>o.type==='debris'):[];
+    const asteroids=typeof DS_OBJECTS!=='undefined'?DS_OBJECTS.filter(o=>o.type==='asteroid'):[];
+
+    let html=`
+    <div class="sw-section">
+        <div class="sw-title">СОЛНЕЧНАЯ АКТИВНОСТЬ <span class="led ${sa.kp>=5?'led-red blink-fast':sa.kp>=3?'led-yellow blink-med':'led-green blink-slow'}"></span></div>
+        <div class="sw-row"><span class="sw-label">Радиация</span><span class="sw-val ${rc}">${r.toFixed(2)} мЗв/ч</span></div>
+        <div class="sw-row"><span class="sw-label">Солнечный ветер</span><span class="sw-val ${wc}">${sa.wind.toFixed(0)} км/с</span></div>
+        <div class="sw-row"><span class="sw-label">Протонный поток</span><span class="sw-val ${pc}">${sa.protons.toFixed(2)} p/см²</span></div>
+        <div class="sw-row"><span class="sw-label">Индекс Kp</span><span class="sw-val ${kc}">${sa.kp}</span></div>
+        <div class="sw-row"><span class="sw-label">Рентген. класс</span><span class="sw-val" style="color:${sa.xrayClass[0]==='X'?'var(--red2)':sa.xrayClass[0]==='M'?'var(--orange)':'var(--dim)'}">${sa.xrayClass}</span></div>
+        <div class="sw-row"><span class="sw-label">Поток F10.7</span><span class="sw-val" style="color:var(--dim)">${(120+rng(-3,3)).toFixed(0)} sfu</span></div>
+        ${sa.cme?`<div class="sw-row sw-threat" style="border-color:var(--red);padding:4px"><span class="sw-label" style="color:var(--red2)">⚠ CME</span><span class="sw-val sw-crit">ETA ${Math.ceil(sa.cmeETA/60)} мин</span></div>`:''}
+        ${sa.spe?`<div class="sw-row" style="border-color:var(--orange)"><span class="sw-label" style="color:var(--orange)">SPE</span><span class="sw-val sw-warn">АКТИВНО</span></div>`:''}
+        ${sa.geoStorm?`<div class="sw-row sw-threat"><span class="sw-label" style="color:var(--red2)">ГЕОШТОРМ</span><span class="sw-val sw-crit blink-fast">АКТИВЕН</span></div>`:''}
+    </div>
+
+    <div class="sw-section">
+        <div class="sw-title">КОСМИЧЕСКИЙ МУСОР <span style="color:var(--dim)">${debris.length} объектов</span></div>`;
+    if(debris.length===0) html+=`<div style="color:var(--dim);padding:6px;text-align:center">Чисто</div>`;
+    for(const d of debris){
+        const distKm=(d.dist*5000).toFixed(0);
+        const isThreat=d.dist<0.2;
+        html+=`<div class="sw-obj ${isThreat?'sw-threat':''}">
+            <div><span class="sw-obj-name">${d.label}</span><br><span class="sw-obj-info">ID: ${d.id}</span></div>
+            <div style="text-align:right"><span style="color:${isThreat?'var(--red2)':'var(--dim)'}">${distKm} км</span><br><span class="sw-obj-info">${isThreat?'⚠ СБЛИЖЕНИЕ':'отслеживается'}</span></div>
+        </div>`;
+    }
+    html+=`</div>
+
+    <div class="sw-section">
+        <div class="sw-title">АСТЕРОИДЫ И КОМЕТЫ <span style="color:var(--dim)">${asteroids.length} объектов</span></div>`;
+    if(asteroids.length===0) html+=`<div style="color:var(--dim);padding:6px;text-align:center">Не обнаружено</div>`;
+    for(const a of asteroids){
+        const distKm=(a.dist*5000).toFixed(0);
+        html+=`<div class="sw-obj">
+            <div><span class="sw-obj-name">${a.label}</span><br><span class="sw-obj-info">Тип: ${a.type==='asteroid'?'астероид':'комета'}</span></div>
+            <div style="text-align:right"><span style="color:var(--dim)">${distKm} км</span><br><span class="sw-obj-info">спектр: ${pick(['S','C','M','V','-'])}-тип</span></div>
+        </div>`;
+    }
+    html+=`</div>
+
+    <div class="sw-section">
+        <div class="sw-title">БЛИЖНИЕ ОБЪЕКТЫ (< 1500 км) <span style="color:var(--dim)">${threats.length}</span></div>`;
+    if(threats.length===0) html+=`<div style="color:var(--dim);padding:6px;text-align:center">Околоселенарное пространство чисто</div>`;
+    for(const t of threats){
+        const distKm=(t.dist*5000).toFixed(0);
+        html+=`<div class="sw-obj ${t.dist<0.1?'sw-threat':''}">
+            <div><span class="sw-obj-name">${t.label}</span><br><span class="sw-obj-info">${t.type}</span></div>
+            <div style="text-align:right"><span style="color:${t.dist<0.1?'var(--red2)':'var(--accent2)'}; ">${distKm} км</span></div>
+        </div>`;
+    }
+    html+=`</div>
+
+    <div class="sw-section">
+        <div class="sw-title">СПУТНИКОВАЯ ГРУППИРОВКА <span style="color:var(--dim)">${SATS.filter(s=>s.health>0).length}/${SATS.length}</span></div>`;
+    for(const s of SATS){
+        const hc=s.health>80?'sw-ok':s.health>50?'sw-warn':'sw-crit';
+        html+=`<div class="sw-obj">
+            <div><span class="sw-obj-name">${s.id}</span><br><span class="sw-obj-info">${s.name} | ${s.orbit}</span></div>
+            <div style="text-align:right"><span class="${hc}">${s.health.toFixed(0)}%</span><br><span class="sw-obj-info">Топл: ${s.fuel.toFixed(0)}% | Сигн: ${s.signal.toFixed(0)}</span></div>
+        </div>`;
+    }
+    html+=`</div>`;
+
+    el.innerHTML=html;
 }
 
 function cmdEmergVent(){
@@ -5352,6 +5513,8 @@ function mobTab(tab){
     // Reset all
     [left,center,right].forEach(el=>el.classList.remove('mob-active'));
     logBar.style.display='none';
+    const spacePanel=document.getElementById('space-weather-panel');
+    if(spacePanel)spacePanel.style.display='none';
     logBar.style.flex='';logBar.style.maxHeight='';logBar.style.flexDirection='';
 
     switch(tab){
@@ -5391,11 +5554,10 @@ function mobTab(tab){
             const taskTab=document.getElementById('mob-tab-tasks');
             if(taskTab)taskTab.classList.remove('tab-alert');
             break;
-        case 'log':
-            logBar.style.display='flex';
-            logBar.style.flex='1';
-            logBar.style.maxHeight='none';
-            logBar.style.flexDirection='column';
+        case 'space':
+            // Show space weather panel fullscreen
+            const spacePanel=document.getElementById('space-weather-panel');
+            if(spacePanel){spacePanel.style.display='flex';spacePanel.style.flex='1';}
             crewStrip.style.display='none';
             break;
     }
@@ -5421,6 +5583,7 @@ window.addEventListener('resize',()=>{
         const rp=document.getElementById('radio-panel');if(rp)rp.style.display='';
         const bp=document.getElementById('bottom-panels');if(bp)bp.style.display='';
         const rh=document.getElementById('col-center')?.querySelector('.panel-header');if(rh)rh.style.display='';
+        const sp=document.getElementById('space-weather-panel');if(sp)sp.style.display='none';
     }
 });
 
@@ -6994,6 +7157,7 @@ function loop(now){
         renderRadiation();
         renderRadData();
         renderAnomalyPanel();
+        renderSpaceWeather();
         updateHints();
     }
     requestAnimationFrame(loop);
