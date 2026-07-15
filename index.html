@@ -890,6 +890,11 @@ body{
     <div id="workorders"></div>
     <div class="panel-header">
         <span class="ph-title">КОМАНДЫ</span>
+        <span style="display:flex;gap:3px">
+            <button onclick="openCameras()" title="Камеры" style="background:none;border:1px solid var(--border);color:#44aa66;padding:2px 6px;font-size:10px;cursor:pointer;border-radius:2px;font-family:inherit">CAM</button>
+            <button onclick="openTopoMap()" title="Карта" style="background:none;border:1px solid var(--border);color:#4488cc;padding:2px 6px;font-size:10px;cursor:pointer;border-radius:2px;font-family:inherit">MAP</button>
+            <button onclick="openMissionLog()" title="Журнал" style="background:none;border:1px solid var(--border);color:#8888cc;padding:2px 6px;font-size:10px;cursor:pointer;border-radius:2px;font-family:inherit">LOG</button>
+        </span>
     </div>
     <div id="quick-actions"></div>
 </div>
@@ -3371,29 +3376,48 @@ function assignWO(wo){
 function renderActions(){
     const avail=freeCrew().length;
     const hasMysteryWO=workOrders.some(w=>w.mystery&&w.status==='ОЖИДАНИЕ');
+    const hasDamaged=Object.values(SYS).some(s=>s.integrity<90);
     const el=document.getElementById('quick-actions');
-    el.innerHTML=`
-        <button class="qa-btn" onclick="cmdRepairSys()" ${avail<1?'disabled':''}>Назначить ремонт</button>
-        <button class="qa-btn" onclick="cmdMaintenance()">Профилактика</button>
-        <button class="qa-btn" onclick="cmdEVA()" ${avail<2?'disabled':''}>Запросить EVA</button>
-        <button class="qa-btn" onclick="cmdRedistPower()">Перераспр. энергию</button>
-        <button class="qa-btn" onclick="cmdReserveO2()" ${INV.o2_reserve.count<5?'disabled':''}>Резерв O₂ (${INV.o2_reserve.count})</button>
-        <button class="qa-btn" onclick="cmdReserveH2O()" ${INV.h2o_reserve.count<20?'disabled':''}>Резерв H₂O (${INV.h2o_reserve.count})</button>
-        <button class="qa-btn" onclick="cmdSwapBatt()" ${INV.batteries.count<1?'disabled':''}>Замена АКБ (${INV.batteries.count})</button>
-        <button class="qa-btn" onclick="cmdCoolant()" ${INV.coolant_l.count<10?'disabled':''}>Заправка хлад. (${INV.coolant_l.count})</button>
-        <button class="qa-btn" onclick="cmdSendReport()">Рапорт на Землю</button>
-        <button class="qa-btn" onclick="cmdRestCrew()">Отдых экипажа</button>
-        ${hasMysteryWO?`<button class="qa-btn" onclick="cmdInvestigate()" ${avail<1?'disabled':''} style="border-color:#6644aa;color:#aa88ff">Начать расследование</button>`:''}
-        <button class="qa-btn" onclick="cmdDrillControl()" style="border-color:#1a1a10;color:#aaaa44">Управление буром</button>
-        ${dockingState.active&&!dockingState.approved?`<button class="qa-btn qa-dock" onclick="cmdApproveDocking()">Разрешить стыковку</button>`:''}
-        ${Object.keys(debrisAlertActive).length>0?`<button class="qa-btn" onclick="openRadarZoom('deepspace')" style="border-color:#3a1010;color:var(--red2);animation:pulse-ind 0.8s infinite">Система ПРО</button>`:''}
-        <button class="qa-btn" onclick="openCameras()" style="border-color:#1a2a1a;color:#44aa66">Камеры базы</button>
-        <button class="qa-btn" onclick="openTopoMap()" style="border-color:#0a1a2a;color:#4488cc">Карта местности</button>
-        <button class="qa-btn" onclick="openMissionLog()" style="border-color:#1a1a28;color:#8888cc">Бортжурнал</button>
-        <button class="qa-btn qa-danger" onclick="cmdEmergVent()">Аварийн. вентиляция</button>
-        <button class="qa-btn qa-danger" onclick="cmdRebootSys()">Перезагр. системы</button>
-        <button class="qa-btn qa-evac" onclick="cmdEvacuation()">ЭВАКУАЦИЯ</button>
-    `;
+    let html='';
+
+    // === СРОЧНЫЕ (появляются только когда нужны) ===
+    if(dockingState.active&&!dockingState.approved)
+        html+=`<button class="qa-btn qa-dock" onclick="cmdApproveDocking()" style="grid-column:1/-1">⊕ Разрешить стыковку</button>`;
+    if(typeof debrisAlertActive!=='undefined'&&Object.keys(debrisAlertActive).length>0)
+        html+=`<button class="qa-btn" onclick="openRadarZoom('deepspace')" style="grid-column:1/-1;border-color:#3a1010;color:var(--red2);animation:pulse-ind 0.8s infinite">⚠ Система ПРО</button>`;
+    if(hasMysteryWO)
+        html+=`<button class="qa-btn" onclick="cmdInvestigate()" ${avail<1?'disabled':''} style="grid-column:1/-1;border-color:#6644aa;color:#aa88ff">? Расследование аномалии</button>`;
+
+    // === ОСНОВНЫЕ ===
+    html+=`<button class="qa-btn" onclick="cmdRepairSys()" ${avail<1||!hasDamaged?'disabled':''}>Ремонт</button>`;
+    html+=`<button class="qa-btn" onclick="cmdMaintenance()" ${avail<1?'disabled':''}>Профилактика</button>`;
+    html+=`<button class="qa-btn" onclick="cmdEVA()" ${avail<2?'disabled':''}>EVA выход</button>`;
+    html+=`<button class="qa-btn" onclick="cmdRestCrew()" ${avail<1?'disabled':''}>Отдых экипажа</button>`;
+    html+=`<button class="qa-btn" onclick="cmdDrillControl()">Управление буром</button>`;
+    html+=`<button class="qa-btn" onclick="cmdSendReport()">Рапорт в ЦУП</button>`;
+
+    // === РЕСУРСЫ (показываются только при необходимости) ===
+    const needO2=SYS.LSS.params.o2.val<20;
+    const needH2O=SYS.LSS.params.h2o.val<70;
+    const needBatt=SYS.PWR.params.batt.val<50;
+    const needCool=SYS.THM.params.coolant.val<70;
+    const needPower=SYS.PWR.integrity<60;
+    if(needO2||needH2O||needBatt||needCool||needPower){
+        html+=`<div style="grid-column:1/-1;color:var(--dim);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:4px 0 2px;border-top:1px solid var(--border)">Ресурсы</div>`;
+        if(needO2) html+=`<button class="qa-btn" onclick="cmdReserveO2()" ${INV.o2_reserve.count<5?'disabled':''}>O₂ резерв (${INV.o2_reserve.count})</button>`;
+        if(needH2O) html+=`<button class="qa-btn" onclick="cmdReserveH2O()" ${INV.h2o_reserve.count<20?'disabled':''}>H₂O резерв (${INV.h2o_reserve.count})</button>`;
+        if(needBatt) html+=`<button class="qa-btn" onclick="cmdSwapBatt()" ${INV.batteries.count<1?'disabled':''}>Замена АКБ (${INV.batteries.count})</button>`;
+        if(needCool) html+=`<button class="qa-btn" onclick="cmdCoolant()" ${INV.coolant_l.count<10?'disabled':''}>Хладагент (${INV.coolant_l.count})</button>`;
+        if(needPower) html+=`<button class="qa-btn" onclick="cmdRedistPower()">Перераспр. энергию</button>`;
+    }
+
+    // === АВАРИЙНЫЕ (всегда внизу) ===
+    html+=`<div style="grid-column:1/-1;color:var(--dim);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:4px 0 2px;border-top:1px solid var(--border)">Аварийные</div>`;
+    html+=`<button class="qa-btn qa-danger" onclick="cmdEmergVent()">Аварийн. вентиляция</button>`;
+    html+=`<button class="qa-btn qa-danger" onclick="cmdRebootSys()" ${!hasDamaged?'disabled':''}>Перезагр. системы</button>`;
+    html+=`<button class="qa-btn qa-evac" onclick="cmdEvacuation()" style="grid-column:1/-1">ЭВАКУАЦИЯ</button>`;
+
+    el.innerHTML=html;
 }
 
 // ---- COMMANDS ----
