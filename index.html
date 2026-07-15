@@ -1263,8 +1263,9 @@ const DialogEngine = {
 
     _sections: ['Альфа','Браво','Гамма','Дельта','Эхо'],
     _sec(){ return pick(this._sections); },
-    _crew2(){ const c1=pick(CREW); const c2=pick(CREW.filter(x=>x.id!==c1.id)); return [c1,c2]; },
-    _crew3(){ const a=pick(CREW); const rest=CREW.filter(x=>x.id!==a.id); const b=pick(rest); const c=pick(rest.filter(x=>x.id!==b.id)); return [a,b,c]; },
+    _awakeCrew(){ return CREW.filter(c=>c.status!=='rest'); },
+    _crew2(){ const awake=this._awakeCrew(); if(awake.length<2)return null; const c1=pick(awake); const c2=pick(awake.filter(x=>x.id!==c1.id)); return [c1,c2]; },
+    _crew3(){ const awake=this._awakeCrew(); if(awake.length<3)return null; const a=pick(awake); const rest=awake.filter(x=>x.id!==a.id); const b=pick(rest); const c=pick(rest.filter(x=>x.id!==b.id)); return [a,b,c]; },
     _greet(c){ return pick(c.personality.greetings); },
     _sysWorst(){ let w=null,wv=100; for(const k in SYS){if(SYS[k].integrity<wv){wv=SYS[k].integrity;w=k;}} return w; },
     _paramStatus(val,p){ if(val>=p.nom[0]&&val<=p.nom[1]) return 'nom'; if(val>=p.warn[0]&&val<=p.warn[1]) return 'warn'; return 'crit'; },
@@ -2627,6 +2628,8 @@ const DialogEngine = {
     ],
 
     generate(){
+        // No chatter if fewer than 2 crew awake
+        if(this._awakeCrew().length<2) return;
         const results=[];
         for(let i=0;i<this.generators.length;i++){
             try{
@@ -5514,6 +5517,8 @@ function spawnEvent(evt){
 }
 
 function generateChatter(){
+    // No crew chatter if everyone is resting/sleeping
+    if(CREW.every(c=>c.status==='rest')) return;
     DialogEngine.generate();
 }
 
