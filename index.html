@@ -404,13 +404,7 @@ body{
     font-family:inherit;font-size:14px;font-weight:bold;border-radius:4px;cursor:pointer;
 }
 
-/* Space weather panel (mobile КОСМОС tab) */
-#space-weather-panel{
-    display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;
-    background:var(--bg);width:100%;
-}
-#sw-rad-graph{width:100%;height:110px;display:block}
-#sw-content{padding:6px;font-size:11px;line-height:1.6}
+/* (space weather panel removed from mobile) */
 .sw-section{
     background:var(--panel);border:1px solid var(--border);border-radius:3px;
     margin-bottom:4px;padding:8px 10px;
@@ -641,12 +635,12 @@ body{
 
     /* Main: one panel at a time */
     #main{flex-direction:column;overflow:hidden}
-    #col-left,#col-center,#col-right,#space-weather-panel{
+    #col-left,#col-center,#col-right{
         width:100%!important;flex-shrink:0;
         border:none!important;display:none;
     }
-    #col-left.mob-active,#col-center.mob-active,#col-right.mob-active,#space-weather-panel.mob-active{
-        display:block!important;flex:1;overflow-y:auto!important;-webkit-overflow-scrolling:touch;min-height:0;
+    #col-left.mob-active,#col-center.mob-active,#col-right.mob-active{
+        display:flex!important;flex:1;overflow:hidden;min-height:0;
     }
 
     /* Telemetry */
@@ -815,7 +809,6 @@ body{
     <button class="mob-tab" onclick="mobTab('radio')">РАДИО</button>
     <button class="mob-tab" id="mob-tab-radar" onclick="mobTab('radar')">РАДАР</button>
     <button class="mob-tab" id="mob-tab-tasks" onclick="mobTab('tasks')">ИНЦИДЕНТЫ</button>
-    <button class="mob-tab" onclick="mobTab('space')">КОСМОС</button>
 </div>
 
 <!-- MAIN LAYOUT -->
@@ -891,12 +884,6 @@ body{
         </span>
     </div>
     <div id="quick-actions"></div>
-</div>
-
-<!-- SPACE WEATHER (inside #main for mobile tab flow) -->
-<div id="space-weather-panel">
-    <canvas id="sw-rad-graph"></canvas>
-    <div id="sw-content"></div>
 </div>
 
 </div>
@@ -5670,9 +5657,7 @@ function mobTab(tab){
     const filterBar=document.getElementById('radio-filter-bar');
 
     // Reset all
-    const sp=document.getElementById('space-weather-panel');
     [left,center,right].forEach(el=>el.classList.remove('mob-active'));
-    if(sp)sp.classList.remove('mob-active');
     logBar.style.display='none';
     logBar.style.flex='';logBar.style.maxHeight='';logBar.style.flexDirection='';
 
@@ -5713,10 +5698,6 @@ function mobTab(tab){
             const taskTab=document.getElementById('mob-tab-tasks');
             if(taskTab)taskTab.classList.remove('tab-alert');
             break;
-        case 'space':
-            if(sp) sp.classList.add('mob-active');
-            crewStrip.style.display='none';
-            break;
     }
 }
 
@@ -5740,7 +5721,6 @@ window.addEventListener('resize',()=>{
         const rp=document.getElementById('radio-panel');if(rp)rp.style.display='';
         const bp=document.getElementById('bottom-panels');if(bp)bp.style.display='';
         const rh=document.getElementById('col-center')?.querySelector('.panel-header');if(rh)rh.style.display='';
-        const sp=document.getElementById('space-weather-panel');if(sp){sp.classList.remove('mob-active');sp.style.display='';}
     }
 });
 
@@ -7314,7 +7294,6 @@ function loop(now){
         renderRadiation();
         renderRadData();
         renderAnomalyPanel();
-        renderSpaceWeather();
         updateHints();
     }
     requestAnimationFrame(loop);
