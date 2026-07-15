@@ -406,11 +406,11 @@ body{
 
 /* Space weather panel (mobile КОСМОС tab) */
 #space-weather-panel{
-    flex-direction:column;overflow:hidden;
+    flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;
     background:var(--bg);width:100%;
 }
-#sw-rad-graph{flex-shrink:0;width:100%}
-#sw-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px;font-size:11px;line-height:1.6;min-height:0}
+#sw-rad-graph{width:100%;height:110px;display:block;flex-shrink:0}
+#sw-content{padding:6px;font-size:11px;line-height:1.6}
 .sw-section{
     background:var(--panel);border:1px solid var(--border);border-radius:3px;
     margin-bottom:4px;padding:8px 10px;
@@ -900,7 +900,7 @@ body{
 
 <!-- SPACE WEATHER PANEL (mobile tab КОСМОС) -->
 <div id="space-weather-panel" style="display:none">
-    <canvas id="sw-rad-graph" style="width:100%;height:100px;flex-shrink:0;display:block"></canvas>
+    <canvas id="sw-rad-graph"></canvas>
     <div id="sw-content"></div>
 </div>
 
@@ -3748,8 +3748,8 @@ function renderSpaceWeather(){
 
 function renderSWGraph(){
     const canvas=document.getElementById('sw-rad-graph');
-    if(!canvas||canvas.offsetWidth===0)return;
-    const W=canvas.offsetWidth, H=100;
+    if(!canvas||canvas.offsetWidth===0||canvas.offsetHeight===0)return;
+    const W=canvas.offsetWidth, H=canvas.offsetHeight;
     canvas.width=W*devicePixelRatio;
     canvas.height=H*devicePixelRatio;
     const ctx=canvas.getContext('2d');
@@ -5714,9 +5714,8 @@ function mobTab(tab){
             if(taskTab)taskTab.classList.remove('tab-alert');
             break;
         case 'space':
-            // Show space weather panel fullscreen
-            const spacePanel=document.getElementById('space-weather-panel');
-            if(spacePanel){spacePanel.style.display='flex';spacePanel.style.flex='1';}
+            const spacePanel2=document.getElementById('space-weather-panel');
+            if(spacePanel2){spacePanel2.style.display='block';spacePanel2.style.flex='1';spacePanel2.style.overflow='auto';}
             crewStrip.style.display='none';
             break;
     }
