@@ -406,9 +406,8 @@ body{
 
 /* Space weather panel (mobile КОСМОС tab) */
 #space-weather-panel{
-    position:fixed;top:0;left:0;right:0;bottom:0;z-index:40;
-    overflow-y:auto;-webkit-overflow-scrolling:touch;
-    background:var(--bg);padding-top:64px;/* space for topbar+tabs */
+    display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    background:var(--bg);width:100%;
 }
 #sw-rad-graph{width:100%;height:110px;display:block}
 #sw-content{padding:6px;font-size:11px;line-height:1.6}
@@ -642,12 +641,12 @@ body{
 
     /* Main: one panel at a time */
     #main{flex-direction:column;overflow:hidden}
-    #col-left,#col-center,#col-right{
+    #col-left,#col-center,#col-right,#space-weather-panel{
         width:100%!important;flex-shrink:0;
         border:none!important;display:none;
     }
-    #col-left.mob-active,#col-center.mob-active,#col-right.mob-active{
-        display:flex!important;flex:1;overflow:hidden;min-height:0;
+    #col-left.mob-active,#col-center.mob-active,#col-right.mob-active,#space-weather-panel.mob-active{
+        display:block!important;flex:1;overflow-y:auto!important;-webkit-overflow-scrolling:touch;min-height:0;
     }
 
     /* Telemetry */
@@ -894,16 +893,16 @@ body{
     <div id="quick-actions"></div>
 </div>
 
+<!-- SPACE WEATHER (inside #main for mobile tab flow) -->
+<div id="space-weather-panel">
+    <canvas id="sw-rad-graph"></canvas>
+    <div id="sw-content"></div>
+</div>
+
 </div>
 
 <!-- CREW STATUS STRIP -->
 <div id="crew-strip"></div>
-
-<!-- SPACE WEATHER PANEL (mobile tab КОСМОС) -->
-<div id="space-weather-panel" style="display:none">
-    <canvas id="sw-rad-graph"></canvas>
-    <div id="sw-content"></div>
-</div>
 
 <!-- BOTTOM: LOGS -->
 <div id="log-bar">
@@ -5671,10 +5670,10 @@ function mobTab(tab){
     const filterBar=document.getElementById('radio-filter-bar');
 
     // Reset all
+    const sp=document.getElementById('space-weather-panel');
     [left,center,right].forEach(el=>el.classList.remove('mob-active'));
+    if(sp)sp.classList.remove('mob-active');
     logBar.style.display='none';
-    const spacePanel=document.getElementById('space-weather-panel');
-    if(spacePanel)spacePanel.style.display='none';
     logBar.style.flex='';logBar.style.maxHeight='';logBar.style.flexDirection='';
 
     switch(tab){
@@ -5715,8 +5714,7 @@ function mobTab(tab){
             if(taskTab)taskTab.classList.remove('tab-alert');
             break;
         case 'space':
-            const spacePanel2=document.getElementById('space-weather-panel');
-            if(spacePanel2) spacePanel2.style.display='block';
+            if(sp) sp.classList.add('mob-active');
             crewStrip.style.display='none';
             break;
     }
@@ -5742,7 +5740,7 @@ window.addEventListener('resize',()=>{
         const rp=document.getElementById('radio-panel');if(rp)rp.style.display='';
         const bp=document.getElementById('bottom-panels');if(bp)bp.style.display='';
         const rh=document.getElementById('col-center')?.querySelector('.panel-header');if(rh)rh.style.display='';
-        const sp=document.getElementById('space-weather-panel');if(sp)sp.style.display='none';
+        const sp=document.getElementById('space-weather-panel');if(sp){sp.classList.remove('mob-active');sp.style.display='';}
     }
 });
 
