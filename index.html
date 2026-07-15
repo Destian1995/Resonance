@@ -406,10 +406,11 @@ body{
 
 /* Space weather panel (mobile КОСМОС tab) */
 #space-weather-panel{
-    flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;
-    background:var(--bg);width:100%;
+    position:fixed;top:0;left:0;right:0;bottom:0;z-index:40;
+    overflow-y:auto;-webkit-overflow-scrolling:touch;
+    background:var(--bg);padding-top:64px;/* space for topbar+tabs */
 }
-#sw-rad-graph{width:100%;height:110px;display:block;flex-shrink:0}
+#sw-rad-graph{width:100%;height:110px;display:block}
 #sw-content{padding:6px;font-size:11px;line-height:1.6}
 .sw-section{
     background:var(--panel);border:1px solid var(--border);border-radius:3px;
@@ -5715,7 +5716,7 @@ function mobTab(tab){
             break;
         case 'space':
             const spacePanel2=document.getElementById('space-weather-panel');
-            if(spacePanel2){spacePanel2.style.display='block';spacePanel2.style.flex='1';spacePanel2.style.overflow='auto';}
+            if(spacePanel2) spacePanel2.style.display='block';
             crewStrip.style.display='none';
             break;
     }
