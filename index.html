@@ -3552,65 +3552,122 @@ function cmdSendReport(){
     slog('Рапорт передан на Землю','inf');
 }
 
+// Rest queue — busy crew scheduled for rest after task
+let restQueue = {}; // crewId -> restType
+
 function cmdRestCrew(){
-    const free=CREW.filter(c=>c.status==='free');
-    if(free.length===0){radioMsg('Система','system','Весь экипаж занят.');return;}
-
-    // Show rest assignment modal
-    const tired=free.sort((a,b)=>b.fatigue-a.fatigue);
-    const most=tired[0];
-
     const restTypes=[
-        {name:'Короткий перерыв (30 мин)',duration:20,fatigue:-15,stress:-8,morale:3,health:1},
-        {name:'Полноценный сон (8 ч)',duration:60,fatigue:-50,stress:-30,morale:10,health:5},
-        {name:'Медицинский отдых',duration:45,fatigue:-35,stress:-25,morale:5,health:15},
+        {id:'break',name:'Перерыв 30 мин',duration:20,fatigue:-15,stress:-8,morale:3,health:1},
+        {id:'sleep',name:'Сон 8 часов',duration:60,fatigue:-50,stress:-30,morale:10,health:5},
+        {id:'medical',name:'Медицинский отдых',duration:45,fatigue:-35,stress:-25,morale:5,health:15},
     ];
 
-    let body=`<p style="margin-bottom:8px">Свободные члены экипажа:</p>`;
-    for(const c of tired){
+    let body='';
+    for(const c of CREW){
         const fColor=c.fatigue>70?'var(--red2)':c.fatigue>40?'var(--yellow)':'var(--green)';
-        body+=`<div style="padding:4px 8px;margin-bottom:3px;border:1px solid var(--border);border-radius:3px;display:flex;justify-content:space-between;align-items:center">
-            <span style="color:var(--accent2)">${c.callsign} — ${c.name}</span>
-            <span>Уст: <span style="color:${fColor}">${c.fatigue.toFixed(0)}%</span> | Стр: ${c.stress.toFixed(0)}% | HP: ${c.health.toFixed(0)}%</span>
-        </div>`;
-    }
-    body+=`<p style="margin-top:8px;color:var(--dim)">Выберите тип отдыха:</p>`;
+        const sColor=c.stress>70?'var(--red2)':c.stress>40?'var(--yellow)':'var(--green)';
+        const hColor=c.health>70?'var(--green)':c.health>40?'var(--yellow)':'var(--red2)';
+        const isFree=c.status==='free';
+        const isResting=c.status==='rest';
+        const isBusy=c.status==='busy'||c.status==='eva';
+        const queued=restQueue[c.id];
 
-    const btns=restTypes.map(rt=>({
-        text:rt.name,
-        cls:rt.health>5?'m-primary':'',
-        action:()=>{
-            for(const c of free){
-                c.status='rest'; c.task='Отдых: '+rt.name;
-                setTimeout(()=>{
-                    c.fatigue=clamp(c.fatigue+rt.fatigue,0,100);
-                    c.stress=clamp(c.stress+rt.stress,0,100);
-                    c.morale=clamp(c.morale+rt.morale,0,100);
-                    c.health=clamp(c.health+rt.health,0,100);
-                    c.status='free'; c.task=null;
-                    radioMsg(c.callsign,'crew',pick([
-                        'Отдохнул, чувствую себя лучше. Готов к работе.',
-                        'Спасибо за отдых. Силы восстановлены.',
-                        'Выспался наконец-то. Голова ясная.',
-                        'Перерыв помог. Снова в строю.',
-                    ]));
-                },rt.duration*1000/speed);
+        let statusText='';
+        if(isResting) statusText=`<span style="color:#6688aa">💤 ${c.task||'Отдыхает'}</span>`;
+        else if(queued) statusText=`<span style="color:#6688aa">⏳ Отдых после задачи</span>`;
+        else if(isBusy) statusText=`<span style="color:var(--yellow)">⚙ ${c.task||'Занят'}</span>`;
+        else statusText=`<span style="color:var(--green)">✓ Свободен</span>`;
+
+        body+=`<div style="padding:6px 8px;margin-bottom:4px;border:1px solid var(--border);border-radius:3px;background:#060a10">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span style="color:var(--accent2);font-weight:bold">${c.callsign}</span>
+                <span style="font-size:9px">${c.name} — ${c.role}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px">
+                <span>Уст: <span style="color:${fColor}">${c.fatigue.toFixed(0)}%</span></span>
+                <span>Стр: <span style="color:${sColor}">${c.stress.toFixed(0)}%</span></span>
+                <span>HP: <span style="color:${hColor}">${c.health.toFixed(0)}%</span></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                ${statusText}
+                <div style="display:flex;gap:3px">`;
+
+        if(isFree && !isResting){
+            for(const rt of restTypes){
+                body+=`<button onclick="sendCrewToRest('${c.id}','${rt.id}')" style="background:#0a1018;border:1px solid var(--border);color:var(--text);padding:3px 6px;font-family:inherit;font-size:9px;cursor:pointer;border-radius:2px">${rt.name.split(' ')[0]}</button>`;
             }
-            radioMsg('Диспетчер','dispatch',`Свободный состав — ${rt.name.toLowerCase()}. ${free.length} чел.`);
-            setTimeout(()=>{
-                const c=pick(free);
-                radioMsg(c.callsign,'crew',pick([
-                    'Принял, иду отдыхать. Наконец-то.',
-                    'Спасибо, Диспетчер. Глаза уже слипаются.',
-                    'Отбой. Не будите если не горит.',
-                    'Наконец-то... Двадцать часов на ногах.',
-                ]));
-            },rng(1500,3000)/speed);
-            closeModal();
+        } else if(isBusy && !queued){
+            for(const rt of restTypes){
+                body+=`<button onclick="queueRestAfterTask('${c.id}','${rt.id}')" style="background:#0a0a18;border:1px solid #1a1a30;color:#8888cc;padding:3px 6px;font-family:inherit;font-size:9px;cursor:pointer;border-radius:2px" title="Отдых после текущей задачи">${rt.name.split(' ')[0]} ⏳</button>`;
+            }
+        } else if(queued){
+            body+=`<button onclick="cancelRestQueue('${c.id}')" style="background:#1a0a0a;border:1px solid #3a1a1a;color:var(--red);padding:3px 6px;font-family:inherit;font-size:9px;cursor:pointer;border-radius:2px">Отмена</button>`;
         }
-    }));
-    btns.push({text:'Отмена',cls:'',action:closeModal});
-    showModal('Отдых экипажа',body,btns);
+
+        body+=`</div></div></div>`;
+    }
+
+    showModal('Управление отдыхом экипажа',body,[{text:'Закрыть',cls:'',action:closeModal}]);
+}
+
+function sendCrewToRest(crewId, typeId){
+    const c=CREW.find(cr=>cr.id===crewId);
+    if(!c||c.status!=='free')return;
+    const restTypes={
+        break:{name:'Перерыв',duration:20,fatigue:-15,stress:-8,morale:3,health:1},
+        sleep:{name:'Сон',duration:60,fatigue:-50,stress:-30,morale:10,health:5},
+        medical:{name:'Медицинский отдых',duration:45,fatigue:-35,stress:-25,morale:5,health:15},
+    };
+    const rt=restTypes[typeId];
+    if(!rt)return;
+    c.status='rest'; c.task=rt.name;
+    radioMsg('Диспетчер','dispatch',`${c.callsign}, отправляю вас на отдых — ${rt.name.toLowerCase()}.`);
+    setTimeout(()=>radioMsg(c.callsign,'crew',pick([
+        'Принял, иду отдыхать.',
+        'Спасибо, Диспетчер. Наконец-то.',
+        'Отбой. Не будите если не горит.',
+        c.fatigue>60?'Наконец-то... Еле на ногах стою.':'Хорошо, перерыв не помешает.',
+    ])),rng(1500,3000)/speed);
+    setTimeout(()=>{
+        c.fatigue=clamp(c.fatigue+rt.fatigue,0,100);
+        c.stress=clamp(c.stress+rt.stress,0,100);
+        c.morale=clamp(c.morale+rt.morale,0,100);
+        c.health=clamp(c.health+rt.health,0,100);
+        c.status='free'; c.task=null;
+        radioMsg(c.callsign,'crew',pick([
+            'Отдохнул. Готов к работе.',
+            'Выспался, голова ясная. Что пропустил?',
+            'Силы восстановлены. Доложите обстановку.',
+            'Перерыв помог. Снова в строю.',
+        ]));
+    },rt.duration*1000/speed);
+    closeModal();
+}
+
+function queueRestAfterTask(crewId, typeId){
+    restQueue[crewId]=typeId;
+    const c=CREW.find(cr=>cr.id===crewId);
+    radioMsg('Система','system',`${c?c.callsign:crewId}: отдых запланирован после завершения текущей задачи.`);
+    closeModal();
+}
+
+function cancelRestQueue(crewId){
+    delete restQueue[crewId];
+    const c=CREW.find(cr=>cr.id===crewId);
+    radioMsg('Система','system',`${c?c.callsign:crewId}: запланированный отдых отменён.`);
+    closeModal();
+}
+
+// Check rest queue when crew finishes tasks (hook into update loop)
+function checkRestQueue(){
+    for(const crewId of Object.keys(restQueue)){
+        const c=CREW.find(cr=>cr.id===crewId);
+        if(c&&c.status==='free'){
+            sendCrewToRest(crewId, restQueue[crewId]);
+            delete restQueue[crewId];
+        }
+    }
+}
 }
 
 // ---- SPACE WEATHER PANEL ----
@@ -5372,6 +5429,9 @@ function update(dt){
         eventCD=rng(30,70);
         tryEvent();
     }
+
+    // ---- REST QUEUE ----
+    checkRestQueue();
 
     // ---- CREW CHATTER ----
     chatterCD-=sdt;
