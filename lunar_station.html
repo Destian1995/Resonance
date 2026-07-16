@@ -182,8 +182,6 @@ body{
 .ip-msg-main.ip-m-jupiter{border-left-color:#cc8866;background:rgba(200,136,100,0.04)}
 .ip-msg-main.ip-m-asteroid{border-left-color:#888888;background:rgba(136,136,136,0.04)}
 .ip-msg-main.ip-m-pluto{border-left-color:#6688aa;background:rgba(100,136,170,0.04)}
-.ip-msg-main.ip-m-saturn{border-left-color:#ddcc88;background:rgba(220,200,100,0.04)}
-.ip-msg-main.ip-m-neptune{border-left-color:#4466cc;background:rgba(68,100,200,0.04)}
 .ip-msg-main .ip-header{display:flex;justify-content:space-between;margin-bottom:2px}
 .ip-msg-main .ip-src{font-weight:bold;font-size:11px}
 .ip-msg-main .ip-delay{color:var(--dim);font-size:9px}
@@ -362,14 +360,6 @@ body{
 .rzd-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #0a1218}
 .rzd-label{color:var(--dim)}
 .rzd-val{color:var(--text2);text-align:right}
-#rzd-zoom-controls{
-    position:absolute;bottom:12px;right:12px;display:flex;flex-direction:column;gap:4px;z-index:5;
-}
-#rzd-zoom-info{
-    position:absolute;bottom:12px;left:12px;background:rgba(5,10,18,0.85);
-    border:1px solid var(--border);border-radius:3px;padding:4px 8px;
-    font-size:9px;color:var(--dim);z-index:5;pointer-events:none;
-}
 /* Investigation WO tag */
 .wo-tag-mystery{
     font-size:8px;padding:1px 4px;border-radius:2px;
@@ -627,25 +617,6 @@ body{
 #mute-btn.muted{color:var(--red);border-color:var(--red)}
 .qa-evac{grid-column:1/-1;background:#1a0808!important;border-color:#440000!important;color:var(--red2)!important;font-weight:bold;font-size:11px!important;text-transform:uppercase;letter-spacing:1px}.qa-evac:hover{background:#2a0c0c!important;border-color:var(--red)!important;box-shadow:0 0 10px rgba(200,20,40,0.3)}.qa-dock{animation:dock-glow 1.5s infinite;border-color:#00aa44!important;color:#00ff88!important}@keyframes dock-glow{0%,100%{box-shadow:0 0 4px rgba(0,200,80,0.3);background:#081a10}50%{box-shadow:0 0 12px rgba(0,200,80,0.5);background:#0d2a18}}.drill-speed-btns{display:flex;gap:4px;margin:6px 0}.drill-speed-btn{flex:1;padding:6px;border:1px solid var(--border);border-radius:3px;background:var(--panel);color:var(--text);cursor:pointer;font-family:inherit;font-size:11px;text-align:center}.drill-speed-btn.active{border-color:var(--accent);color:var(--accent2);background:#0a1520}.drill-speed-btn:hover{border-color:var(--accent)}.drill-rock{padding:4px 8px;background:#0a0e18;border:1px solid var(--border);border-radius:2px;margin:4px 0;font-size:11px;color:var(--text2)}.cs-psych{font-size:7px;margin-top:1px;display:flex;justify-content:space-around}.cs-stress-ok{color:var(--green)}.cs-stress-warn{color:var(--yellow)}.cs-stress-crit{color:var(--red2)}.cs-morale-ok{color:var(--accent2)}.cs-morale-warn{color:var(--yellow)}.cs-morale-crit{color:var(--red2)}.asteroid-warning{padding:8px;background:rgba(200,100,0,0.1);border:1px solid var(--orange);border-radius:4px;margin:8px 0;text-align:center;color:var(--orange);font-weight:bold}#evac-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(10,0,0,0.95);z-index:180;justify-content:center;align-items:center;flex-direction:column}#evac-overlay.show{display:flex}#evac-overlay h2{color:var(--red2);font-size:32px;margin-bottom:16px;animation:pulse-ind 0.8s infinite}#evac-overlay .evac-timer{color:var(--red2);font-size:72px;font-weight:bold;margin:20px 0}#evac-overlay .evac-status{color:var(--text);font-size:14px;margin:4px 0;text-align:center}
 
-/* CUP directives panel */
-#cup-directives{padding:4px;display:flex;flex-direction:column;gap:4px}
-.cup-dir{
-    border:1px solid var(--border);border-radius:3px;padding:6px 8px;
-    background:#060c14;position:relative;
-}
-.cup-dir.cup-warn{border-color:#cc6600;background:#100a02}
-.cup-dir.cup-crit{border-color:var(--red);background:#120404;animation:pulse-border 1s infinite}
-.cup-dir.cup-done{border-color:var(--green);background:#031008;opacity:0.7}
-@keyframes pulse-border{0%,100%{border-color:var(--red)}50%{border-color:#ff4444;box-shadow:0 0 8px rgba(200,30,30,0.4)}}
-.cup-dir-title{font-size:11px;font-weight:bold;color:var(--accent2);margin-bottom:3px;display:flex;justify-content:space-between;align-items:center}
-.cup-dir-desc{font-size:9px;color:var(--dim);margin-bottom:4px}
-.cup-dir-timer{font-size:10px;font-family:monospace;font-weight:bold}
-.cup-dir-timer.cup-t-ok{color:var(--green)}
-.cup-dir-timer.cup-t-warn{color:var(--yellow)}
-.cup-dir-timer.cup-t-crit{color:var(--red2)}
-.cup-dir-done-badge{font-size:9px;color:var(--green);font-weight:bold}
-#cup-dir-empty{padding:8px;font-size:10px;color:var(--dim);text-align:center}
-
 /* Scrollbars */
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:var(--bg)}
@@ -857,7 +828,10 @@ body{
         <span class="tb-label" style="font-size:8px">ПД</span>
     </div>
     <div class="tb-section" style="border:none">
-        <div class="spd-controls"></div>
+        <button id="mute-btn" onclick="toggleMute()">&#9835; SND</button>
+        <div class="spd-controls">
+            <button class="spd-btn" id="spb-0" onclick="togglePause()">▌▌</button>
+        </div>
     </div>
 </div>
 
@@ -930,11 +904,6 @@ body{
 
 <!-- RIGHT: WORK ORDERS + АКТIONS -->
 <div id="col-right">
-    <div class="panel-header" style="border-bottom:1px solid #cc440022">
-        <span class="ph-title" style="color:#cc8844">ДИРЕКТИВЫ ЦУП</span>
-        <span id="cup-dir-count" style="color:var(--dim);font-size:10px">ожидание</span>
-    </div>
-    <div id="cup-directives"></div>
     <div class="panel-header">
         <span class="ph-title">НАРЯДЫ / ИНЦИДЕНТЫ</span>
         <span id="wo-count" style="color:var(--dim)">0 активных</span>
@@ -1004,12 +973,6 @@ body{
     <button id="radar-zoom-close" onclick="closeRadarZoom()">✕</button>
     <div id="radar-zoom-container">
         <canvas id="radar-zoom-canvas"></canvas>
-        <div id="rzd-zoom-controls">
-            <button class="topo-zoom-btn" onclick="rzdZoomIn()">+</button>
-            <button class="topo-zoom-btn" onclick="rzdZoomOut()">−</button>
-            <button class="topo-zoom-btn" onclick="rzdReset()" style="font-size:11px">⌂</button>
-        </div>
-        <div id="rzd-zoom-info">Масштаб: 1.0x | Колесо мыши или кнопки для зума</div>
     </div>
     <div id="radar-zoom-detail">
         <h3 id="rzd-title">Наведите на объект</h3>
@@ -1212,188 +1175,6 @@ let satChatterCD = 20;
 let workOrders = [];
 let woCounter = 1;
 let activeRepairs = [];
-
-// ---- ЦУП DIRECTIVES ----
-const CUP_TEMPLATES = [
-    // Каждый шаблон: check() — условие выполнения, feasible() — можно ли выполнить прямо сейчас
-    {key:'pwr_80', title:'Поддержать энергосистему',
-     shortDesc:'Целостность ЭС ≥ 80%',
-     radio:'Резонанс-9, деградация энергосистемы неприемлема. Восстановить ЭС до 80% и доложить. Срок — {dl}.',
-     deadline:900,
-     check:()=>SYS.PWR.integrity>=80,
-     feasible:()=>SYS.PWR.integrity<80 && freeCrew().length>0},
-    {key:'lss_80', title:'Нормализовать СЖО',
-     shortDesc:'Целостность СЖО ≥ 80%',
-     radio:'Резонанс-9, фиксируем деградацию системы жизнеобеспечения. Устранить отказы, довести до 80%. Срок — {dl}.',
-     deadline:720,
-     check:()=>SYS.LSS.integrity>=80,
-     feasible:()=>SYS.LSS.integrity<80 && freeCrew().length>0},
-    {key:'com_70', title:'Восстановить связь',
-     shortDesc:'Целостность COM ≥ 70%',
-     radio:'Резонанс-9, качество канала связи критическое. Восстановить COM выше 70% до {dl}.',
-     deadline:600,
-     check:()=>SYS.COM.integrity>=70,
-     feasible:()=>SYS.COM.integrity<70 && freeCrew().length>0},
-    {key:'thm_75', title:'Стабилизировать термоконтроль',
-     shortDesc:'THM ≥ 75%',
-     radio:'Резонанс-9, нагрев оборудования. Стабилизировать систему термоконтроля выше 75%. Срок — {dl}.',
-     deadline:660,
-     check:()=>SYS.THM.integrity>=75,
-     feasible:()=>SYS.THM.integrity<75 && freeCrew().length>0},
-    {key:'two_sys', title:'Техобслуживание: два модуля',
-     shortDesc:'ЭС и СЖО ≥ 75%',
-     radio:'Резонанс-9, объявляем внеплановую проверку. Привести ЭС и СЖО выше 75% до {dl}.',
-     deadline:1080,
-     check:()=>SYS.PWR.integrity>=75&&SYS.LSS.integrity>=75,
-     feasible:()=>(SYS.PWR.integrity<75||SYS.LSS.integrity<75) && freeCrew().length>0},
-    {key:'no_debris', title:'Устранить угрозу обломков',
-     shortDesc:'Нейтрализовать сближающийся объект',
-     radio:'Резонанс-9, угрожающий объект на орбите! Активировать ПРО или уклониться. Открыть радар и принять решение. Срок — {dl}.',
-     deadline:480,
-     check:()=>!DS_OBJECTS.some(o=>o.type==='debris'&&o._drifting&&o.dist<0.15),
-     feasible:()=>DS_OBJECTS.some(o=>o.type==='debris'&&o._drifting&&o.dist<0.15) && defenseSystemReady},
-    {key:'crew_morale', title:'Поддержать моральный дух',
-     shortDesc:'Моральный дух всего экипажа > 50%',
-     radio:'Резонанс-9, психологическое состояние экипажа вызывает тревогу. Организовать отдых, обеспечить моральный дух > 50% до {dl}.',
-     deadline:900,
-     check:()=>CREW.every(c=>c.morale>=50),
-     feasible:()=>CREW.some(c=>c.morale<50) && freeCrew().length>0},
-    {key:'no_crit_wo', title:'Ликвидировать критические инциденты',
-     shortDesc:'Нет критических нарядов без назначения',
-     radio:'Резонанс-9, обнаружены неустранённые инциденты категории КРИТ! Назначить персонал немедленно. Срок — {dl}.',
-     deadline:480,
-     check:()=>!workOrders.some(w=>w.priority===1&&w.status==='ОЖИДАНИЕ'),
-     feasible:()=>workOrders.some(w=>w.priority===1&&w.status==='ОЖИДАНИЕ') && freeCrew().length>0},
-    {key:'o2_nom', title:'Нормализовать кислород',
-     shortDesc:'ppO₂ в норме (19.5–23.5%)',
-     radio:'Резонанс-9, парциальное давление кислорода за пределами нормы. Восстановить ppO₂ до {dl}.',
-     deadline:600,
-     check:()=>SYS.LSS.params.o2.val>=19.5&&SYS.LSS.params.o2.val<=23.5,
-     feasible:()=>{const o2=SYS.LSS.params.o2.val; return (o2<19.5||o2>23.5) && (freeCrew().length>0||INV.o2_reserve.count>5);}},
-    {key:'batt_ok', title:'Восстановить заряд АКБ',
-     shortDesc:'Заряд батарей ≥ 50%',
-     radio:'Резонанс-9, заряд аккумуляторов критический. Принять меры по восстановлению до 50% до {dl}.',
-     deadline:540,
-     check:()=>SYS.PWR.params.batt.val>=50,
-     feasible:()=>SYS.PWR.params.batt.val<50 && (INV.batteries.count>0||freeCrew().length>0)},
-];
-
-let cupDirectives = [];        // {id, templateKey, title, shortDesc, deadline, timeLeft, status:'active'|'done'|'failed', doneTimer}
-let cupDirCounter = 1;
-let cupDirCD = 120;            // first directive in 2 game-minutes
-let cupDirInterval = 600;      // new directive every ~10 game-minutes
-
-function _cupDeadlineStr(sec){
-    const m=Math.floor(sec/60), s=Math.floor(sec%60);
-    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} (игр. вр.)`;
-}
-
-function issueCupDirective(){
-    if(cupDirectives.filter(d=>d.status==='active').length>=2) return;
-    // Filter out already active or recently-done keys
-    const activeKeys=cupDirectives.map(d=>d.templateKey);
-    // Only candidates that are feasible RIGHT NOW
-    const pool=CUP_TEMPLATES.filter(t=>!activeKeys.includes(t.key) && t.feasible());
-    if(pool.length===0) return;
-    const tmpl=pool[Math.floor(Math.random()*pool.length)];
-    // Double-check condition not already met
-    if(tmpl.check()) return;
-    const dir={
-        id:cupDirCounter++,
-        templateKey:tmpl.key,
-        title:tmpl.title,
-        shortDesc:tmpl.shortDesc,
-        deadline:tmpl.deadline,
-        timeLeft:tmpl.deadline,
-        status:'active',
-        doneTimer:0,
-    };
-    cupDirectives.push(dir);
-    const dlStr=_cupDeadlineStr(tmpl.deadline);
-    radioMsg('ЦУП','earth',tmpl.radio.replace('{dl}',dlStr));
-    slog(`ЦУП ДИРЕКТИВА #${dir.id}: ${dir.title} — срок ${dlStr}`,'wrn');
-    addMissionLog('comm',`ЦУП: директива #${dir.id} — "${dir.title}". Срок: ${dlStr}.`);
-    renderCupDirectives();
-}
-
-function updateCupDirectives(sdt){
-    // Issue new directives
-    cupDirCD-=sdt;
-    if(cupDirCD<=0){
-        cupDirCD=cupDirInterval+Math.random()*300;
-        issueCupDirective();
-    }
-
-    let needRender=false;
-    for(const dir of cupDirectives){
-        if(dir.status==='done'){
-            dir.doneTimer-=sdt;
-            if(dir.doneTimer<=0){cupDirectives=cupDirectives.filter(d=>d!==dir);needRender=true;}
-            continue;
-        }
-        if(dir.status!=='active') continue;
-        const tmpl=CUP_TEMPLATES.find(t=>t.key===dir.templateKey);
-        if(!tmpl) continue;
-
-        // Check completion
-        if(tmpl.check()){
-            dir.status='done';
-            dir.doneTimer=30; // show as done for 30 game-seconds then remove
-            radioMsg('ЦУП','earth',`Резонанс-9, директива #${dir.id} выполнена. Хорошая работа. Продолжайте в том же духе.`);
-            slog(`Директива ЦУП #${dir.id} выполнена`,'ok');
-            addMissionLog('comm',`ЦУП: директива #${dir.id} — "${dir.title}" выполнена.`);
-            needRender=true;
-            continue;
-        }
-
-        dir.timeLeft-=sdt;
-        needRender=true;
-
-        // Warning at 25% time left
-        if(dir.timeLeft<=dir.deadline*0.25&&dir.timeLeft>dir.deadline*0.25-sdt){
-            radioMsg('ЦУП','alert',`Резонанс-9, ПРЕДУПРЕЖДЕНИЕ! Директива #${dir.id} "${dir.title}" — до провала ${_cupDeadlineStr(dir.timeLeft)}. Немедленно приступить!`);
-        }
-
-        // Deadline expired → GAME OVER
-        if(dir.timeLeft<=0){
-            dir.status='failed';
-            paused=true;
-            radioMsg('ЦУП','alert',`РЕЗОНАНС-9, ДИРЕКТИВА #${dir.id} ПРОВАЛЕНА. Программа прекращает финансирование. Миссия закрыта.`);
-            slog(`ДИРЕКТИВА ЦУП #${dir.id} ПРОВАЛЕНА — КОНЕЦ МИССИИ`,'err');
-            document.getElementById('crit-title').textContent='ДИРЕКТИВА ЦУП ПРОВАЛЕНА';
-            document.getElementById('crit-reason').textContent=`"${dir.title}" не выполнена в срок. Финансирование миссии прекращено.`;
-            document.getElementById('crit-stats').innerHTML=`MET: ${formatMET(gt)}<br>День миссии: ${Math.floor(gt/86400)+1}<br>Директива #${dir.id}: ${dir.shortDesc}`;
-            document.getElementById('critical-overlay').classList.add('show');
-            return;
-        }
-    }
-    if(needRender) renderCupDirectives();
-}
-
-function renderCupDirectives(){
-    const el=document.getElementById('cup-directives');
-    if(!el) return;
-    const active=cupDirectives.filter(d=>d.status==='active'||d.status==='done');
-    const countEl=document.getElementById('cup-dir-count');
-    if(countEl) countEl.textContent=active.filter(d=>d.status==='active').length+' активных';
-    if(active.length===0){
-        el.innerHTML='<div id="cup-dir-empty">Ожидание директив ЦУП…</div>';
-        return;
-    }
-    el.innerHTML=active.map(dir=>{
-        if(dir.status==='done') return `<div class="cup-dir cup-done"><div class="cup-dir-title">${dir.title} <span class="cup-dir-done-badge">✓ ВЫПОЛНЕНО</span></div></div>`;
-        const frac=dir.timeLeft/dir.deadline;
-        const cls=frac<0.2?'cup-crit':frac<0.4?'cup-warn':'';
-        const tCls=frac<0.2?'cup-t-crit':frac<0.4?'cup-t-warn':'cup-t-ok';
-        const m=Math.floor(dir.timeLeft/60),s=Math.floor(dir.timeLeft%60);
-        const tStr=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-        return `<div class="cup-dir ${cls}">
-            <div class="cup-dir-title">#${dir.id} ${dir.title}</div>
-            <div class="cup-dir-desc">${dir.shortDesc}</div>
-            <div class="cup-dir-timer ${tCls}">⏱ ${tStr}</div>
-        </div>`;
-    }).join('');
-}
 
 // ---- EVENTS ----
 let eventCD = 45;
@@ -3137,6 +2918,19 @@ function updateInvestigations(sdt){
                 SYS.LAB.params.exp.val=clamp(SYS.LAB.params.exp.val+8,0,100);
             }
 
+            // Anomaly research bonus: scientific or discovery → -45% crit events for 2 lunar days
+            if(outcomeType==='scientific'||outcomeType==='discovery'){
+                anomalyResearchBonus = 2 * LUNAR_DAY;
+                const bonusDays = 2;
+                setTimeout(()=>{
+                    radioMsg('ЦУП','earth',
+                        'ЦУП — Резонанс: данные расследования аномалии обработаны. '+
+                        'Нештатные зоны изучены, протоколы обновлены. '+
+                        'Прогноз критических инцидентов снижен на 45% на '+bonusDays+' лунных дня.');
+                    slog('Бонус расследования: −45% крит. инцидентов на '+bonusDays+' лун. дня','ok');
+                }, 8000/speed);
+            }
+
             wo.status='ЗАВЕРШЁН';
 
             // Build structured investigation report
@@ -3297,6 +3091,13 @@ let sysLog = [];
 // ---- NEW FEATURE STATES ----
 // Docking
 let dockingState = {active:false, shipId:'', eta:0, approved:false, shipNum:0, dsObj:null};
+
+// ---- ANOMALY RESEARCH BONUS ----
+let anomalyResearchBonus = 0; // seconds remaining; while >0: -45% crit probability
+
+// ---- DISTRESS CALLS ----
+let distressState = {active:false, ship:null, responseTimer:0, dsObj:null};
+let distressCD = rng(400,700);
 let dockingCD = rng(300,500);
 // Evacuation
 let evacState = {active:false, countdown:0, phase:0};
@@ -3644,7 +3445,7 @@ function renderActions(){
     // === ОСНОВНЫЕ ===
     html+=`<button class="qa-btn" onclick="cmdRepairSys()" ${avail<1||!hasDamaged?'disabled':''}>Ремонт</button>`;
     html+=`<button class="qa-btn" onclick="cmdMaintenance()" ${avail<1?'disabled':''}>Профилактика</button>`;
-    html+=`<button class="qa-btn" onclick="cmdEVA()" title="EVA (Extra-Vehicular Activity) — выход экипажа в открытый космос. Нужны 2 свободных и EVA-комплект." ${avail<2||INV.eva_kits.count<=0?'disabled':''}>EVA выход</button>`;
+    html+=`<button class="qa-btn" onclick="cmdEVA()" ${avail<2?'disabled':''}>EVA выход</button>`;
     html+=`<button class="qa-btn" onclick="cmdRestCrew()" ${avail<1?'disabled':''}>Отдых экипажа</button>`;
     html+=`<button class="qa-btn" onclick="cmdDrillControl()">Управление буром</button>`;
     html+=`<button class="qa-btn" onclick="cmdSendReport()">Рапорт в ЦУП</button>`;
@@ -3705,12 +3506,7 @@ function cmdEVA(){
     if(avail.length<2){radioMsg('Система','system','Для EVA нужны минимум 2 свободных.');return;}
     const purposes=['Осмотр обшивки и стыков','Ремонт солнечных панелей','Обслуживание антенны HGA','Проверка радиаторов'];
     const purpose=pick(purposes);
-    showModal('EVA — выход в открытый космос',
-        `<p style="color:var(--dim);font-size:10px;border:1px solid var(--border);border-radius:3px;padding:6px 8px;margin-bottom:10px;line-height:1.6">
-            <b style="color:var(--accent2)">EVA</b> (Extra-Vehicular Activity) — выход члена экипажа за пределы станции для работ на внешней поверхности: ремонт панелей, осмотр обшивки, обслуживание антенн и радиаторов. Требует скафандр и страховочный фал. Высокий риск — только при необходимости.
-        </p>
-        <p>Цель: ${purpose}</p><p>Экипаж: ${avail[0].full}, ${avail[1].full}</p><p>Расчётное время: 40–90 мин</p><p>Внешняя температура: ${document.getElementById('ext-temp-val').textContent}</p>
-        <p style="color:var(--dim);font-size:10px">Расход: 1 EVA-комплект (остаток: ${INV.eva_kits.count})</p>`,
+    showModal('Запрос EVA',`<p>Цель: ${purpose}</p><p>Экипаж: ${avail[0].full}, ${avail[1].full}</p><p>Расчётное время: 40-90 минут</p><p>Внешняя температура: ${document.getElementById('ext-temp-val').textContent}</p>`,
     [{text:'Разрешить выход',cls:'m-primary',action:()=>{execEVA(avail[0],avail[1],purpose);closeModal();}},{text:'Отмена',cls:'',action:closeModal}]);
 }
 
@@ -4220,6 +4016,411 @@ function startEvacuation(){
     for(const c of CREW){c.status='busy';c.task='ЭВАКУАЦИЯ';}
     slog('ПРОТОКОЛ ЭВАКУАЦИИ АКТИВИРОВАН','err');
 }
+// ================================================================
+//  DISTRESS CALLS — procedural ship generator
+// ================================================================
+
+// ---- Name blocks ----
+const _DST_PREFIXES = [
+    'МКС','КТС','МТК','ТКС','РКК','ГКС','ОКА','СКВ','МПК','АМС','КАМ','ДКС'
+];
+const _DST_NAMES = [
+    'Гелиос','Арктур','Протон','Буран','Восток','Орбита','Гермес','Аполлон',
+    'Кассиор','Сириус','Полярис','Альтаир','Регул','Фомальгаут','Капелла','Антарес',
+    'Ганимед','Европа','Каллисто','Амальтея','Тритон','Харон','Оберон','Умбриэль',
+    'Маринер','Вояджер','Кассини','Новые Горизонты','Пионер','Джуно','Галилео',
+    'Квант','Спектр','Природа','Кристалл','Заря','Звезда','Рассвет','Поиск',
+    'Меркурий','Нептун','Плутон','Цербер','Стикс','Никта','Гидра','Кербер',
+];
+const _DST_TYPES = [
+    {label:'грузовой транспорт',   short:'ГТ'},
+    {label:'топливный танкер',     short:'ТТ'},
+    {label:'медицинский шаттл',    short:'МШ'},
+    {label:'научный зонд',         short:'НЗ'},
+    {label:'пилотируемый корабль', short:'ПК'},
+    {label:'орбитальный буксир',   short:'ОБ'},
+    {label:'межпланетный курьер',  short:'МК'},
+    {label:'автоматический зонд',  short:'АЗ'},
+    {label:'исследовательский шаттл', short:'ИШ'},
+    {label:'спасательная капсула', short:'СК'},
+];
+
+// ---- Crew name pools ----
+const _DST_PILOTS = [
+    {name:'Сергей Воронов',age:34},  {name:'Чен Вэй',age:26},
+    {name:'Мария Осипова',age:31},   {name:'Такеши Накамура',age:38},
+    {name:'Амара Диалло',age:29},    {name:'Виктор Соколов',age:42},
+    {name:'Лена Циммерман',age:35},  {name:'Рамон Эскобар',age:27},
+    {name:'Прия Менон',age:33},      {name:'Алексей Борисов',age:44},
+    {name:'Надя Кузьминская',age:28},{name:'Юсуф Аль-Машрик',age:36},
+    {name:'Кристина Ларсен',age:30}, {name:'Ибрагим Эль-Хасан',age:39},
+];
+
+// ---- Situation blueprints ----
+// Each blueprint: function() → {situation, need, needAmt, severity,
+//   crewCall, crewReact, refuseText, refuseMorale, rewardMorale,
+//   rewardText, labBonus?, helpVerb}
+const _DST_BLUEPRINTS = [
+
+    // РАЗГЕРМЕТИЗАЦИЯ
+    ()=>{
+        const crew=rngI(2,6), o2h=rng(1.2,3.5).toFixed(1);
+        const rate=rng(0.2,0.8).toFixed(1), mod=pick(['А','Б','В','Г','1','2']);
+        const amt=rngI(8,16);
+        const dest=pick(['базы Марс-Аврора','орбитальной станции ОС-3','Лунной базы Альфа','станции Цереры']);
+        return{
+            situation:`КРИТИЧЕСКАЯ РАЗГЕРМЕТИЗАЦИЯ модуля ${mod}. Потеря давления ${rate} кПа/мин. Экипаж ${crew} чел. укрылся в кормовом отсеке. Запасов O₂ на ${o2h} часа. Следуем в направлении ${dest}.`,
+            need:'O₂', needAmt:amt, needLabel:`${amt}% запасов O₂ (аварийная дозаправка)`,
+            severity:'crit', refuseMorale:-rngI(20,30),
+            crewCall:`Всем! Разгерметизация! Нужен кислород немедленно — у нас дыра в модуле ${mod}!`,
+            crewReact:pick(['Господи... там ${crew} человек. Подаём O₂.','Разгерметизация на борту — это не шутки. Помогаем немедленно.']).replace('${crew}',crew),
+            refuseText:`Корабль ушёл на резервный курс без дозаправки. Экипаж ${crew} чел. — судьба неизвестна.`,
+            rewardMorale:rngI(16,22),
+            rewardText:`Экипаж выжил. Корабль достиг ${dest} на аварийных запасах. В благодарность — внеплановая поставка запчастей.`,
+            helpVerb:'передали O₂',
+        };
+    },
+
+    // ПОЖАР
+    ()=>{
+        const burned=rngI(1,3), tons=rngI(50,400);
+        const cargo=pick(['жидкого кислорода','топлива НТО','гидразинового топлива','криогенного водорода']);
+        const sect=pick(['насосном','реакторном','грузовом','топливном']);
+        const amt=rngI(8,14);
+        return{
+            situation:`ПОЖАР В ${sect.toUpperCase()} ОТСЕКЕ. Система пожаротушения исчерпала ресурс. ${burned} чел. с ожогами. На борту ${tons} т ${cargo} — риск детонации. Нужна вода для охлаждения корпуса.`,
+            need:'H2O', needAmt:amt, needLabel:`${amt}% запасов воды (охлаждение корпуса)`,
+            severity:'crit', refuseMorale:-rngI(25,35),
+            crewCall:`${sect[0].toUpperCase()+sect.slice(1)} отсек горит! Нужна вода! У нас ${tons} тонн ${cargo} на борту!`,
+            crewReact:pick([`${tons} тонн ${cargo}... если рванёт — зацепит и нас. Даём воду.`,`Пожар на корабле с ${cargo} — это катастрофа. Подаём воду немедленно.`]),
+            refuseText:`Корабль потерян. Взрыв ${tons} т ${cargo}. ${burned} пострадавших, груз уничтожен. Тяжёлые потери.`,
+            rewardMorale:rngI(18,24),
+            rewardText:`Пожар ликвидирован. ${burned} пострадавших вне опасности. Капитан лично благодарит Резонанс-9. Обещают приоритетную дозаправку.`,
+            helpVerb:'передали воду',
+        };
+    },
+
+    // ОТКАЗ ДВИГАТЕЛЕЙ
+    ()=>{
+        const tons=rngI(5,25);
+        const cargo=pick(['медикаментов','продовольствия','научного оборудования','запчастей для колонии','семян для оранжерей','вакцин']);
+        const dest=pick(['Марс-Аврора','колонии Церера-1','орбитальной станции','лунной базы Бета','миссии «Европа-Б»']);
+        const amt=rngI(6,12);
+        return{
+            situation:`ОТКАЗ МАРШЕВОЙ ДВИГАТЕЛЬНОЙ УСТАНОВКИ. Корабль дрейфует. На борту ${tons} т ${cargo} для ${dest}. Без коррекции орбиты груз потерян. Нужна лазерная зарядка батарей для перезапуска.`,
+            need:'PWR', needAmt:amt, needLabel:`${amt}% заряда (лазерная зарядка батарей)`,
+            severity:'warn', refuseMorale:-rngI(8,15),
+            crewCall:`Двигатель встал! Дрейфуем! Нужна зарядка для перезапуска — ${tons} тонн ${cargo} не должны пропасть!`,
+            crewReact:pick([`${tons} тонн ${cargo} для ${dest}... там ждут. Заряжаем.`,`Груз критичен для ${dest}. Даём питание через лазерный передатчик.`]),
+            refuseText:`Корабль вошёл в неуправляемый дрейф. ${tons} т ${cargo} для ${dest} потеряны. Колония будет уведомлена.`,
+            rewardMorale:rngI(10,16),
+            rewardText:`Двигатель перезапущен. ${tons} т ${cargo} доставлены в ${dest}. ${dest} благодарит Резонанс-9 — дополнительные реагенты в следующем грузовике.`,
+            helpVerb:'зарядили батареи',
+        };
+    },
+
+    // ПОТЕРЯ СВЯЗИ / ОРИЕНТАЦИИ
+    ()=>{
+        const depth=rngI(5,20);
+        const sample=pick(['образцы лунного реголита','пробы марсианского грунта','кернов лунной мантии','материала астероида','криогенных проб кометного льда']);
+        const mission=pick(['«Артемида-'+rngI(2,9)+'»','«Луна-'+rngI(30,50)+'»','«Марс-'+rngI(5,15)+'»','«Астра-'+rngI(1,8)+'»']);
+        const amt=rngI(10,18);
+        return{
+            situation:`ПОТЕРЯ НАВИГАЦИОННОЙ ОРИЕНТАЦИИ. Зонд вышел из зоны покрытия ЦУП. На борту — уникальные ${sample} с глубины ${depth} км (миссия ${mission}). Без ретрансляции войдёт в атмосферу через ${rngI(40,90)} мин.`,
+            need:'COM', needAmt:amt, needLabel:`${amt}% ресурса антенны (ретрансляция навигации)`,
+            severity:'warn', refuseMorale:-rngI(6,12),
+            crewCall:`Теряю ориентиры! Нужна ретрансляция навигационного сигнала! На борту ${sample} с ${depth} км!`,
+            crewReact:pick([`${sample} с ${depth} км — таких ни у кого нет. Ретранслируем.`,`Если сгорит — годы работы миссии ${mission} пропадут. Даём антенну.`]),
+            refuseText:`Зонд потерян. ${sample} уничтожены при входе в атмосферу. Институт планетологии скорбит о потере данных миссии ${mission}.`,
+            rewardMorale:rngI(12,18),
+            rewardText:`Зонд восстановил курс. ${sample} доставлены. Институт планетологии делится эксклюзивными данными с лабораторией Резонанс-9.`,
+            labBonus:rngI(4,8),
+            helpVerb:'обеспечили ретрансляцию',
+        };
+    },
+
+    // МЕДИЦИНСКАЯ ЭВАКУАЦИЯ
+    ()=>{
+        const patients=rngI(3,10);
+        const condition=pick(['после операций на сердце','с тяжёлой лучевой болезнью','после декомпрессионной травмы','в критическом состоянии после аварии']);
+        const temp=rngI(10,22);
+        const amt=rngI(10,15);
+        return{
+            situation:`ОТКАЗ СИСТЕМЫ ЖИЗНЕОБЕСПЕЧЕНИЯ. На борту ${patients} пациентов ${condition}. Температура упала до -${temp}°C. Аварийные батареи исчерпаны. Без обогрева — летальный исход через ${rngI(30,70)} мин.`,
+            need:'PWR', needAmt:amt, needLabel:`${amt}% заряда (аварийный обогрев кают)`,
+            severity:'crit', refuseMorale:-rngI(28,38),
+            crewCall:`У нас замерзают люди! ${patients} пациентов ${condition}! Нужно питание немедленно!`,
+            crewReact:pick([`${patients} человек замерзают... не можем отказать. Подаём питание.`,`Медицинская эвакуация с замерзающими пациентами — даём всё что можем.`]),
+            refuseText:`${rngI(2,Math.floor(patients*0.6))} из ${patients} пациентов погибли от переохлаждения. ЦУП инициирует расследование.`,
+            rewardMorale:rngI(20,26),
+            rewardText:`Все ${patients} пациентов выжили. Медицинское агентство включает Резонанс-9 в список приоритетных станций помощи.`,
+            helpVerb:'обеспечили питание',
+        };
+    },
+
+    // СОЛО-ПИЛОТ / АВАРИЯ
+    ()=>{
+        const pilot=pick(_DST_PILOTS);
+        const reason=pick(['метеоритного удара','разрыва топливной магистрали','отказа навигационного компьютера','столкновения с мусором ИСЗ','сбоя в системе РСУ']);
+        const mins=rngI(25,55);
+        const amt=rngI(5,9);
+        return{
+            situation:`ОДИНОЧНЫЙ ПИЛОТ В АВАРИИ. ${pilot.name}, ${pilot.age} лет, один на борту. Потеря тяги вследствие ${reason}. Запас хода — ${mins} мин. Запрашивает O₂ для стабилизации жизнеобеспечения до прибытия поисковой группы.`,
+            need:'O₂', needAmt:amt, needLabel:`${amt}% запасов O₂ (жизнеобеспечение пилота)`,
+            severity:'crit', refuseMorale:-rngI(16,24),
+            crewCall:`${pilot.name}, борт один! Авария из-за ${reason}! Нужен O₂, иначе ${mins} минут — и всё!`,
+            crewReact:pick([`Один человек. Один. Нельзя бросить. Подаём O₂.`,`${pilot.name}, ${pilot.age} лет, один там... помогаем немедленно.`]),
+            refuseText:`${pilot.name} ушёл в дрейф. Поисковая группа вышла с Земли — результат операции неизвестен.`,
+            rewardMorale:rngI(14,20),
+            rewardText:`${pilot.name} выжил — поисковая группа нашла его по маяку. Пилот обещает лично навестить Резонанс-9 при следующей миссии.`,
+            helpVerb:'передали O₂',
+        };
+    },
+
+    // СТОЛКНОВЕНИЕ С МУСОРОМ
+    ()=>{
+        const crew=rngI(2,5);
+        const sys=pick(['навигации','связи','систем управления','терморегуляции','ориентации']);
+        const debris=pick(['фрагментом спутника Космос-954','обломком разгонного блока','частью старой МКС','осколком взрыва КА-712']);
+        const amt=rngI(7,13);
+        return{
+            situation:`СТОЛКНОВЕНИЕ С ОРБИТАЛЬНЫМ МУСОРОМ. Удар ${debris}. Повреждены системы ${sys}. Экипаж ${crew} чел. Корабль управляем частично. Нужна энергия для аварийного перезапуска систем.`,
+            need:'PWR', needAmt:amt, needLabel:`${amt}% заряда (перезапуск повреждённых систем)`,
+            severity:'warn', refuseMorale:-rngI(10,18),
+            crewCall:`Нас задел ${debris}! Системы ${sys} выбиты! Нужна энергия для перезапуска!`,
+            crewReact:pick([`Орбитальный мусор... старая проблема. Помогаем — даём питание.`,`${crew} человек на борту без систем ${sys}. Срочно даём заряд.`]),
+            refuseText:`Корабль потерял управление. Экипаж ${crew} чел. эвакуировался в спасательную капсулу. Корабль утерян.`,
+            rewardMorale:rngI(11,17),
+            rewardText:`Системы перезапущены. Экипаж ${crew} чел. в безопасности. Данные о траектории мусора переданы в ЦУП — благодарят за помощь.`,
+            helpVerb:'обеспечили питание',
+        };
+    },
+
+    // УТЕЧКА ТОПЛИВА
+    ()=>{
+        const crew=rngI(1,4);
+        const fuel=pick(['гидразина','ксенона','криогенного водорода','монометилгидразина']);
+        const toxic=fuel==='гидразина'||fuel==='монометилгидразина';
+        const amt=rngI(9,15);
+        const dest=pick(['базы Марс-3','орбитальной станции СС-7','лунного депо Альфа','межпланетного ретранслятора']);
+        return{
+            situation:`УТЕЧКА ${fuel.toUpperCase()}. ${toxic?'Экипаж в токсичной среде — скафандры на пределе ресурса.':'Давление падает, манёвровая тяга теряется.'} Экипаж ${crew} чел. Расчётного запаса не хватит до ${dest}. Нужна передача O₂ для продления ресурса скафандров.`,
+            need:'O₂', needAmt:amt, needLabel:`${amt}% запасов O₂ (подпитка скафандров)`,
+            severity:toxic?'crit':'warn', refuseMorale:-rngI(toxic?20:10, toxic?32:18),
+            crewCall:`Утечка ${fuel}! ${toxic?'Скафандры на пределе!':'Теряем тягу!'} Нужен кислород для экипажа!`,
+            crewReact:pick([`Утечка ${fuel} — ${toxic?'это очень опасно':'сложная ситуация'}. Даём O₂.`,`${crew} человек там дышат через скафандры. Помогаем.`]),
+            refuseText:`Экипаж ${crew} чел. не дотянул до ${dest}. ${toxic?'Отравление парами '+fuel+'.':'Потеря управления, капсула выброшена.'} Тяжёлые новости.`,
+            rewardMorale:rngI(13,20),
+            rewardText:`Экипаж добрался до ${dest}. ${crew} чел. живы. Благодарность от агентства — внеплановая поставка реагентов.`,
+            helpVerb:'передали O₂',
+        };
+    },
+
+    // РАДИАЦИОННЫЙ ШТОРМ
+    ()=>{
+        const crew=rngI(2,7);
+        const dose=rngI(300,900);
+        const shelter=pick(['свинцового экрана','дополнительной водяной защиты','магнитного щита','противорадиационного костюма']);
+        const amt=rngI(10,16);
+        return{
+            situation:`СОЛНЕЧНЫЙ ПРОТОННЫЙ ШТОРМ класса X${rngI(2,9)}. Экипаж ${crew} чел. уже получил ${dose} мЗв. Превышение нормы. Нет ${shelter}. Нужна энергия для разворота корабля в защитное положение (дно к Солнцу).`,
+            need:'PWR', needAmt:amt, needLabel:`${amt}% заряда (манёвр ориентации — защита от радиации)`,
+            severity:'crit', refuseMorale:-rngI(18,28),
+            crewCall:`Радиационный шторм! ${dose} мЗв уже получено! Нужна энергия для манёвра ориентации!`,
+            crewReact:pick([`${dose} мЗв — уже опасная доза. Без маневра получат летальную. Даём питание.`,`Радиационный шторм X-класса... ${crew} человек на борту. Помогаем немедленно.`]),
+            refuseText:`Экипаж ${crew} чел. получил дозу свыше ${dose+rngI(200,500)} мЗв. Лучевая болезнь подтверждена. Медэвакуация запрошена.`,
+            rewardMorale:rngI(15,22),
+            rewardText:`Манёвр выполнен. Экипаж ${crew} чел. в безопасности. ЦУП фиксирует Резонанс-9 как образцовую станцию взаимопомощи.`,
+            helpVerb:'обеспечили манёвр защиты',
+        };
+    },
+
+    // ЗАСТРЯВШАЯ ЭКСПЕДИЦИЯ
+    ()=>{
+        const pilot=pick(_DST_PILOTS);
+        const crew=rngI(2,4);
+        const body=pick(['поверхности Луны','орбиты Фобоса','астероида Итокава','орбиты Деймоса','окрестностей Цереры']);
+        const stranded=rngI(3,12);
+        const amt=rngI(8,14);
+        return{
+            situation:`ЗАСТРЯВШАЯ ЭКСПЕДИЦИЯ. Команда ${crew+1} чел. (лидер: ${pilot.name}) застряла у ${body} уже ${stranded} суток. Питание на исходе. Спасательный корабль в пути, но O₂ не хватает до его прибытия через ${rngI(18,48)} ч.`,
+            need:'O₂', needAmt:amt, needLabel:`${amt}% запасов O₂ (поддержка до прихода спасателей)`,
+            severity:'warn', refuseMorale:-rngI(14,22),
+            crewCall:`${pilot.name} — Резонанс! ${stranded} суток у ${body}. O₂ заканчивается. Спасатели не успеют. Помогите!`,
+            crewReact:pick([`${stranded} суток застряли... ${crew+1} человек. Отправляем O₂.`,`Спасатели не успеют без нашего O₂. Даём.`]),
+            refuseText:`Связь с командой ${pilot.name} прервалась через ${rngI(8,16)} ч. Спасательный корабль обнаружил пустой корабль.`,
+            rewardMorale:rngI(15,20),
+            rewardText:`Команда ${pilot.name} встретила спасателей живой. ${crew+1} чел. эвакуированы. Институт объявил Резонанс-9 героями экспедиции.`,
+            helpVerb:'передали O₂',
+        };
+    },
+];
+
+// ---- Ship type prefixes for callsign ----
+const _DST_MISSIONS = ['Марс-Аврора','орбитальной станции','Лунной базы Бета','Церера-1','колонии Деймос','депо Лагранж'];
+
+function generateDistressShip(){
+    const ri   = (a,b)=>Math.floor(a+Math.random()*(b-a+1));
+    const name = pick(_DST_NAMES);
+    const num  = ri(2,99);
+    const type = pick(_DST_TYPES);
+    const fullName = `${pick(_DST_PREFIXES)} «${name}-${num}»`;
+    const callsign = `${type.short}-${name.slice(0,3).toUpperCase()}${num}`;
+    const bp = pick(_DST_BLUEPRINTS)();
+    return {
+        id: callsign,
+        name: fullName,
+        type: type.label,
+        situation: bp.situation,
+        need: bp.need,
+        needAmt: bp.needAmt,
+        needLabel: bp.needLabel,
+        reward: {morale: bp.rewardMorale, msg: bp.rewardText, labBonus: bp.labBonus||0},
+        refuse: bp.refuseText,
+        refuseMorale: bp.refuseMorale,
+        crewLines: [bp.crewCall, bp.crewReact],
+        helpVerb: bp.helpVerb,
+        severity: bp.severity,
+    };
+}
+
+let _distressModal = null;
+let _distressCountdownInterval = null;
+
+function _distressResourceAvail(ship){
+    if(ship.need==='O₂') return SYS.LSS.params.o2.val >= ship.needAmt + 5;
+    if(ship.need==='PWR') return SYS.PWR.integrity >= ship.needAmt + 10;
+    if(ship.need==='COM') return SYS.COM.integrity >= ship.needAmt + 10;
+    if(ship.need==='H2O') return SYS.LSS.params.water ? SYS.LSS.params.water.val >= ship.needAmt + 5 : SYS.LSS.integrity >= ship.needAmt + 10;
+    return true;
+}
+
+function _distressApplyHelp(ship){
+    if(ship.need==='O₂') SYS.LSS.params.o2.val = clamp(SYS.LSS.params.o2.val - ship.needAmt, 0, 100);
+    else if(ship.need==='PWR') SYS.PWR.integrity = clamp(SYS.PWR.integrity - ship.needAmt, 0, 100);
+    else if(ship.need==='COM') SYS.COM.integrity = clamp(SYS.COM.integrity - ship.needAmt, 0, 100);
+    else if(ship.need==='H2O'){
+        if(SYS.LSS.params.water) SYS.LSS.params.water.val = clamp(SYS.LSS.params.water.val - ship.needAmt, 0, 100);
+        else SYS.LSS.integrity = clamp(SYS.LSS.integrity - ship.needAmt, 0, 100);
+    }
+}
+
+function spawnDistressCall(){
+    if(distressState.active) return;
+    const ship = generateDistressShip();
+    distressState.active = true;
+    distressState.ship = ship;
+    distressState.responseTimer = 90; // 90 seconds to respond
+
+    // Add to radar
+    const dsObj = {id:'DIST-'+ship.id, label:'⚠ '+ship.name, dist:rng(0.25,0.45), angle:rng(0,Math.PI*2), size:2, color:'#ff4422', type:'ship'};
+    distressState.dsObj = dsObj;
+    DS_OBJECTS.push(dsObj);
+
+    // Radio distress call
+    alarmTone();
+    radioMsg(ship.id,'alert','СИГНАЛ БЕДСТВИЯ! '+ship.name+' ('+ship.type+'): '+ship.situation);
+
+    // Crew reacts
+    const c1=pick(CREW), c2=pick(CREW.filter(cr=>cr.id!==c1.id));
+    setTimeout(()=>radioMsg(c1.callsign,'crew',ship.crewLines[0]),1500/speed);
+    setTimeout(()=>radioMsg(c2.callsign,'crew',ship.crewLines[1]),4000/speed);
+
+    addMissionLog('event','⚠ СИГНАЛ БЕДСТВИЯ: '+ship.name+'. '+ship.situation.slice(0,80)+'...');
+    slog('Сигнал бедствия: '+ship.name,'err');
+
+    // Show modal after brief delay
+    setTimeout(()=>_showDistressModal(ship), 3000/speed);
+}
+
+function _showDistressModal(ship){
+    if(!distressState.active) return;
+    const hasRes = _distressResourceAvail(ship);
+    const timeLeft = Math.ceil(distressState.responseTimer);
+
+    const body = `
+<div style="border-left:3px solid #ff4422;padding:8px 12px;margin-bottom:12px;background:rgba(255,40,0,0.08)">
+    <div style="color:#ff6644;font-size:11px;letter-spacing:1px;margin-bottom:4px">⚠ СИГНАЛ БЕДСТВИЯ — ${ship.name}</div>
+    <div style="font-size:10px;color:#aaa;margin-bottom:6px">${ship.type}</div>
+    <div style="font-size:12px;line-height:1.6">${ship.situation}</div>
+</div>
+<div style="margin-bottom:10px">
+    <span style="color:#ffcc44;font-size:11px">Требуется: </span>
+    <span style="font-size:11px">${ship.needLabel}</span>
+    ${!hasRes?'<div style="color:#ff4444;font-size:10px;margin-top:4px">⚠ Недостаточно ресурсов для оказания помощи</div>':''}
+</div>
+<div style="color:#ff6644;font-size:10px" id="distress-timer-label">Время на ответ: <span id="distress-timer">${timeLeft}</span> сек</div>`;
+
+    const btns = [];
+    if(hasRes){
+        btns.push({text:'Оказать помощь', cls:'m-primary', action:()=>{
+            if(_distressCountdownInterval){clearInterval(_distressCountdownInterval);_distressCountdownInterval=null;}
+            closeModal();
+            _resolveDistress(true);
+        }});
+    }
+    btns.push({text:'Отказать (нет возможности)', cls:'m-danger', action:()=>{
+        if(_distressCountdownInterval){clearInterval(_distressCountdownInterval);_distressCountdownInterval=null;}
+        closeModal();
+        _resolveDistress(false);
+    }});
+
+    showModal('⚠ СИГНАЛ БЕДСТВИЯ', body, btns);
+
+    // Countdown display
+    if(_distressCountdownInterval) clearInterval(_distressCountdownInterval);
+    _distressCountdownInterval = setInterval(()=>{
+        const el = document.getElementById('distress-timer');
+        if(el) el.textContent = Math.ceil(distressState.responseTimer);
+        else { clearInterval(_distressCountdownInterval); _distressCountdownInterval=null; }
+    }, 500);
+}
+
+function _resolveDistress(helped){
+    const ship = distressState.ship;
+    if(!ship) return;
+
+    // Remove from radar
+    if(distressState.dsObj){
+        const ri = DS_OBJECTS.indexOf(distressState.dsObj);
+        if(ri!==-1) DS_OBJECTS.splice(ri,1);
+    }
+    distressState.active = false;
+    distressState.ship = null;
+    distressState.dsObj = null;
+
+    if(helped){
+        _distressApplyHelp(ship);
+        const r = ship.reward;
+        for(const c of CREW) c.morale = clamp(c.morale + r.morale, 0, 100);
+        if(r.labBonus) SYS.LAB.params.exp.val = clamp(SYS.LAB.params.exp.val + r.labBonus, 0, 100);
+        radioMsg('ЦУП','earth','Резонанс-9 — ЦУП: зафиксирован факт оказания помощи '+ship.name+'. Заносим в протокол миссии. Отличная работа!');
+        setTimeout(()=>radioMsg(ship.id,'alert',ship.name+': помощь получена. Всем выражаем благодарность. '+r.msg), 5000/speed);
+        addMissionLog('ok','Помощь оказана: '+ship.name+'. '+r.msg);
+        slog('Помощь оказана: '+ship.name,'ok');
+        for(const c of CREW) c.stress = clamp(c.stress - 5, 0, 100);
+    } else {
+        for(const c of CREW) c.morale = clamp(c.morale + ship.refuseMorale, 0, 100);
+        for(const c of CREW) c.stress = clamp(c.stress + 8, 0, 100);
+        setTimeout(()=>radioMsg(ship.id,'alert',ship.name+': запрос помощи отклонён. '+ship.refuse), 3000/speed);
+        radioMsg('ЦУП','earth','ЦУП — Резонанс: зафиксирован отказ в помощи '+ship.name+'. Ситуация задокументирована.');
+        addMissionLog('event','Отказ в помощи: '+ship.name+'. '+ship.refuse);
+        slog('Отказ в помощи: '+ship.name,'wrn');
+    }
+}
+
+function updateDistress(sdt){
+    if(!distressState.active) return;
+    distressState.responseTimer -= sdt;
+    if(distressState.responseTimer <= 0){
+        // Time ran out — auto-refuse
+        if(_distressCountdownInterval){clearInterval(_distressCountdownInterval);_distressCountdownInterval=null;}
+        closeModal();
+        radioMsg(distressState.ship.id,'alert',distressState.ship.name+': время ожидания истекло. Уходим на резервный курс.');
+        _resolveDistress(false);
+    }
+}
+
 function updateEvacuation(sdt){
     if(!evacState.active) return;
     evacState.countdown -= sdt;
@@ -5007,15 +5208,12 @@ const IP_SOURCES={
     jupiter:{name:'Юпитер — Орбитер «Зевс»',callsign:'JUPITER-ZEUS',color:'ip-jupiter',cClass:'ip-jupiter-c',delay:'50 мин'},
     asteroid:{name:'Пояс астероидов — Бур.станция «Церера-1»',callsign:'CERES-1',color:'ip-asteroid',cClass:'ip-asteroid-c',delay:'25 мин'},
     pluto:{name:'Плутон — Зонд «Горизонт-2»',callsign:'PLUTO-HORIZON2',color:'ip-pluto',cClass:'ip-pluto-c',delay:'5.5 часов'},
-    saturn:{name:'Сатурн — Орбитер «Кассини-2»',callsign:'SATURN-CASSINI2',color:'ip-saturn',cClass:'ip-saturn-c',delay:'75 мин'},
-    neptune:{name:'Нептун — Зонд «Тритон»',callsign:'NEPTUNE-TRITON',color:'ip-neptune',cClass:'ip-neptune-c',delay:'4.1 часа'},
 };
 
 const IP_SRC_COLORS={
     cup:'#44cc44',mars:'#cc8866',vostok:'#66ccee',expedition:'#66ee88',
     titan:'#cc8844',europa:'#4488cc',venus:'#cccc44',mercury:'#cc6644',
-    jupiter:'#cc8866',asteroid:'#888888',pluto:'#6688aa',
-    saturn:'#ddcc88',neptune:'#4466cc'
+    jupiter:'#cc8866',asteroid:'#888888',pluto:'#6688aa'
 };
 
 // Dynamic IP message generators — each returns fresh text with random values
@@ -5048,19 +5246,6 @@ mars:[
     ()=>'Медотчёт: экипаж '+rngI(4,8)+' чел., '+pick(['все здоровы.','один на карантине — лёгкая простуда.','двое с повышенной дозой облучения, отдыхают.','Морально-психологическое состояние хорошее.']),
     ()=>'3D-принтер напечатал '+pick(['новый корпус для насоса','запасную шестерню для бура','кронштейн антенны','крышку модуля управления'])+'. '+pick(['Работает!','Нужна доводка.','Испытываем.','Качество отличное.']),
     ()=>'Сейсмограф: '+rngI(2,12)+' событий за последние сутки. Магнитуда до '+rng(1.0,3.5).toFixed(1)+'. '+pick(['Марс спокоен.','Обычная тектоника.','Есть один подозрительный паттерн.','Всё штатно.']),
-    // --- новые: наука и факты ---
-    ()=>'Факт дня с Марса: Олимп Монс — высочайший вулкан в Солнечной системе. Высота 21,9 км над средним уровнем, диаметр 600 км. Для сравнения — Эверест всего 8,8 км. И при этом вулкан действовал ещё '+rngI(25,100)+' млн лет назад. Воображаете, каким было небо?',
-    ()=>'Долина Маринер: каньонная система длиной 4000 км, глубиной до 7 км. Если поместить её на Землю — от Лиссабона до Москвы. Формировалась '+rngI(3,4)+' млрд лет тектоническими разломами и оползнями. Наши геологи мечтают туда добраться.',
-    ()=>'Вопрос метана на Марсе не закрыт. Концентрация периодически достигает '+rng(0.3,0.8).toFixed(1)+' ppb, затем исчезает. Возможные источники: геологическая дегазация, фотохимия перхлоратов или... что-то биологическое. Сезонная корреляция подозрительна.',
-    ()=>'Атмосфера Марса: давление 600–700 Па — это 0,6% от земного. Состав: CO₂ 95,3%, N₂ 2,7%, Ar 1,6%, O₂ 0,13%. Без скафандра — мгновенная декомпрессия. Наша атмосфера в куполе — дорогое удовольствие, каждый кПа на счету.',
-    ()=>'Фобос обречён. Спутник находится ниже предела Роша — через '+rngI(20,50)+' млн лет приливные силы разорвут его в кольцо. Мы наблюдаем Фобос каждый день — планета медленно пожирает свою луну. Поэтически, если не думать, что на нём планировали базу.',
-    ()=>'Марсианский день — сол — длится 24 часа 39 минут 35 секунд. Почти как земные. Год — 687 земных суток. Мы живём по солам — это удобно, но сдвиг на 39 минут раз в год накапливается. Часы нужно перевести '+rngI(2,5)+' раз за нашу вахту.',
-    ()=>'Обнаружен '+pick(['перхлорат магния','перхлорат кальция','перхлорат натрия'])+' в реголите — концентрация '+rngI(3,8)+' мг/кг. Это окислитель: убивает органику, опасен для лёгких, но при пиролизе даёт кислород. Двойственная находка. Для терраформирования — проблема.',
-    ()=>'Древний Марс был другим: 3,5 млрд лет назад — жидкая вода, магнитное поле, более плотная атмосфера. Каналы Валлес Маринерис и долины речных систем видны с орбиты. Наш бур нашёл на глубине '+rngI(50,200)+' м слой, где '+rngI(2,4)+' млрд лет назад текла вода.',
-    ()=>'Радиация на поверхности: '+rngI(200,300)+' мГр/год — в '+rngI(40,60)+' раз выше земного фона. Без магнитного поля и с тонкой атмосферой. Наши стены купола из полиэтилена снижают до ~'+rngI(20,40)+' мГр/год. Думаем о подземных модулях.',
-    ()=>'Фобос и Деймос — вероятно, захваченные астероиды пояса. Деймос меньше: 15×12×11 км, настолько мал, что с него можно выпрыгнуть в космос. Первая космическая скорость — всего 5,6 м/с. Буквально прыжок, и ты на орбите.',
-    ()=>'Сезоны Марса длинные: каждый почти в два раза длиннее земного. Южное лето совпадает с перигелием — на '+rngI(10,20)+'°C теплее северного. Поэтому южная полярная шапка меньше. Сейчас — '+pick(['южное лето','северная весна','осень в южном полушарии','зима на севере'])+'. Нетипично холодно.',
-    ()=>'Пластиковый реголит: взяли образец с глубины '+rng(10,50).toFixed(0)+' см. Агломерат: реголит, смолянистая органика, железооксиды. Под давлением '+rngI(10,50)+' МПа образует монолит прочностью '+rngI(30,80)+' МПа. Потенциальный строительный материал прямо под ногами.',
 ],
 vostok:[
     ()=>'Резонанс-9, штатный обмен. Орбита стабильна, экипаж '+rngI(4,8)+' человек, все здоровы.',
@@ -5096,8 +5281,6 @@ expedition:[
     ()=>'Фотоотчёт за сутки: '+rngI(200,1500)+' снимков, '+rngI(5,30)+' панорам, '+rngI(2,8)+' видеозаписей. Общий объём '+rng(2,15).toFixed(1)+' ГБ. Передаём пакетно.',
 ],
 titan:[
-    ()=>'TITAN-HUYGENS — факт дня: Титан — единственное тело в Солнечной системе кроме Земли с жидкостью на поверхности. Но это не вода, а жидкий метан и этан, -179°C. Озёра, реки, дождь, испарение — полный гидрологический цикл. Просто не водный, а углеводородный.',
-    ()=>'Толины на Титане: органические полимеры, оранжевый цвет неба. Образуются в верхней атмосфере из N₂ и CH₄ под действием УФ. Содержат прекурсоры аминокислот. При контакте с жидкой водой (гейзеры, криовулканы) образуются аминокислоты. Жизнь? Ждём данных с бурения.',
     ()=>'TITAN-HUYGENS на связи. Зонд на озере '+pick(['Кракен','Лигейя','Пунга','Онтарио'])+'. Глубина метанового водоёма: '+rngI(20,300)+' м. '+pick(['Прозрачность неожиданно высокая.','Дно илистое, органический осадок.','Обнаружена подводная циркуляция.','Подлодка «Наутилус» погружается.']),
     ()=>'Атмосферное давление на поверхности: '+rng(1.45,1.55).toFixed(2)+' атм. Температура: -'+rngI(176,182)+'°C. '+pick(['Стабильно.','Небольшой фронт идёт с запада.','Метановый туман сгущается.','Условия для EVA допустимые.']),
     ()=>'ВНИМАНИЕ: зафиксирована криовулканическая активность в районе '+pick(['Сотра Патера','Дум Монс','Мохини Флуктус','Тую Регио'])+'. Выброс '+pick(['водяного льда и аммиака','метанового гейзера','азотного пара'])+' на высоту '+rngI(50,500)+' м!',
@@ -5110,12 +5293,6 @@ titan:[
     ()=>'Фотографии Сатурна с поверхности Титана: '+pick(['кольца видны в разрыве облаков — завораживающее зрелище!','полумесяц Сатурна занимает '+rngI(5,12)+'° неба.','тень колец создаёт полосы на диске планеты.','Энцелад виден как яркая точка рядом с Сатурном.'])+' Отправляем '+rngI(20,100)+' снимков.',
     ()=>'Связь затруднена: атмосфера поглощает '+rngI(15,40)+'% сигнала. '+pick(['Переключаемся на низкочастотный канал.','Ретрансляция через орбитер «Кассини-2».','Окно прямой связи: '+rngI(2,6)+' часов.','Используем лазерный канал через разрыв в дымке.']),
     ()=>'Моральный дух экипажа: '+pick(['вечные сумерки давят, включили полноспектральные лампы.','привыкли к оранжевому небу, даже нравится.','скучаем по синему небу и нормальному дождю.','Сатурн в небе компенсирует всё — ради этого стоило лететь.'])+' Психолог '+pick(['доволен.','рекомендует видеосвязь с Землёй.','отмечает лёгкую подавленность у '+rngI(1,3)+' чел.']),
-    ()=>'Гипотеза о жизни на Титане: не в воде, а в жидком метане. Организмы дышали бы H₂ вместо O₂, ели бы ацетилен вместо глюкозы, выделяли метан. Учёные Корнелла предсказали снижение H₂ у поверхности — мы его зафиксировали. Концентрация ниже атмосферной нормы на '+rngI(15,40)+'%.',
-    ()=>'Криовулканизм Титана: гора Дум Монс высотой '+rngI(1,2)+' км — вероятный криовулкан. Лавой служит смесь воды, аммиака и метана. При застывании образует аммиачные гидраты. Источник тепла — приливное трение от Сатурна. Последнее извержение оцениваем в '+rngI(100,10000)+' лет назад.',
-    ()=>'Подземный океан Титана: под ледяной корой толщиной '+rngI(50,100)+' км — жидкая вода с аммиаком. Гравиметрия Кассини это подтверждала. Таким образом у Титана два кандидата для жизни: поверхностные метановые озёра и подземный водный океан. Двойной приз.',
-    ()=>'Сутки на Титане — 15,9 земных дней (синхронная ротация с Сатурном). Год Сатурна — 29,5 земных лет. Значит, сезон на Титане длится ~7 лет. Сейчас — северное лето. Озёра северного полушария испаряются, метановые облака появляются на юге. Следим за миграцией.',
-    ()=>'Атмосфера Титана плотнее земной в 1,5 раза — давление 1,45 атм. Без кислорода, но скафандр нужен только из-за мороза и химии. Интересно: с крыльями можно было бы летать — сила тяжести 0,14g, атмосфера плотная. Человек мог бы планировать с руками-крыльями.',
-    ()=>'Кракен Маре — крупнейшее озеро Титана: '+rngI(400,500)+' тыс. км², глубина до '+rngI(150,300)+' м. Больше Каспийского моря. Состав: метан ~'+rngI(60,80)+'%, этан ~'+rngI(15,30)+'%, растворённый N₂. Плотность 0,65 г/см³ — в ней тонет камень, но плавает лёд из воды. Занятно.',
 ],
 europa:[
     ()=>'EUROPA-LAPLACE: бурение ледяного панциря. Глубина: '+rng(0.5,8.0).toFixed(1)+' км из предполагаемых '+rngI(10,25)+' км до океана. '+pick(['Скорость проходки '+rng(0.1,0.5).toFixed(2)+' м/час.','Лёд становится теплее с глубиной.','Встретили слой с вкраплениями солей.','Термобур работает на '+rngI(70,100)+'% мощности.']),
@@ -5130,13 +5307,6 @@ europa:[
     ()=>'Солёность образцов: '+rng(20,60).toFixed(1)+' г/л. '+pick(['Сравнимо с Мёртвым морем.','Преобладают сульфаты магния.','pH '+rng(6.5,8.5).toFixed(1)+' — почти нейтральная!','Присутствуют ионы железа — возможный источник энергии для жизни.']),
     ()=>'Автономный режим: '+pick(['связь с Землёй через Юпитерский орбитер, окно '+rngI(2,8)+' часов.','ИИ-контроллер принял '+rngI(5,30)+' решений за сутки.','все системы работают без вмешательства оператора.','бурение продолжается автоматически '+rngI(12,72)+' часов.'])+' Зонд справляется.',
     ()=>'Загадочные показания: '+pick(['сейсмограф фиксирует регулярные импульсы с периодом '+rngI(10,120)+' секунд.','магнитометр зарегистрировал аномалию под ледяным панцирем.','гидрофон уловил звук, не похожий на известные геологические процессы.','инфракрасная камера показала тёплое пятно на поверхности — '+rngI(-100,-50)+'°C!'])+' Анализируем...',
-    ()=>'Европа — факт: её океан существует минимум '+rngI(4,4)+' млрд лет. Приливный нагрев от Юпитера и Ганимеда (резонанс Лапласа) постоянно поддерживает жидкость. Мощность — порядка '+rngI(1,3)+'×10¹² Вт. Для сравнения: все вулканы Земли суммарно дают ~'+rngI(1,5)+'×10¹² Вт. Тепла достаточно.',
-    ()=>'Линии на льду Европы — "хаотический рельеф". Льдины разламываются, дрейфуют, смерзаются заново. Это означает тонкую кору — возможно, всего '+rngI(3,20)+' км в активных зонах. Именно там мы бурим. Наш термобур уже на '+rng(1,8).toFixed(1)+' км — видим, как лёд теплеет.',
-    ()=>'Соли Европы: хлорид магния и сульфат натрия тянутся из глубин через трещины. Состав аналогичен земным гидротермальным источникам! Это значит — химические градиенты, разности потенциалов. Именно там на Земле живут экстремофилы без солнца. Параллель впечатляет.',
-    ()=>'Гейзеры Европы подтверждены Хабблом ещё в 2013-м: выброс водяного пара на 200 км. Наш орбитальный модуль пролетел сквозь один такой шлейф. Результат масс-спектрометра: H₂O, NaCl, MgSO₄, следы органических фрагментов. Без бурения — прямой доступ к океану.',
-    ()=>'Биологическая гипотеза: под льдом Европы — хемолитотрофная экосистема. Источник энергии: реакция H₂ + CO₂ → CH₄ (метаногенез) или окисление Fe²⁺. Аналог — глубоководные гидротермальные источники Земли: черные курильщики, там жизнь без солнца вполне реальна.',
-    ()=>'Радиация — главный враг Европы для людей: поверхностный фон '+rngI(5000,8000)+' мЗв/сут! Это смертельная доза за несколько суток. Поэтому наш зонд полностью автоматический. Под льдом излучение падает экспоненциально — уже на 1 м всё значительно лучше.',
-    ()=>'Климат Европы строг: средняя температура -160°C, поверхностное давление — почти вакуум, 0,1 мкПа. Атмосфера — тонкая кислородная экзосфера, продукт радиолиза льда. O₂ буквально выбивается из молекул воды ультрафиолетом Юпитера и его частицами.',
 ],
 venus:[
     ()=>'VENUS-VEGA3 на высоте '+rngI(50,60)+' км. Облачный слой: серная кислота '+rngI(75,90)+'%, температура '+rngI(20,40)+'°C. '+pick(['Почти комфортно!','Коррозия оболочки — '+rng(0.01,0.1).toFixed(3)+' мм/сут.','Видимость нулевая.','Солнце пробивается через верхний слой.']),
@@ -5149,12 +5319,6 @@ venus:[
     ()=>'Солнечная энергия: '+rngI(130,180)+'% от земной нормы! '+pick(['Панели генерируют '+rngI(5,15)+' кВт.','Энергии больше, чем можем использовать.','Заряжаем аккумуляторы на ночную сторону.','Ближе к Солнцу — больше энергии.']),
     ()=>'Связь через кислотные облака: '+pick(['лазерный канал сбоит — рассеяние на каплях H₂SO₄.','радиоканал стабилен, мощность сигнала -'+rngI(80,120)+' дБм.','ретрансляция через орбитер «Венера-Экспресс-2».','прямой канал к Земле открыт '+rngI(8,16)+' часов в сутки.']),
     ()=>'Радар: поверхность под нами — '+pick(['равнина Атланта, рельеф плоский.','возвышенность Иштар, горы Максвелла на горизонте.','область Альфа, тессеры — сложный рельеф.','лавовый поток возрастом < '+rngI(100,1000)+' лет?!'])+' Картирование: '+rngI(30,85)+'% завершено.',
-    ()=>'Венера вращается в обратную сторону — ретроградно. День на Венере (243 земных дня) длиннее года (225 дней). Солнце восходит на западе и заходит на востоке. Причина — скорее всего древнее столкновение с крупным телом, перевернувшее планету.',
-    ()=>'Парниковый эффект Венеры — урок для Земли: 96% CO₂ в атмосфере, +460°C на поверхности вместо расчётных -40°C без атмосферы. Разница — 500°C! Венера и Земля почти двойники по размеру и массе, но судьбы разошлись. Граничное условие — концентрация CO₂ и наличие воды.',
-    ()=>'Советские зонды «Венера-9» и «Венера-10» в 1975 году первыми передали фотографии поверхности. Острые камни — значит, молодая поверхность, ветровая эрозия не успела. Аппарат «Венера-13» проработал на поверхности 127 минут при +465°C и 92 атм — рекорд выживания.',
-    ()=>'Гипотеза о жизни на Венере: в облаках на высоте 48-60 км — температура +20...+60°C, давление 0,5-1 атм. Почти земные условия! Но серная кислота вместо воды. Фосфин (мы его ищем) мог бы указывать на биохимию в каплях H₂SO₄. Проверяем каждый замер.',
-    ()=>'Поверхность Венеры геологически молода: средний возраст ~500 млн лет. Планета, видимо, периодически "перекипает" — глобальное вулканическое переплавление всей коры. Следующее событие? Неизвестно. Сейсмографы показывают '+rngI(5,30)+' малых сейсмических событий в сутки.',
-    ()=>'Суперротация атмосферы: верхние облака облетают планету за 4 дня, хотя сама планета вращается за 243 дня. Ветер на 60 км высоты — 100 м/с. У нас тоже '+rngI(60,100)+' м/с. Аэростат «Вега-3» буквально несётся вместе с этим потоком. Управляем только по вертикали.',
 ],
 mercury:[
     ()=>'MERCURY-HERMES: картирование '+pick(['бассейна Калорис','равнины Жары','кратера Бетховен','уступа Дискавери','кратера Толстой'])+'. Покрытие: '+rngI(40,95)+'%. Разрешение '+rngI(5,50)+' м/пиксель.',
@@ -5165,11 +5329,6 @@ mercury:[
     ()=>'Коллектор частиц солнечного ветра: собрано '+rngI(10,500)+' мкг за '+rngI(7,30)+' суток. '+pick(['Протоны, альфа-частицы, тяжёлые ионы.','Изотопный состав — данные для солнечной физики.','Коллектор насыщается, нужна замена.','Рекорд сбора за миссию!']),
     ()=>'Коррекция орбиты #'+rngI(10,50)+': Δv '+rng(1,5).toFixed(1)+' м/с. '+pick(['Гравитация Солнца требует частых коррекций.','Топливо: осталось '+rngI(30,70)+'%.','Перигелий через '+rngI(10,40)+' суток.','Солнечное давление учтено.']),
     ()=>'Вулканическая история: обнаружены '+pick(['древние лавовые равнины возрастом '+rng(3,4).toFixed(1)+' млрд лет.','пирокластические отложения у кратера.','следы дегазации — пустотелые холмы.','система грабенов — планета сжималась при остывании.'])+' Меркурий мёртв, но его прошлое интересно.',
-    ()=>'Меркурий — факт: огромное железное ядро составляет 85% радиуса планеты. На Земле — 55%. Почему? Гипотеза: гигантское столкновение сорвало мантию и кору. Либо Солнце испарило лёгкие породы на заре формирования. Миссия «Бепи-Коломбо» изучает состав — данные через '+rngI(1,3)+' года.',
-    ()=>'Меркурий сжимается! Рубцы — эскарпы длиной сотни км — следы сжатия планеты при остывании ядра. За последние 3-4 млрд лет радиус уменьшился на '+rngI(5,10)+' км. Поверхность смялась, как кожура засыхающего яблока. Процесс продолжается.',
-    ()=>'Магнитное поле Меркурия странное: дипольная ось смещена на '+rngI(15,20)+'° к северу от центра планеты. Северное полушарие защищено лучше южного. Солнечный ветер буквально пескоструит южный полюс. Данные о составе поверхности по полушариям резко различаются.',
-    ()=>'Скорость на Меркурии меняется: орбита сильно эллиптическая — скорость в перигелии 59 км/с, в афелии 39 км/с. Солнце на небе ускоряется, останавливается и движется назад — наблюдаемый эффект из-за соотношения орбитальной и вращательной скоростей. Два заката за один день возможны!',
-    ()=>'Вода на Меркурии: полярные кратеры в вечной тени имеют температуру -'+rngI(170,200)+'°C — ниже, чем на Плутоне! Там сохранился водяной лёд миллиарды лет. Источник — кометы и астероиды. Мы подтвердили: '+rngI(100,1000)+' млрд тонн льда. Ресурс для будущих миссий.',
 ],
 jupiter:[
     ()=>'JUPITER-ZEUS: Большое Красное Пятно. Диаметр: '+rngI(15000,20000)+' км, скорость ветра на краю: '+rngI(400,600)+' км/ч. '+pick(['Пятно уменьшается на '+rngI(100,500)+' км/год.','Цвет усилился за последний оборот.','Зафиксирован вихрь-спутник.','3D-структура: глубина '+rngI(200,500)+' км!']),
@@ -5182,12 +5341,6 @@ jupiter:[
     ()=>'Кольца Юпитера: '+pick(['тонкие, пылевые, видны только в прямом рассеянии.','главное кольцо: ширина '+rngI(6000,7000)+' км, толщина '+rngI(10,30)+' км.','паутинные кольца от Амальтеи и Фивы.','столкновения микрометеоритов с лунами подпитывают кольца.'])+' Красиво, но скромно.',
     ()=>'Пролёт Европы #'+rngI(1,20)+': высота '+rngI(100,500)+' км. '+pick(['Снимки трещин на льду — обновляем карту.','Масс-спектрометр — следы NaCl в экзосфере!','Магнитометр подтверждает подлёдный океан.','Данные передаём на зонд EUROPA-LAPLACE.'])+' Гравиманёвр: Δv '+rng(0.1,1.0).toFixed(2)+' км/с.',
     ()=>'Топливо: гидразин — '+rngI(15,60)+'%, ксенон для ионников — '+rngI(20,70)+'%. '+pick(['Миссия рассчитана ещё на '+rngI(1,5)+' лет.','Экономим на каждом манёвре.','Гравитационные ассисты лун продляют миссию.','Если повезёт — дотянем до Сатурна.'])+' Зевс держится.',
-    ()=>'Юпитер — факт: масса планеты больше всех остальных планет системы вместе взятых в 2,5 раза. 318 масс Земли. Если бы он был в 80 раз массивнее — стал бы звездой. Он буквально щит Солнечной системы: притягивает кометы и астероиды своей гравитацией, защищая внутренние планеты.',
-    ()=>'Большое Красное Пятно — антициклон, существующий минимум 350 лет (наблюдения с 1665 г.). Но сейчас оно сжимается: было 40 000 км, сейчас ~'+rngI(14000,18000)+' км. Причина неизвестна. По нашим данным — уменьшение поглощения малых вихрей. Переживёт ли век?',
-    ()=>'Ио — самое вулканически активное тело системы. Причина: гравитационный резонанс с Европой и Ганимедом нагревает недра. Тепловой поток: '+rngI(1,3)+' Вт/м² — в '+rngI(20,40)+' раз больше земного. Поверхность обновляется полностью за тысячи лет. Кратеров нет — только лавовые поля.',
-    ()=>'Ганимед — крупнейшая луна Солнечной системы, больше Меркурия. Единственная луна с собственным магнитным полем. Под поверхностью — солёный океан толщиной '+rngI(800,1000)+' км. Миссия JUICE летит именно туда — выйдет на орбиту Ганимеда в 2034 году.',
-    ()=>'Внутреннее строение Юпитера: облачный верхний слой, металлический водород под давлением > 3 млн атм, возможно — твёрдое ядро из скальных пород. Металлический водород проводит ток — отсюда мощнейшее магнитное поле: в '+rngI(14,20)+' раз сильнее земного.',
-    ()=>'Система колец Юпитера открыта «Вояджером» в 1979 году случайно. Состоят из пыли — продукта микрометеоритных ударов по внутренним лунам. Кольца полупрозрачные, видны только в обратном рассеянии. Ничего общего с кольцами Сатурна — те ледяные и яркие.',
 ],
 asteroid:[
     ()=>'CERES-1: буровая станция. Добыча за смену: '+pick(['никель-железный концентрат — '+rngI(50,500)+' кг.','водяной лёд — '+rngI(100,2000)+' кг.','платиноиды — '+rngI(1,50)+' г!','редкоземельные элементы — '+rngI(10,200)+' г.'])+' Работаем на астероиде '+pick(['2024 FR₁₂','2025 GX₇','Бенну-2','Рюгу-3'])+'.',
@@ -5198,10 +5351,6 @@ asteroid:[
     ()=>'Обзор: сканирован астероид '+pick(['2025 AB₇','2026 CD₁₂','Психея-2','Давида'])+', размер '+rngI(50,500)+' м. '+pick(['Состав интересный, стоит посетить.','Опасное вращение — '+rng(0.1,2.0).toFixed(1)+' об/час.','Рубиновая куча — нестабилен.','Рекомендован для следующей миссии.']),
     ()=>'Опасность столкновения: обломок '+rngI(1,10)+' м на встречном курсе, '+pick(['вероятность '+rng(0.01,1.0).toFixed(3)+'%.','уклонение через '+rngI(2,24)+' часа.','траектория пересчитана — проходит мимо.','активировали ионный двигатель для манёвра.'])+' Пояс полон сюрпризов.',
     ()=>'Ретрансляционный статус: '+pick(['узел связи «Церера-1» обеспечивает канал Марс-Юпитер.','антенна развёрнута на Землю, битрейт '+rngI(1,50)+' кбит/с.','ретрансляция для JUPITER-ZEUS через '+rngI(2,8)+' часов.','пакет данных от PLUTO-HORIZON2 принят и буферизован.'])+' Мы — почтовое отделение пояса.',
-    ()=>'Церера — карликовая планета, крупнейшее тело пояса астероидов: диаметр 940 км. Содержит ~'+rngI(25,30)+'% водяного льда по массе. Орбитальный зонд «Рассвет» обнаружил яркие пятна — карбонатные отложения из испарившейся воды. Криовулканизм вероятен.',
-    ()=>'Пояс астероидов — не так опасен, как в кино. Среднее расстояние между объектами — '+rngI(600,900)+' тыс. км. Оба зонда «Вояджер» прошли через него без единого столкновения. Но для добычи ресурсов нужна точная навигация: объекты движутся на орбитальных скоростях 20+ км/с.',
-    ()=>'Психея (16): металлический астероид диаметром 220 км. Вероятно, ядро погибшей прото-планеты, лишённой коры после столкновений. Состав: '+rngI(90,95)+'% железо-никель. Стоимость металлов — ~10²⁶ долларов. Миссия NASA Psyche исследует вопрос — был ли там когда-то расплавленный металл.',
-    ()=>'Бенну — астероид C-типа, углеродистый. «Осирис-РЕкс» доставил образцы на Землю в 2023 г.: обнаружены аминокислоты и органические молекулы! Подтверждение: органика разносится астероидами по всей системе. Компонент для жизни доставляется извне.',
 ],
 pluto:[
     ()=>'PLUTO-HORIZON2 на связи. Задержка сигнала: '+rng(4.5,6.5).toFixed(1)+' часов. Поверхность: '+pick(['азотный лёд равнины Спутник — гладкая, ячеистые конвекционные структуры.','метановый снег на горах Тенцинг — толщина '+rngI(1,20)+' м.','водяной лёд — горы высотой '+rngI(3,5)+' км.','тёмная область Ктулху — толины, органика.'])+' Фотографии передаём.',
@@ -5212,33 +5361,6 @@ pluto:[
     ()=>'Объект пояса Койпера '+pick(['2014 MU₆₉ (Аррокот)','2024 KX₁₅','Квавар','Эрида'])+': '+pick(['пролёт через '+rngI(6,24)+' месяцев.','снимки издалека — форма '+pick(['вытянутая','двудольная','сферическая','неправильная'])+'.','Δv для сближения: '+rng(0.1,0.5).toFixed(2)+' км/с.','Запас топлива позволяет ещё '+rngI(1,3)+' пролёта.']),
     ()=>'Солнечные панели: выработка '+rng(0.1,0.5).toFixed(2)+' Вт/м². '+pick(['На таком расстоянии Солнце — яркая звезда.','RTG — единственный надёжный источник.','Панели — аварийный резерв, не основной.','Плутоний-238: остаточная мощность '+rngI(60,85)+'%.']),
     ()=>'Рефлексия миссии: полёт длится '+rngI(8,15)+' лет. '+pick(['Команда на Земле сменилась дважды.','Зонд пережил '+rngI(3,8)+' крупных сбоев.','Самый далёкий рукотворный объект с камерой.','Каждый снимок — чудо инженерии и терпения.'])+' Горизонт-2 продолжает путь.',
-    ()=>'Плутон — факт: "Сердце" (Томбо Регио) размером с Францию — равнина азотного льда. Конвекционные ячейки 20-40 км меняются каждые '+rngI(100,500)+' тысяч лет. Под поверхностью, возможно, подземный океан жидкой воды — теплоизолированный льдом. Ещё один кандидат для жизни.',
-    ()=>'Харон — полуплутон: его масса 12% от Плутона. Они вращаются вокруг общего центра масс вне обоих тел. Оба всегда смотрят друг на друга одной стороной. Красная шапка Харона — азот и метан, захваченные из атмосферы Плутона и преобразованные в толины. Планеты делятся атмосферой.',
-    ()=>'Пять лун Плутона: Харон, Никта, Гидра, Кербер, Стикс. Никта и Гидра хаотично вращаются — невозможно предсказать ориентацию. Возможная причина: приливные силы двойной системы Плутон-Харон. Оказавшись там — небо вращается непредсказуемо.',
-    ()=>'Пояс Койпера, где живёт Плутон, содержит тысячи тел. Пролётная траектория Горизонт-2 уже показала '+rngI(3,12)+' новых объектов. Аррокот (2014 MU₆₉) — ближайший: два тела слиплись в первозданной туманности. Живая капсула времени: вещество без изменений с рождения системы.',
-],
-saturn:[
-    ()=>'SATURN-CASSINI2 на связи. Кольца Сатурна — главная достопримечательность системы: ширина 270 000 км, толщина всего '+rngI(10,100)+' м. Состав: 90–95% водяной лёд. Возраст — вероятно, всего '+rngI(10,100)+' млн лет. Динозавры на Земле существовали ДО появления колец.',
-    ()=>'Энцелад: луна Сатурна диаметром 500 км бьёт гейзерами высотой 500 км. Состав: H₂O, NH₃, CO₂, органика. Источник тепла — приливное трение. Материал гейзеров питает кольцо E Сатурна. Подлёдный океан подтверждён. Кандидат №1 по простоте достижения.',
-    ()=>'Шестиугольный полярный шторм Сатурна: идеальный правильный шестиугольник диаметром 25 000 км! Существует десятилетиями. Скорость ветра — 150 м/с по краю. Физическое объяснение — стоячая волна в атмосфере. Но такая симметрия у природного объекта — поразительно.',
-    ()=>'Сутки Сатурна: '+rng(10.5,10.7).toFixed(2)+' часов. Год — 29,5 земных лет. Но разные широты вращаются с разной скоростью: экватор быстрее полюсов на 10%. Твёрдой поверхности нет — атмосфера плавно переходит в металлический водород под давлением ~3 млн атм.',
-    ()=>'Плотность Сатурна: 0,69 г/см³ — единственная планета Солнечной системы легче воды! Если найти достаточно большой океан — Сатурн всплывёт. Это следствие гелиевого дождя: гелий конденсируется в глубинах и стекает к ядру, выделяя тепло.',
-    ()=>'Titan с Сатурна: луна Титан видна как яркая точка из нашей позиции. Она в 20 раз массивнее всех остальных лун вместе. Атмосфера Титана плотнее земной — давление 1,45 атм. Это второй по размеру спутник в системе после Ганимеда.',
-    ()=>'Кольца Сатурна — структура: кольцо D, C, B, A, зазор Кассини, F, G, E. Зазор Кассини шириной 4800 км обусловлен резонансом с луной Мимас. Внутри "пустоты" — не так пусто: мелкие обломки, пастухи-луны Пан и Атлас расчищают зазоры своей гравитацией.',
-    ()=>'Гелиевый дождь внутри Сатурна: при давлении >'+rngI(1,3)+' млн атм гелий перестаёт смешиваться с водородом и капли "дождя" оседают к ядру. Это основной источник внутреннего тепла: Сатурн излучает в 2,5 раза больше энергии, чем получает от Солнца.',
-    ()=>'Миас: луна Сатурна с гигантским кратером Гершель диаметром 139 км — треть диаметра самого Миаса. Удар, создавший его, едва не расколол спутник. Кратер с центральной горкой — визитная карточка Звезды Смерти, которую с него "рисовали" в кино.',
-    ()=>'Статус «Кассини-2»: топливо '+rngI(20,50)+'%, орбита '+rngI(60000,200000)+' км от центра Сатурна. Мониторим кольца: частицы размером от пыли до глыб '+rngI(10,100)+' м. Столкновения создают волны плотности — "пропеллеры" длиной сотни км.',
-],
-neptune:[
-    ()=>'NEPTUNE-TRITON на связи. Задержка — 4,1 часа. Нептун — "синяя планета": цвет от метана (CH₄), поглощающего красный свет. Атмосфера: H₂ 80%, He 19%, CH₄ 1,5%. Температура верхних слоёв — -218°C, хотя до Солнца '+rngI(29,30)+' а.е.',
-    ()=>'Большое Тёмное Пятно на Нептуне — аналог Красного Пятна Юпитера. Наблюдалось Вояджером-2 в 1989 г., потом исчезло, появилось новое в 1994-м. Пятна нестабильны — атмосфера слишком подвижна. Ветер Нептуна — сильнейший в системе: до 600 м/с!',
-    ()=>'Тритон — луна Нептуна, вращается "неправильно" — ретроградно, против вращения планеты. Это значит: Тритон захвачен — бывший объект пояса Койпера. Конец предрешён: через '+rngI(3,4)+' млрд лет приливные силы разорвут его в кольцо как Фобос.',
-    ()=>'Тритон активен: гейзеры азота на полюсе бьют на 8 км в высоту! Температура поверхности -235°C — одно из самых холодных тел с измеренной температурой. Испарение азотного льда под действием солнечного тепла (слабого, но достаточного) создаёт "реактивные двигатели".',
-    ()=>'Нептун был предсказан математически ДО открытия: возмущения орбиты Урана указали точное положение. Леверрье и Адамс независимо вычислили координаты. Первая планета, "открытая" пером и бумагой в 1846 году. Торжество небесной механики.',
-    ()=>'Год Нептуна — 164,8 земных года. С момента открытия в 1846 г. планета совершила менее двух полных оборотов. Вояджер-2 — единственный аппарат, посетивший систему, в 1989 г. Наш зонд — второй за всю историю.',
-    ()=>'Магнитное поле Нептуна странное: наклонено на 47° к оси вращения и смещено от центра на '+rngI(50,55)+'% радиуса! Аналогично у Урана. Гипотеза: "суперионная" вода или нашатырный лёд в мантии создаёт поле вне ядра. Совсем не как у Земли или Юпитера.',
-    ()=>'Луны Нептуна: 16 известных. Крупнейшая — Тритон. Нереида — вытянутая орбита (эксцентриситет 0,75): расстояние от Нептуна меняется от 1,4 до 9,6 млн км. Возможно, тоже захваченный объект. Мы наблюдаем Нереиду прямо сейчас: '+rngI(2,9)+' млн км.',
-    ()=>'Внутреннее строение Нептуна: небольшое каменное ядро, мантия из "горячего льда" (H₂O, NH₃, CH₄ под давлением — они сжаты, но не заморожены), газовая оболочка. Давление в центре ~7 млн атм. Алмазный дождь — при таком давлении углерод кристаллизуется. Буквально.',
 ],
 };
 
@@ -5251,12 +5373,10 @@ function generateIPChatter(){
         'expedition','expedition','expedition','expedition',
         'venus','venus','venus',
         'mercury','mercury','mercury',
-        'titan','titan','titan',
-        'europa','europa','europa',
-        'jupiter','jupiter','jupiter',
-        'saturn','saturn','saturn',
+        'titan','titan',
+        'europa','europa',
+        'jupiter','jupiter',
         'asteroid','asteroid',
-        'neptune','neptune',
         'pluto'
     ];
     const src=pick(weighted);
@@ -5864,6 +5984,20 @@ function update(dt){
     // ---- INVESTIGATIONS ----
     updateInvestigations(sdt);
 
+    // ---- ANOMALY RESEARCH BONUS TIMER ----
+    if(anomalyResearchBonus > 0){
+        anomalyResearchBonus -= sdt;
+        if(anomalyResearchBonus < 0) anomalyResearchBonus = 0;
+    }
+
+    // ---- DISTRESS CALLS ----
+    distressCD -= sdt;
+    if(distressCD <= 0 && !distressState.active && !evacState.active){
+        distressCD = rng(400, 700);
+        if(Math.random() < 0.45) spawnDistressCall();
+    }
+    updateDistress(sdt);
+
     // ---- NEW FEATURES ----
     updateDocking(sdt);
     updateEvacuation(sdt);
@@ -5871,7 +6005,6 @@ function update(dt){
     checkCascades(sdt);
     updateAsteroid(sdt);
     updateCrewPsychology(sdt);
-    updateCupDirectives(sdt);
 
     // ---- INTERPLANETARY COMMS ----
     ipChatterCD-=sdt;
@@ -5920,6 +6053,8 @@ function update(dt){
 function tryEvent(){
     for(const evt of EVENTS){
         if(Math.random()<0.04*(1+gt/3600*0.1)){
+            // Anomaly research bonus: skip crit events 45% of the time
+            if(anomalyResearchBonus>0 && evt.sev==='crit' && Math.random()<0.45) continue;
             spawnEvent(evt);
             return;
         }
@@ -6103,43 +6238,12 @@ let radarZoomMode=null; // 'orbital' or 'deepspace' or null
 let radarZoomMouse={x:0,y:0};
 let radarZoomHovered=null;
 
-// Radar zoom — zoom/pan state
-let rzdScale=1, rzdPanX=0, rzdPanY=0;
-let rzdDragging=false, rzdDragMoved=false;
-let rzdDragStartX=0, rzdDragStartY=0, rzdDragPanStartX=0, rzdDragPanStartY=0;
-
-function rzdClampPan(W,H){
-    if(rzdScale<=1){rzdPanX=0;rzdPanY=0;return;}
-    const maxPan=Math.min(W,H)*(rzdScale-1)*0.55;
-    rzdPanX=Math.max(-maxPan,Math.min(maxPan,rzdPanX));
-    rzdPanY=Math.max(-maxPan,Math.min(maxPan,rzdPanY));
-}
-function rzdUpdateInfo(){
-    const el=document.getElementById('rzd-zoom-info');
-    if(el) el.textContent=rzdScale<=1?'Масштаб: 1.0x | Колесо мыши или кнопки для зума':`Масштаб: ${rzdScale.toFixed(1)}x | Перетащите для перемещения`;
-}
-function rzdZoomIn(){
-    const canvas=document.getElementById('radar-zoom-canvas');
-    const W=canvas.offsetWidth||800, H=canvas.offsetHeight||600;
-    rzdScale=Math.min(rzdScale*1.3,8); rzdClampPan(W,H); rzdUpdateInfo();
-}
-function rzdZoomOut(){
-    const canvas=document.getElementById('radar-zoom-canvas');
-    const W=canvas.offsetWidth||800, H=canvas.offsetHeight||600;
-    rzdScale=Math.max(rzdScale/1.3,1); rzdClampPan(W,H); rzdUpdateInfo();
-}
-function rzdReset(){
-    rzdScale=1; rzdPanX=0; rzdPanY=0; rzdUpdateInfo();
-}
-
 function openRadarZoom(mode){
     radarZoomMode=mode;
     radarZoomHovered=null;
-    rzdScale=1; rzdPanX=0; rzdPanY=0;
     document.getElementById('radar-zoom-overlay').classList.add('show');
     document.getElementById('rzd-title').textContent=mode==='orbital'?'ОРБИТАЛЬНЫЙ РАДАР — УВЕЛИЧЕНИЕ':'ДАЛЬНИЙ КОСМОС — УВЕЛИЧЕНИЕ';
     document.getElementById('rzd-body').innerHTML='<div style="color:var(--dim);padding:20px">Наведите курсор на объект для отображения деталей</div>';
-    rzdUpdateInfo();
 }
 function closeRadarZoom(){
     radarZoomMode=null;
@@ -6159,7 +6263,6 @@ document.getElementById('radar-zoom-canvas').addEventListener('mousemove',(e)=>{
     radarZoomMouse.y=e.clientY-rect.top;
 });
 document.getElementById('radar-zoom-canvas').addEventListener('click',(e)=>{
-    if(rzdDragMoved) return;
     if(radarZoomHovered){
         if(radarZoomMode==='orbital'){
             const sat=SATS.find(s=>s.id===radarZoomHovered);
@@ -6168,57 +6271,6 @@ document.getElementById('radar-zoom-canvas').addEventListener('click',(e)=>{
             const obj=DS_OBJECTS.find(o=>o.id===radarZoomHovered);
             if(obj) showDSActions(obj);
         }
-    }
-});
-
-// Radar zoom — mouse wheel zoom
-document.getElementById('radar-zoom-canvas').addEventListener('wheel',(e)=>{
-    if(!radarZoomMode)return;
-    e.preventDefault();
-    const factor=e.deltaY>0?0.85:1.18;
-    const rect=e.target.getBoundingClientRect();
-    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
-    const W=rect.width, H=rect.height;
-    const cx=W*0.5, cy=H*0.5;
-    const newScale=Math.max(1,Math.min(8,rzdScale*factor));
-    // Zoom toward mouse position
-    const wx=(mx-rzdPanX-cx)/rzdScale+cx;
-    const wy=(my-rzdPanY-cy)/rzdScale+cy;
-    rzdScale=newScale;
-    rzdPanX=mx-cx-(wx-cx)*rzdScale;
-    rzdPanY=my-cy-(wy-cy)*rzdScale;
-    rzdClampPan(W,H);
-    rzdUpdateInfo();
-    // Update cursor
-    e.target.style.cursor=rzdScale>1?'grab':'default';
-},{passive:false});
-
-// Radar zoom — drag to pan
-document.getElementById('radar-zoom-canvas').addEventListener('mousedown',(e)=>{
-    if(!radarZoomMode||rzdScale<=1)return;
-    rzdDragging=true; rzdDragMoved=false;
-    rzdDragStartX=e.clientX; rzdDragStartY=e.clientY;
-    rzdDragPanStartX=rzdPanX; rzdDragPanStartY=rzdPanY;
-    e.target.style.cursor='grabbing';
-    e.preventDefault();
-});
-document.addEventListener('mousemove',(e)=>{
-    if(!rzdDragging)return;
-    const dx=e.clientX-rzdDragStartX, dy=e.clientY-rzdDragStartY;
-    if(Math.abs(dx)>3||Math.abs(dy)>3) rzdDragMoved=true;
-    if(rzdDragMoved){
-        const canvas=document.getElementById('radar-zoom-canvas');
-        const W=canvas.offsetWidth||800, H=canvas.offsetHeight||600;
-        rzdPanX=rzdDragPanStartX+dx;
-        rzdPanY=rzdDragPanStartY+dy;
-        rzdClampPan(W,H);
-    }
-});
-document.addEventListener('mouseup',()=>{
-    if(rzdDragging){
-        rzdDragging=false;
-        const canvas=document.getElementById('radar-zoom-canvas');
-        if(canvas) canvas.style.cursor=rzdScale>1?'grab':'default';
     }
 });
 
@@ -6241,47 +6293,14 @@ function renderZoomedRadar(){
 
     ctx.fillStyle='#020406';ctx.fillRect(0,0,W,H);
 
-    const cx=W*0.5, cy=H*0.5;
-    // Transform screen mouse → world space for hit detection
-    const mwx=(radarZoomMouse.x-rzdPanX-cx)/rzdScale+cx;
-    const mwy=(radarZoomMouse.y-rzdPanY-cy)/rzdScale+cy;
-    // Hit threshold in world space (stays ~40px on screen)
-    const hitR=40/rzdScale;
-
-    // Apply zoom+pan transform
-    ctx.save();
-    ctx.translate(cx+rzdPanX, cy+rzdPanY);
-    ctx.scale(rzdScale, rzdScale);
-    ctx.translate(-cx, -cy);
-
     if(radarZoomMode==='orbital'){
-        renderZoomedOrbital(ctx,W,H,mwx,mwy,hitR);
+        renderZoomedOrbital(ctx,W,H);
     } else {
-        renderZoomedDeepSpace(ctx,W,H,mwx,mwy,hitR);
-    }
-
-    ctx.restore();
-
-    // Fixed UI overlays (title + live indicator)
-    if(radarZoomMode==='orbital'){
-        ctx.fillStyle='#1a3050';ctx.font='11px monospace';ctx.textAlign='left';
-        ctx.fillText('ОРБИТАЛЬНЫЙ РАДАР — СПУТНИКИ [УВЕЛИЧЕНИЕ]',10,20);
-        const rxOn=Math.sin(Date.now()/200)>0.3;
-        ctx.fillStyle=rxOn?'#00cc66':'#0a1a10';
-        ctx.beginPath();ctx.arc(W-16,16,4,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#1a3040';ctx.textAlign='right';ctx.fillText('ПРИЕМ',W-24,19);
-    } else {
-        ctx.fillStyle='#1a1830';ctx.font='11px monospace';ctx.textAlign='left';
-        ctx.fillText('ДАЛЬНИЙ КОСМОС — ОКОЛОЛУННОЕ [УВЕЛИЧЕНИЕ]',10,20);
-        const liveOn=Math.sin(Date.now()/400)>0;
-        ctx.fillStyle=liveOn?'#8844cc':'#1a1020';
-        ctx.beginPath();ctx.arc(W-16,16,4,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#2a1838';ctx.textAlign='right';ctx.fillText('СКАН',W-24,19);
+        renderZoomedDeepSpace(ctx,W,H);
     }
 }
 
-function renderZoomedOrbital(ctx,W,H,mwx,mwy,hitR){
-    if(mwx===undefined){mwx=radarZoomMouse.x;mwy=radarZoomMouse.y;hitR=40;}
+function renderZoomedOrbital(ctx,W,H){
     const cx=W*0.5,cy=H*0.5;
     const maxR=Math.min(W*0.42,H*0.42);
 
@@ -6330,8 +6349,8 @@ function renderZoomedOrbital(ctx,W,H,mwx,mwy,hitR){
         const brightness=angleDiff<1.5?(1-angleDiff/1.5):0.2;
         const satCol=sat.health>80?[100,140,220]:sat.health>50?[200,180,60]:[220,60,60];
 
-        // Check mouse proximity (world space)
-        const dx=mwx-sx, dy=mwy-sy;
+        // Check mouse proximity
+        const dx=radarZoomMouse.x-sx, dy=radarZoomMouse.y-sy;
         const dist=Math.sqrt(dx*dx+dy*dy);
         if(dist<closestDist){closestDist=dist;closest=sat;}
 
@@ -6342,7 +6361,7 @@ function renderZoomedOrbital(ctx,W,H,mwx,mwy,hitR){
         ctx.beginPath();ctx.arc(sx,sy,12,0,Math.PI*2);ctx.fill();
 
         // Highlight hovered
-        const isHovered=closest===sat&&closestDist<hitR;
+        const isHovered=closest===sat&&closestDist<40;
         if(isHovered){
             ctx.strokeStyle=`rgba(${satCol[0]},${satCol[1]},${satCol[2]},0.8)`;
             ctx.lineWidth=2;
@@ -6365,8 +6384,17 @@ function renderZoomedOrbital(ctx,W,H,mwx,mwy,hitR){
         }
     }
 
+    // Title
+    ctx.fillStyle='#1a3050';ctx.font='11px monospace';ctx.textAlign='left';
+    ctx.fillText('ОРБИТАЛЬНЫЙ РАДАР — СПУТНИКИ [УВЕЛИЧЕНИЕ]',10,20);
+    // Live
+    const rxOn=Math.sin(Date.now()/200)>0.3;
+    ctx.fillStyle=rxOn?'#00cc66':'#0a1a10';
+    ctx.beginPath();ctx.arc(W-16,16,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#1a3040';ctx.textAlign='right';ctx.fillText('ПРИЕМ',W-24,19);
+
     // Update detail panel
-    if(closest&&closestDist<hitR){
+    if(closest&&closestDist<40){
         if(radarZoomHovered!==closest.id){
             radarZoomHovered=closest.id;
             showSatDetail(closest);
@@ -6377,8 +6405,7 @@ function renderZoomedOrbital(ctx,W,H,mwx,mwy,hitR){
     }
 }
 
-function renderZoomedDeepSpace(ctx,W,H,mwx,mwy,hitR){
-    if(mwx===undefined){mwx=radarZoomMouse.x;mwy=radarZoomMouse.y;hitR=40;}
+function renderZoomedDeepSpace(ctx,W,H){
     const cx=W*0.5,cy=H*0.5;
     const maxR=Math.min(W*0.42,H*0.42);
 
@@ -6417,7 +6444,7 @@ function renderZoomedDeepSpace(ctx,W,H,mwx,mwy,hitR){
         const aDiff=((sa-obj.angle)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
         const bright=aDiff<1.2?(1-aDiff/1.2):0.15;
 
-        const dx=mwx-ox,dy=mwy-oy;
+        const dx=radarZoomMouse.x-ox,dy=radarZoomMouse.y-oy;
         const dist=Math.sqrt(dx*dx+dy*dy);
         if(dist<closestDist){closestDist=dist;closest=obj;}
 
@@ -6429,7 +6456,7 @@ function renderZoomedDeepSpace(ctx,W,H,mwx,mwy,hitR){
         ctx.beginPath();ctx.arc(ox,oy,obj.size*1.5+6,0,Math.PI*2);ctx.fill();
 
         // Highlight
-        if(closest===obj&&closestDist<hitR){
+        if(closest===obj&&closestDist<40){
             ctx.globalAlpha=0.8;
             ctx.strokeStyle=obj.color;ctx.lineWidth=2;
             ctx.beginPath();ctx.arc(ox,oy,obj.size*1.5+12,0,Math.PI*2);ctx.stroke();
@@ -6444,7 +6471,15 @@ function renderZoomedDeepSpace(ctx,W,H,mwx,mwy,hitR){
         ctx.globalAlpha=1;
     }
 
-    if(closest&&closestDist<hitR){
+    // Title
+    ctx.fillStyle='#1a1830';ctx.font='11px monospace';ctx.textAlign='left';
+    ctx.fillText('ДАЛЬНИЙ КОСМОС — ОКОЛОЛУННОЕ [УВЕЛИЧЕНИЕ]',10,20);
+    const liveOn=Math.sin(Date.now()/400)>0;
+    ctx.fillStyle=liveOn?'#8844cc':'#1a1020';
+    ctx.beginPath();ctx.arc(W-16,16,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#2a1838';ctx.textAlign='right';ctx.fillText('СКАН',W-24,19);
+
+    if(closest&&closestDist<40){
         if(radarZoomHovered!==closest.id){
             radarZoomHovered=closest.id;
             showDSDetail(closest);
@@ -6818,17 +6853,226 @@ const TEL_STATIONS = [
             'Обнаружена аномалия в магнитном поле Меркурия — локальное усиление над кратером Калорис. Природа не ясна. Продолжаем наблюдения.',
             'Орбитальная коррекция выполнена. Перигелий снижен на 40 км. Новая орбита позволит улучшить разрешение радара.',
             'Тепловая нагрузка на щиты достигла расчётного максимума. Все системы в норме. На расстоянии 0,38 а.е. от Солнца это ожидаемо.',
-            'Стереоскопические снимки кратера Рахманинов обработаны. Глубина: 3,4 км, диаметр: 306 км. Данные обновляют карту рельефа.',
+            'Стереоскопические снимки кратера Рахманинова обработаны. Глубина: 3,4 км, диаметр: 306 км. Данные обновляют карту рельефа.',
             'Транзит Меркурия через диск Солнца виден с Земли через 6 месяцев. Готовим наблюдательную программу совместно с наземными обсерваториями.',
         ]
+    },
+    {
+        id:'ZEUS-ORB', name:'ЗЕВС-ОРБ', planet:'Юпитер (полярная орбита)', color:'#d4a96a',
+        delayMin:33, delayMax:53, sigStrength:2,
+        desc:'Орбитальный зонд «Зевс». Полярная орбита, перияктр 4 200 км. Непрерывный мониторинг атмосферы, магнитосферы и спутников.',
+        messages:[],
+        generateMessage: function(){
+            const ri  = (a,b)=>Math.floor(a+Math.random()*(b-a+1));
+            const rf  = (a,b,d)=>(a+Math.random()*(b-a)).toFixed(d);
+            const pk  = a=>a[ri(0,a.length-1)];
+            const loc = ()=>(rf(0,70,1)+'° '+pk(['с.ш.','ю.ш.']));
+            const rj  = ()=>rf(1.2,5.0,2)+' Rj';
+
+            const types = [
+
+                // ── Большое Красное Пятно ──────────────────────────────────
+                ()=>{
+                    const diam  = ri(12400,15800);
+                    const wind  = ri(380,615);
+                    const depth = ri(20,50)*10;
+                    const per   = rf(5.8,6.5,2);
+                    const tail  = pk([
+                        'Вихрь-компаньон Oval BA: диаметр '+ri(8000,11000)+' км, стабилен.',
+                        'Хромофор-индекс вырос на '+ri(8,18)+'% — химия неизвестна, предположительно серосодержащие молекулы.',
+                        'Скорость сжатия: −'+rf(1.2,2.5,1)+'% площади за 30 сут. Тренд продолжается с 1930-х.',
+                        'Новый антициклон ('+(ri(2,5)*1000)+' км) зарождается на '+ri(30,70)+'° з.д. — возможно слияние через '+ri(2,6)+' лет.',
+                        'Высота облачной вершины на краю пятна: '+ri(22,35)+' км выше окружающей тропосферы.',
+                    ]);
+                    return 'БКП-ТЕЛЕМЕТРИЯ: диаметр '+diam.toLocaleString('ru')+' км, ветер '+wind+' км/ч, период оборота '+per+' сут, глубина >'+depth+' км. '+tail;
+                },
+
+                // ── Атмосферная химия ──────────────────────────────────────
+                ()=>{
+                    const nh3  = ri(180,620);
+                    const ph3  = rf(0.4,2.8,1);
+                    const h2o  = rf(0.8,7.5,1);
+                    const geh4 = rf(0.2,0.8,1);
+                    const tail = pk([
+                        'Обеднение NH₃ у 5-мкм «горячего пятна» — нисходящее сухое течение из стратосферы.',
+                        'PH₃ выше нормы: вертикальный подъём из слоя >3 бар, время подъёма <'+ri(6,24)+' ч.',
+                        'Обнаружен C₂H₂ на уровне '+rf(0.05,0.3,2)+' ppm в стратосфере — фотохимический продукт CH₄.',
+                        'H₂O в '+rf(2,5,1)+'× выше солнечной нормы — подтверждает обогащение кометным материалом (SL9?).',
+                        'Зональный ветровой профиль: экватор +'+ri(480,620)+' км/ч, умер. широты −'+ri(100,180)+' км/ч.',
+                    ]);
+                    return 'ИК-СПЕКТРОСКОПИЯ ('+loc()+'): NH₃ '+nh3+' ppm (0,7 бар), PH₃ '+ph3+' ppm, H₂O '+h2o+'×☉, GeH₄ '+geh4+' ppb. '+tail;
+                },
+
+                // ── Молнии ─────────────────────────────────────────────────
+                ()=>{
+                    const energy = rf(0.3,14.0,1);
+                    const earth  = Math.round(energy/0.007);
+                    const rate   = rf(0.3,5.0,1);
+                    const depth  = ri(60,220);
+                    const ns     = pk(['с.ш.','ю.ш.']);
+                    const lat2   = ri(20,72);
+                    const tail   = pk([
+                        'Кластер из '+ri(8,22)+' разрядов за '+ri(5,15)+' мин — мезомасштабный конвективный комплекс.',
+                        'Регистрируем атмосферик-свистун: дисперсия указывает на распространение в плазмосфере.',
+                        'Корреляция с тепловой аномалией −'+ri(6,14)+' К на 5 мкм — глубокий конвективный столб.',
+                        'Полярная аврора усилилась через '+ri(35,55)+' мин после молниевого шторма — поток частиц в тор.',
+                        'Первая регистрация «суперболта» (>'+ri(50,200)+' ГДж) с момента запуска зонда.',
+                    ]);
+                    return 'МОЛНИЕВЫЙ ДЕТЕКТОР: '+lat2+'° '+ns+', энергия '+energy+' ГДж (≈'+earth+'× земного), частота '+rate+' удар/мин. Глубина: ~'+depth+' км (уровень H₂O). '+tail;
+                },
+
+                // ── Магнитосфера ───────────────────────────────────────────
+                ()=>{
+                    const B    = rf(2.0,14.5,1);
+                    const r    = rj();
+                    const ne   = rf(0.3,9.0,1);
+                    const ion  = pk(['S⁺','S²⁺','O⁺','O²⁺','Na⁺','H⁺','SO₂⁺']);
+                    const dose = ri(40,520);
+                    const tail = pk([
+                        'Магнитопауза сжата до '+ri(48,58)+' Rj — усиленное давление солнечного ветра.',
+                        'Инжекционное событие: горячий плазменный пузырь r='+ri(7,12)+' Rj, Tᵢ='+ri(30,80)+'×10³ эВ.',
+                        'DAM-радиовсплеск (декаметровый): Ио в системе управления — ток в трубке потока ~'+ri(3,12)+'×10⁶ А.',
+                        'Хвост магнитосферы: нейтральный лист смещён на '+rf(1,5,1)+'° от экватора — нестабильность плазменного листа.',
+                        'Ускорение частиц до '+ri(10,40)+' МэВ/нуклон — внутренний радиационный пояс «подзаряжается».',
+                    ]);
+                    return 'МАГНИТОМЕТР ('+r+'): |B|='+B+' Гс, nₑ='+ne+' см⁻³, ион '+ion+'. Доза/виток: '+dose+' рад. '+tail;
+                },
+
+                // ── Ио — вулканизм ─────────────────────────────────────────
+                ()=>{
+                    const volc   = pk(['Пел','Тваштар','Прометей','Локи-Патера','Амирани','Сурт','Мардук','Мауи']);
+                    const height = ri(8,50)*10;
+                    const temp   = ri(1250,1920);
+                    const flux   = rf(0.3,3.5,1);
+                    const tail   = pk([
+                        'Лавовое озеро Локи: конвективное опрокидывание — фронт обновлённой лавы '+ri(30,90)+' км²/сут.',
+                        'Тваштар выбросил материал выше сферы Хилла Ио (~'+ri(6,10)+'×10³ км) — часть осядёт на Европу.',
+                        'Новый горячий очаг в квадрате J-'+ri(10,25)+' ('+ri(20,70)+'° ю.ш.) — идентификация продолжается.',
+                        'Поток SO₂ в торус вырос на '+ri(20,60)+'% за 6 ч — плюм пробил ионосферу Ио.',
+                        'Серное озеро (T<430 К) наблюдается к западу от '+volc+' — стабильная структура 3-й год.',
+                    ]);
+                    return 'ИО-МОНИТОРИНГ ('+volc+'): плюм '+height+' км, T_лавы='+temp+' К, поток SO₂='+flux+'×10¹² кг/с. '+tail;
+                },
+
+                // ── Полярные циклоны ───────────────────────────────────────
+                ()=>{
+                    const pole = pk(['северный','южный']);
+                    const n    = pole==='северный'?9:6;
+                    const ci   = ri(1,n);
+                    const diam = ri(35,75)*100;
+                    const wind = ri(240,460);
+                    const tail = pk([
+                        'Полигональная структура сохраняет симметрию '+ri(2,5)+'-й год — механизм устойчивости неизвестен.',
+                        'Центральный полярный циклон прецессирует: '+rf(0.02,0.08,2)+'°/сут.',
+                        'ИК: яркостный минимум в центре — кольцеобразная аммиачная облачность усилилась.',
+                        'Попытка слияния вихрей №'+ri(1,n)+' и №'+ri(1,n)+' отклонена центробежным барьером.',
+                        'Полярная страта нагрелась на '+ri(4,12)+' К за последние 15 сут — подведение тепла снизу.',
+                    ]);
+                    return 'ПОЛЯРНЫЕ ЦИКЛОНЫ ('+pole+'): кластер '+n+' вихрей. Циклон #'+ci+': Ø'+diam.toLocaleString('ru')+' км, ветер '+wind+' км/ч. '+tail;
+                },
+
+                // ── Гравиметрия / внутреннее строение ─────────────────────
+                ()=>{
+                    const pj    = ri(50,80);
+                    const j2    = rf(14695.5,14696.5,2);
+                    const j4    = rf(586.0,590.0,1);
+                    const wdep  = ri(2500,3500);
+                    const cmass = ri(5,20)+'-'+ri(21,35);
+                    const tail  = pk([
+                        'Ядро размытое: металлический водород растворяет скальный материал — нет чёткой границы.',
+                        'Дифференциальное вращение: зоны и полосы имеют разные скорости до глубины '+wdep+' км.',
+                        'J₆ аномалия у 40° с.ш. — возможны плотностные неоднородности в слое металлического H₂.',
+                        'Оценка массы ядра уточнена: '+cmass+' M⊕, распределение — «нечёткое» (fuzzy core).',
+                        'Фаза металлического водорода начинается на глубине ~'+ri(15000,20000)+' км (давление >1 МБар).',
+                    ]);
+                    return 'ГРАВИМЕТРИЯ PJ-'+pj+': J₂='+j2+'×10⁻², J₄=−'+j4+'×10⁻⁴. Зон. ветры до '+wdep+' км. '+tail;
+                },
+
+                // ── Ганимед ────────────────────────────────────────────────
+                ()=>{
+                    const B_gan  = ri(690,810);
+                    const aurora = pk(['УФ-дублет OI 130,4 нм','рентгеновское (0,1–2 кэВ)','оптическое 630 нм (O¹Δ)']);
+                    const ocdep  = ri(160,250);
+                    const octhk  = ri(750,1100);
+                    const tail   = pk([
+                        'Внутренний океан: индукционный сигнал подтверждает глубину '+ocdep+' км, мощность слоя ~'+octhk+' км.',
+                        'Чередование 5 слоёв лёд/вода по данным магнитной индукции — «слоёный пирог».',
+                        'Кислородная атмосфера O₂: '+rf(0.05,0.2,2)+' мкПа — фотолиз льда солнечным UV.',
+                        'Тёмные регионы (Galileo Regio): альбедо '+rf(0.12,0.18,2)+' — необъяснимо низкий, возможен углерод.',
+                        'Активное взаимодействие магнитосферы Ганимеда с Юпитером — «слияние» полевых линий.',
+                    ]);
+                    return 'ГАНИМЕД: B_поверх='+B_gan+' нТл, аврора ('+aurora+'). '+tail;
+                },
+
+                // ── Плазменный тор Ио ─────────────────────────────────────
+                ()=>{
+                    const r_tor = rf(5.6,5.9,2);
+                    const ne    = ri(900,3200);
+                    const ti    = ri(40000,110000);
+                    const uv    = pk(['S II 673 нм','S III 680 нм','O II 372 нм','S IV 550 нм']);
+                    const tail  = pk([
+                        'Утренний сектор тора на '+ri(15,28)+'% плотнее вечернего — асимметрия нагрева у листа.',
+                        'УФ-свечение '+uv+' выше фона на '+ri(20,55)+'% — свежий выброс Ио в последние 12 ч.',
+                        'Нейтральное облако Na смещается по Z: интерференция с нейтральным листом (+'+rf(0.2,1.5,1)+'° откл.).',
+                        'Тор «дышит»: радиальные колебания ±'+ri(2,8)+'% с периодом ~10 ч (синхр. с Юпитером).',
+                        'Масса тора оценена: '+rf(1.5,3.5,1)+'×10³⁶ а.е.м. — убыль '+ri(500,1200)+' кг/с в хвост магнитосферы.',
+                    ]);
+                    return 'ТОР ИО (r='+r_tor+' Rj): nₑ='+ne+' см⁻³, Tᵢ='+ti.toLocaleString('ru')+' К. '+tail;
+                },
+
+                // ── Кольца ────────────────────────────────────────────────
+                ()=>{
+                    const ring  = pk(['Главное кольцо (122–129 тыс.км)','Паутина Амальтеи (129–182 тыс.км)','Паутина Фивы (129–226 тыс.км)','Гало (92–122 тыс.км)']);
+                    const tau   = rf(0.4,6.0,1);
+                    const grain = ri(1,200);
+                    const tail  = pk([
+                        'Питание частицами от Метиды и Адрастеи — поток '+rf(0.5,8.0,1)+' кг/с через микроимпакты.',
+                        'Ведущая сторона кольца ярче ведомой на '+ri(5,25)+'% — асимметрия рассеяния вперёд.',
+                        'Вертикальная толщина Главного кольца: '+ri(20,100)+' км — поразительно тонкое.',
+                        'Частицы кольца захвачены радиационным поясом: период жизни <'+ri(100,10000)+' лет.',
+                        'Кольцо Гало простирается до 1,71 Rj — верхняя граница ловушки радиационного пояса.',
+                    ]);
+                    return 'КОЛЬЦЕВАЯ СИСТЕМА ('+ring+'): τ='+tau+'×10⁻⁶, зерна ~'+grain+' мкм. '+tail;
+                },
+
+                // ── Авроры Юпитера ────────────────────────────────────────
+                ()=>{
+                    const power = ri(5,40);
+                    const oval  = ri(10000,18000);
+                    const spot  = pk(['северное','южное']);
+                    const src   = pk(['ионами S⁺ из тора Ио','электронами из инжекционного события','протонами солнечного ветра (суббуря)']);
+                    const tail  = pk([
+                        'Главный овал ярче полярных диффузных авроры в '+ri(10,40)+' раз — ток Биркеланда ~'+ri(5,20)+'×10⁶ А.',
+                        'Пятно Ганимеда в УФ: смещение относительно расчётного +'+ri(1,8)+'° — сдвиг в магнитном соединении.',
+                        'Аврора мощнее совокупного сияния всех авроры Земли в '+ri(50,200)+' раз.',
+                        'Сатурн-сравнение: юпитерианская аврора крупнее планеты Земля — главный овал Ø>'+oval.toLocaleString('ru')+' км.',
+                        'Импульсный выброс «главного меридиана» — излучение сдвинулось на '+ri(5,20)+'° за '+ri(1,8)+' мин.',
+                    ]);
+                    return 'АВРОРА ('+spot+' полюс): мощность ~'+power+' ТВт, возбуждена '+src+'. '+tail;
+                },
+
+                // ── Каллисто ──────────────────────────────────────────────
+                ()=>{
+                    const crater = pk(['Вальхалла (Ø3800 км)','Асгард (Ø1600 км)','Адлинда (Ø400 км)']);
+                    const tail   = pk([
+                        'Поверхность Каллисто: старейшая в Солнечной системе — кратеры насыщены до предела, следов вулканизма нет.',
+                        'CO₂-атмосфера: '+rf(0.5,2.0,1)+'×10⁻¹² бар — сублимация с поверхности при T='+ri(80,155)+' К.',
+                        'Индукционный сигнал допускает подповерхностный рассол на глубине '+ri(50,200)+' км — не подтверждён.',
+                        'Спектр поверхности: тёмный карбонатный материал (альбедо '+rf(0.10,0.20,2)+') поверх водяного льда.',
+                        'Каллисто не прошла дифференциацию — лёд и камень перемешаны до центра. Уникально среди Галилеевых лун.',
+                    ]);
+                    return 'КАЛЛИСТО ('+crater+'): '+tail;
+                },
+            ];
+
+            return pk(types)();
+        }
     },
 ];
 
 let telOpen=false;
 let telCurrentStation=0;
-// Per-station message history (displayed messages)
 const telMsgHistory = TEL_STATIONS.map(()=>[]);
-// Per-station: how many messages have been "generated" (0-based index into .messages)
 const telMsgIndex = TEL_STATIONS.map(()=>0);
 let telReceivingTimeout=null;
 
@@ -6865,19 +7109,15 @@ function _telBuildStationList(){
 function _telSelectStation(idx){
     telCurrentStation=idx;
     const st=TEL_STATIONS[idx];
-    // Update active class
     document.querySelectorAll('.tel-station').forEach((el,i)=>{
         el.classList.toggle('active',i===idx);
     });
-    // Update header
     document.getElementById('tel-feed-title').textContent=`${st.id} — ${st.name} | ${st.planet}`;
     document.getElementById('tel-delay-info').textContent=`Задержка сигнала: ${st.delayMin}–${st.delayMax} мин`;
     document.getElementById('tel-feed-status').textContent=``;
-    // Signal dots
     for(let d=1;d<=5;d++){
         document.getElementById(`tel-dot-${d}`).classList.toggle('active',d<=st.sigStrength);
     }
-    // Show existing messages for this station, then maybe load more
     _telRenderMessages(idx);
     _telMaybeLoadNew(idx);
 }
@@ -6912,9 +7152,8 @@ function _telMakeMsgEl(m){
 function _telMaybeLoadNew(idx){
     if(telReceivingTimeout){clearTimeout(telReceivingTimeout);telReceivingTimeout=null;}
     const st=TEL_STATIONS[idx];
-    const msgs=st.messages;
-    if(telMsgIndex[idx]>=msgs.length) return; // все сообщения показаны
-    // Show "receiving" indicator after 1s, then add message
+    const hasGen=typeof st.generateMessage==='function';
+    if(!hasGen && telMsgIndex[idx]>=st.messages.length) return;
     telReceivingTimeout=setTimeout(()=>{
         if(!telOpen||telCurrentStation!==idx) return;
         const feed=document.getElementById('tel-messages');
@@ -6924,13 +7163,12 @@ function _telMaybeLoadNew(idx){
         rec.textContent='● Приём сигнала...';
         feed.appendChild(rec);
         feed.scrollTop=feed.scrollHeight;
-        // After "transmission delay", add the message
         const delay=Math.round(st.delayMin+Math.random()*(st.delayMax-st.delayMin));
         telReceivingTimeout=setTimeout(()=>{
             if(!telOpen||telCurrentStation!==idx) return;
             const recEl=document.getElementById('tel-rec-indicator');
             if(recEl) recEl.remove();
-            const msgText=msgs[telMsgIndex[idx]%msgs.length];
+            const msgText=hasGen ? st.generateMessage() : st.messages[telMsgIndex[idx]%st.messages.length];
             telMsgIndex[idx]++;
             const now=new Date();
             const ts=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0')+' UTC';
@@ -6938,15 +7176,14 @@ function _telMaybeLoadNew(idx){
             telMsgHistory[idx].push(msgObj);
             feed.appendChild(_telMakeMsgEl(msgObj));
             feed.scrollTop=feed.scrollHeight;
-            // Schedule next message
-            if(telMsgIndex[idx]<msgs.length){
+            // генераторные станции работают бесконечно, статичные — до конца массива
+            if(hasGen || telMsgIndex[idx]<st.messages.length){
                 telReceivingTimeout=setTimeout(()=>_telMaybeLoadNew(idx), 8000+Math.random()*12000);
             }
         }, 1500+Math.random()*1000);
     }, 1000);
 }
 
-// Trigger new messages periodically when telescope is open
 setInterval(()=>{
     if(!telOpen) return;
     const idx=telCurrentStation;
@@ -7652,7 +7889,6 @@ function loop(now){
         renderTelemetry();
         renderActions();
         renderWorkOrders();
-        renderCupDirectives();
         renderRadiation();
         renderRadData();
         renderAnomalyPanel();
